@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excellence Secondary School</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #007bff;
+            --secondary: #28a745;
+            --accent: #ffc107;
+            --text: #333;
+            --light: #f8f9fa;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; color: var(--text); line-height: 1.6; }
+        a { text-decoration: none; color: inherit; }
+        img { max-width: 100%; height: auto; display: block; }
+        .container { width: 90%; max-width: 1200px; margin: 0 auto; padding: 0 15px; }
+
+        /* Header */
+        header {
+            background: rgba(0, 123, 255, 0.9);
+            color: white;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+        }
+        .logo { font-size: 1.8rem; font-weight: 700; }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+        .nav-links a { transition: opacity 0.3s; }
+        .nav-links a:hover { opacity: 0.8; }
+        .mobile-menu { display: none; cursor: pointer; }
+
+        /* Hero */
+        .hero {
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://media.istockphoto.com/id/1313826674/photo/an-high-school-building-in-the-netherlands.jpg?s=612x612&w=0&k=20&c=qkNnhzY9IGzBkDA9VSw6yWoso5YeuZgVsN8VH5bBlJA=') center/cover no-repeat;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: white;
+        }
+        .hero h1 { font-size: 3.5rem; margin-bottom: 1rem; }
+        .hero p { font-size: 1.5rem; margin-bottom: 2rem; }
+        .btn {
+            background: var(--secondary);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #218838; }
+
+        /* Sections */
+        section { padding: 5rem 0; }
+        .section-title { text-align: center; font-size: 2.5rem; margin-bottom: 3rem; color: var(--primary); }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        .card:hover { transform: translateY(-10px); }
+
+        /* About */
+        #about { background: var(--light); }
+        .about-content { display: flex; align-items: center; gap: 3rem; flex-wrap: wrap; }
+        .about-text { flex: 1; min-width: 300px; }
+
+        /* Academics */
+        #academics .grid img { height: 200px; object-fit: cover; }
+
+        /* Campus */
+        #campus { background: var(--light); }
+
+        /* Admissions */
+        #admissions { text-align: center; }
+
+        /* Footer */
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 3rem 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; width: 100%; background: var(--primary); padding: 1rem; }
+            .nav-links.active { display: flex; }
+            .mobile-menu { display: block; font-size: 1.8rem; }
+            .hero h1 { font-size: 2.5rem; }
+            .hero p { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">Excellence Secondary School</div>
+                <div class="mobile-menu" onclick="toggleMenu()">☰</div>
+                <div class="nav-links" id="navLinks">
+                    <a href="#home">Home</a>
+                    <a href="#about">About</a>
+                    <a href="#academics">Academics</a>
+                    <a href="#campus">Campus Life</a>
+                    <a href="#admissions">Admissions</a>
+                    <a href="#contact">Contact</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <section id="home" class="hero">
+        <div class="container">
+            <h1>Welcome to Excellence Secondary School</h1>
+            <p>Inspiring Minds, Shaping Futures</p>
+            <a href="#admissions" class="btn">Apply Now</a>
+        </div>
+    </section>
+
+    <section id="about">
+        <div class="container">
+            <h2 class="section-title">About Our School</h2>
+            <div class="about-content">
+                <img src="https://images.pexels.com/photos/21862234/pexels-photo-21862234/free-photo-of-aerial-view-of-jiujiang-city-above-hukou-jinshawan-school.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" alt="School Campus Aerial View">
+                <div class="about-text">
+                    <p>Excellence Secondary School is a premier institution dedicated to academic excellence, character development, and holistic growth. Founded in 2000, we provide a nurturing environment where students thrive academically and personally.</p>
+                    <p>With state-of-the-art facilities and dedicated faculty, we prepare students for higher education and beyond.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="academics">
+        <div class="container">
+            <h2 class="section-title">Our Academics</h2>
+            <div class="grid">
+                <div class="card">
+                    <img src="https://t3.ftcdn.net/jpg/04/55/00/70/360_F_455007084_zyJ2waalAt7xveqKp434sLOdoxDdR8pR.jpg" alt="Diverse Students in Class">
+                    <div style="padding: 1.5rem;">
+                        <h3>Core Curriculum</h3>
+                        <p>Rigorous programs in sciences, humanities, and arts.</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="https://media.gettyimages.com/id/1363069804/photo/cheerful-teacher-helping-student-in-secondary-classroom.jpg?s=612x612&w=gi&k=20&c=hH70aZx_cu_Fo6bw8wqTWyzyMRbapzLWczWTgL66j94=" alt="Teacher Helping Student">
+                    <div style="padding: 1.5rem;">
+                        <h3>Extracurriculars</h3>
+                        <p>Sports, clubs, and leadership opportunities.</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <img src="https://media.istockphoto.com/id/1307457391/photo/happy-black-student-raising-arm-to-answer-question-while-attending-class-with-her-university.jpg?s=612x612&w=0&k=20&c=iZaZFyC-WqlqSQc4elqUNPTxLvWPe8P5Tb_YdZnrI9Q=" alt="Student Raising Hand">
+                    <div style="padding: 1.5rem;">
+                        <h3>Advanced Programs</h3>
+                        <p>STEM, AP courses, and college prep.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="campus">
+        <div class="container">
+            <h2 class="section-title">Campus Life</h2>
+            <div class="grid">
+                <img src="https://al13.com/wp-content/uploads/2020/02/Perham-Completed_0006-1024x550.jpg" alt="Modern School Building">
+                <img src="https://thumbs.dreamstime.com/b/nice-high-school-entrance-modern-building-usa-49976461.jpg" alt="School Entrance">
+                <img src="https://media.gettyimages.com/id/1447981201/video/outdoor-shot-of-large-beautiful-brick-high-school-building-with-green-lawn.jpg?s=640x640&k=20&c=3G8NH8_vWuR5mgynpdxmJEOx_UnGBVZ4wKgUMDh07Ks=" alt="School Lawn">
+            </div>
+        </div>
+    </section>
+
+    <section id="admissions">
+        <div class="container">
+            <h2 class="section-title">Join Our Community</h2>
+            <p>Ready to embark on a journey of excellence? Apply today and become part of our vibrant school family.</p>
+            <a href="#contact" class="btn" style="margin-top: 2rem; display: inline-block;">Get Started</a>
+        </div>
+    </section>
+
+    <section id="contact">
+        <div class="container">
+            <h2 class="section-title">Contact Us</h2>
+            <p>Email: info@excellenceschool.edu | Phone: (123) 456-7890</p>
+            <p>Address: 123 Education Lane, City, State 12345</p>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Excellence Secondary School. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMenu() {
+            document.getElementById('navLinks').classList.toggle('active');
+        }
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+    </script>
+</body>
+</html>
