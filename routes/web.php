@@ -282,7 +282,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('physical_library.borrow');
 
     Route::post('/library/physical/borrow', [PhysicalLibraryController::class, 'borrowBook'])
-        ->name('physical_library.borrow');
+        ->name('physical_library.borrow_store');
 
     Route::post('/library/physical/return/{id}', [PhysicalLibraryController::class, 'returnBook'])
         ->name('physical_library.return');
@@ -499,7 +499,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/bursar/payment', [BursarController::class, 'processPayment'])->name('bursar.processPayment');
 
     // Add this route to your web.php file
-    Route::get('/bursar/payment/{payment}/receipt', [BursarController::class, 'printReceipt'])->name('bursar.payment.receipt');
+    Route::get('/bursar/payment/{payment}/receipt', [BursarController::class, 'printReceipt'])->name('bursar.payment.receipt.alt');
 
     Route::get('/bursary/payments/manage', [BursarController::class, 'managePayments'])->name('payment.manage');
 
