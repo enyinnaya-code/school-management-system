@@ -557,6 +557,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/results/class/{class_id}/export', [ResultsController::class, 'exportClassResults'])
         ->name('results.class.export');
 
+        // Admin: View all teachers' teaching schedules
+Route::get('/admin/teaching-schedules', [TimetableController::class, 'allTeachingSchedules'])
+    ->name('admin.teaching-schedules')
+    ->middleware('auth');
+
     // List teacher's exams (or all for admins)
     Route::get('/exam-questions', [ExamQuestionController::class, 'index'])
         ->name('exam_questions.index');

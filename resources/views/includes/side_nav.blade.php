@@ -268,6 +268,15 @@
           <i data-feather="clock"></i><span>My Teaching Schedule</span>
         </a>
       </li>
+
+      {{-- Admin-only: View all teachers' schedules --}}
+      @if(in_array(Auth::user()->user_type, [1, 2]))
+      <li class="dropdown">
+        <a href="{{ route('admin.teaching-schedules') }}" class="nav-link">
+          <i data-feather="users"></i><span>All Teachers' Schedules</span>
+        </a>
+      </li>
+      @endif
       @endif
 
       <!-- ========== ACADEMICS & ASSESSMENT - Admin & Teachers (Type 1, 2, 3) ========== -->

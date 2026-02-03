@@ -531,7 +531,7 @@ class TimetableController extends Controller
         $teacher = Auth::user();
 
         // Check if user is a teacher (user_type = 3)
-        $allowedTeachingRoles = [3, 7, 8, 9, 10]; 
+        $allowedTeachingRoles = [1, 2, 3, 7, 8, 9, 10]; 
 
         if (!in_array($teacher->user_type, $allowedTeachingRoles)) {
             return redirect()->back()->with('error', 'Access denied.');
@@ -679,4 +679,190 @@ class TimetableController extends Controller
 
         return view('teachers.teaching_schedule', compact('teachingSchedule', 'teacher'));
     }
+
+
+    /**
+ * Display all teachers' teaching schedules (Admin view)
+ */
+public function allTeachingSchedules(Request $request)
+{
+    $user = Auth::user();
+
+    // Only admins can access this
+    if (!in_array($user->user_type, [1, 2])) {
+        abort(403, 'Unauthorized access.');
+    }
+
+    // Get all sections
+    $sections = Section::all();
+    $selectedSectionId = $request->get('section_id');
+
+    // Get teachers based on section filter
+    $teachersQuery = \App\Models\User::whereIn('user_type', [3, 7, 8, 9, 10])
+        ->orderBy('name');
+
+    // Filter teachers by section if selected
+    if ($selectedSectionId) {
+        $teachersQuery->whereHas('classes', function($query) use ($selectedSectionId) {
+            $query->where('section_id', $selectedSectionId);
+        });
+    }
+
+    $teachers = $teachersQuery->get();
+
+    // Get selected teacher from request
+    $selectedTeacherId = $request->get('teacher_id');
+    
+    // Auto-select first teacher if section is selected but no teacher is selected
+    if ($selectedSectionId && !$selectedTeacherId && $teachers->isNotEmpty()) {
+        $selectedTeacherId = $teachers->first()->id;
+    }
+
+    $teacher = null;
+    $teachingSchedule = [];
+
+    if ($selectedTeacherId) {
+        $teacher = \App\Models\User::find($selectedTeacherId);
+
+        if ($teacher) {
+            // Get classes assigned to this teacher from class_user table
+            $assignedClassIds = DB::table('class_user')
+                ->where('user_id', $teacher->id)
+                ->pluck('school_class_id')
+                ->toArray();
+
+            if (!empty($assignedClassIds)) {
+                // Get section_ids from the assigned classes
+                $sectionIds = \App\Models\SchoolClass::whereIn('id', $assignedClassIds)
+                    ->pluck('section_id')
+                    ->unique()
+                    ->toArray();
+
+                // If section filter is applied, only get that section's data
+                if ($selectedSectionId) {
+                    $sectionIds = array_intersect($sectionIds, [$selectedSectionId]);
+                }
+
+                // Get current sessions for these sections where is_current = 1
+                $currentSessions = \App\Models\Session::whereIn('section_id', $sectionIds)
+                    ->where('is_current', 1)
+                    ->get()
+                    ->keyBy('section_id');
+
+                if ($currentSessions->isNotEmpty()) {
+                    // Get current terms for these sessions where is_current = 1
+                    $sessionIds = $currentSessions->pluck('id')->toArray();
+                    $currentTerms = \App\Models\Term::whereIn('session_id', $sessionIds)
+                        ->where('is_current', 1)
+                        ->get()
+                        ->keyBy('session_id');
+
+                    if ($currentTerms->isNotEmpty()) {
+                        // Get all timetables for current sessions and terms
+                        $timetables = Timetable::whereIn('session_id', $sessionIds)
+                            ->whereIn('term_id', $currentTerms->pluck('id')->toArray())
+                            ->with(['section', 'session', 'term'])
+                            ->get();
+
+                        // Get subjects taught by this teacher from course_user pivot table
+                        $teacherSubjects = DB::table('course_user')
+                            ->where('user_id', $teacher->id)
+                            ->pluck('course_id')
+                            ->toArray();
+
+                        foreach ($timetables as $timetable) {
+                            if (!$timetable->schedule) {
+                                continue;
+                            }
+
+                            $schedule = is_array($timetable->schedule) ? $timetable->schedule : json_decode($timetable->schedule, true);
+
+                            // Get class information
+                            $classes = \App\Models\SchoolClass::where('section_id', $timetable->section_id)
+                                ->whereIn('id', $assignedClassIds)
+                                ->get()
+                                ->keyBy('id');
+
+                            // Get subjects information
+                            $subjects = \App\Models\Course::where('section_id', $timetable->section_id)
+                                ->get()
+                                ->keyBy('id');
+
+                            // Calculate time slots
+                            $startTime = 8 * 60; // 8:00 AM in minutes
+
+                            // Loop through each day
+                            foreach ($schedule as $day => $periods) {
+                                if (!in_array($day, ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'])) {
+                                    continue;
+                                }
+
+                                $currentTime = $startTime;
+                                $periodCounter = 0;
+
+                                // Get max periods for the day
+                                $maxPeriods = is_array($timetable->day_periods) && isset($timetable->day_periods[$day])
+                                    ? $timetable->day_periods[$day]
+                                    : $timetable->num_periods;
+
+                                // Loop through periods
+                                for ($p = 1; $p <= $maxPeriods + 1; $p++) {
+                                    // Check if it's break period
+                                    if ($p == $timetable->break_period) {
+                                        $currentTime += $timetable->break_duration;
+                                        continue;
+                                    }
+
+                                    $periodCounter++;
+
+                                    if ($periodCounter > $maxPeriods) {
+                                        break;
+                                    }
+
+                                    // Check if this period exists in schedule
+                                    if (!isset($periods[$periodCounter])) {
+                                        $currentTime += $timetable->lesson_duration;
+                                        continue;
+                                    }
+
+                                    // Loop through classes in this period
+                                    foreach ($periods[$periodCounter] as $classId => $subjectId) {
+                                        // Check if this is a class assigned to the teacher AND subject taught by them
+                                        if ($subjectId && in_array($subjectId, $teacherSubjects) && in_array($classId, $assignedClassIds)) {
+                                            $subject = $subjects->get($subjectId);
+                                            $class = $classes->get($classId);
+
+                                            if ($subject && $class) {
+                                                $startTimeFormatted = date('h:i A', mktime(0, $currentTime));
+                                                $endTimeFormatted = date('h:i A', mktime(0, $currentTime + $timetable->lesson_duration));
+
+                                                $teachingSchedule[] = [
+                                                    'day' => $day,
+                                                    'time' => $startTimeFormatted . ' - ' . $endTimeFormatted,
+                                                    'start_time' => $currentTime,
+                                                    'subject' => $subject->course_name,
+                                                    'class' => $class->name,
+                                                    'section' => $timetable->section->section_name,
+                                                    'period' => $periodCounter,
+                                                    'class_id' => $classId,
+                                                    'subject_id' => $subjectId,
+                                                ];
+                                            }
+                                        }
+                                    }
+
+                                    $currentTime += $timetable->lesson_duration;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return view('admin.all_teaching_schedules', compact('sections', 'teachers', 'teacher', 'teachingSchedule', 'selectedSectionId', 'selectedTeacherId'));
 }
+}
+
+
