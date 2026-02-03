@@ -184,7 +184,7 @@
       </li>
 
       <!-- Payroll -->
-      <li class="dropdown">
+      {{-- <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
           <i data-feather="dollar-sign"></i><span>Payroll</span>
         </a>
@@ -195,7 +195,7 @@
           <li><a class="nav-link" href="{{ route('finance.payroll.processed-salaries') }}">View Processed Salaries</a>
           </li>
         </ul>
-      </li>
+      </li> --}}
 
       <!-- Other Expenses -->
       <li class="dropdown">
