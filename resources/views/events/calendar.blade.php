@@ -45,9 +45,7 @@
                                     <span class="badge badge-secondary mb-2">Read-only view</span>
                                     @endif
                                 </div>
-                                <div class="calendar-wrapper">
-                                    <div id="calendar"></div>
-                                </div>
+                                <div id="calendar"></div>
                             </div>
                         </div>
                     </div>
@@ -189,17 +187,8 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
 
     <style>
-        /* Calendar wrapper for horizontal scrolling */
-        .calendar-wrapper {
-            width: 100%;
-            overflow-x: auto;
-            overflow-y: visible;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-        }
-
         #calendar {
             font-family: 'Nunito', sans-serif;
-            min-width: 100%;
         }
 
         .fc-event {
@@ -284,30 +273,6 @@
 
         /* Responsive styles */
         @media (max-width: 768px) {
-            /* Enable horizontal scrolling for calendar on small screens */
-            .calendar-wrapper {
-                position: relative;
-            }
-
-            .calendar-wrapper::after {
-                content: '← Swipe to view more →';
-                display: block;
-                text-align: center;
-                font-size: 0.75rem;
-                color: #6c757d;
-                padding: 0.5rem;
-                background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.9));
-                position: sticky;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                pointer-events: none;
-            }
-
-            #calendar {
-                min-width: 600px; /* Ensures calendar maintains readable size */
-            }
-
             /* Calendar toolbar responsive */
             .fc .fc-toolbar {
                 display: flex;
@@ -374,34 +339,6 @@
 
         @media (max-width: 576px) {
             /* Further adjustments for very small screens */
-            #calendar {
-                min-width: 500px; /* Smaller minimum width for very small screens */
-            }
-
-            .calendar-wrapper {
-                /* Add scrollbar styling for better UX */
-                scrollbar-width: thin;
-                scrollbar-color: #6c757d #f8f9fa;
-            }
-
-            .calendar-wrapper::-webkit-scrollbar {
-                height: 8px;
-            }
-
-            .calendar-wrapper::-webkit-scrollbar-track {
-                background: #f8f9fa;
-                border-radius: 4px;
-            }
-
-            .calendar-wrapper::-webkit-scrollbar-thumb {
-                background: #6c757d;
-                border-radius: 4px;
-            }
-
-            .calendar-wrapper::-webkit-scrollbar-thumb:hover {
-                background: #495057;
-            }
-
             .fc .fc-button {
                 padding: 0.3em 0.5em;
                 font-size: 0.75rem;
