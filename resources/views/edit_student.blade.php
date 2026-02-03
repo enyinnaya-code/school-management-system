@@ -22,7 +22,9 @@
                                     @csrf
                                     @method('PUT')
 
-                                    <!-- Student Name -->
+                                    <!-- STUDENT INFORMATION -->
+                                    <p class="mb-0 font-weight-bold">Student Information</p>
+                                    <hr>
                                     <div class="form-group row mb-4">
                                         <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Student Name</label>
                                         <div class="col-sm-12 col-md-7">
@@ -32,16 +34,14 @@
                                         </div>
                                     </div>
 
-                                    <!-- Email -->
                                     <div class="form-group row mb-4">
-                                        <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Email</label>
+                                        <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Date of Birth</label>
                                         <div class="col-sm-12 col-md-7">
-                                            <input type="email" name="email" class="form-control" required
-                                                value="{{ old('email', $student->email) }}">
+                                            <input type="date" name="dob" class="form-control" required
+                                                value="{{ old('dob', $student->dob) }}">
                                         </div>
                                     </div>
 
-                                    <!-- Gender -->
                                     <div class="form-group row mb-4">
                                         <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Gender</label>
                                         <div class="col-sm-12 col-md-7">
@@ -53,7 +53,70 @@
                                         </div>
                                     </div>
 
-                                    <!-- Section Dropdown -->
+                                    <!-- CONTACT DETAILS -->
+                                    <p class="mb-0 font-weight-bold">Contact Details</p>
+                                    <hr>
+                                    <div class="form-group row mb-4">
+                                        <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Address</label>
+                                        <div class="col-sm-12 col-md-7">
+                                            <textarea name="address" class="form-control" rows="2">{{ old('address', $student->address) }}</textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group row mb-4">
+                                        <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Phone</label>
+                                        <div class="col-sm-12 col-md-7">
+                                            <input type="tel" name="phone" class="form-control"
+                                                value="{{ old('phone', $student->phone) }}">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group row mb-4">
+                                        <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Email</label>
+                                        <div class="col-sm-12 col-md-7">
+                                            <input type="email" name="email" class="form-control"
+                                                value="{{ old('email', $student->email) }}">
+                                            <small class="form-text text-muted">Email will be normalized to end with @sms.com</small>
+                                        </div>
+                                    </div>
+
+                                    <!-- GUARDIAN INFORMATION -->
+                                    <p class="mb-0 font-weight-bold">Parent/Guardian Details</p>
+                                    <hr>
+                                    <div class="form-group row mb-4">
+                                        <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Full Name</label>
+                                        <div class="col-sm-12 col-md-7">
+                                            <input type="text" name="guardian_name" class="form-control"
+                                                value="{{ old('guardian_name', $student->guardian_name) }}">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group row mb-4">
+                                        <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Phone</label>
+                                        <div class="col-sm-12 col-md-7">
+                                            <input type="tel" name="guardian_phone" class="form-control"
+                                                value="{{ old('guardian_phone', $student->guardian_phone) }}">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group row mb-4">
+                                        <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Email</label>
+                                        <div class="col-sm-12 col-md-7">
+                                            <input type="email" name="guardian_email" class="form-control"
+                                                value="{{ old('guardian_email', $student->guardian_email) }}">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group row mb-4">
+                                        <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Contact Address</label>
+                                        <div class="col-sm-12 col-md-7">
+                                            <textarea name="guardian_address" class="form-control" rows="2">{{ old('guardian_address', $student->guardian_address) }}</textarea>
+                                        </div>
+                                    </div>
+
+                                    <!-- ACADEMIC INFORMATION -->
+                                    <p class="mb-0 font-weight-bold">Academic Info</p>
+                                    <hr>
                                     <div class="form-group row mb-4">
                                         <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Section</label>
                                         <div class="col-sm-12 col-md-7">
@@ -61,7 +124,7 @@
                                                 <option value="">-- Select Section --</option>
                                                 @foreach($sections as $section)
                                                 <option value="{{ $section->id }}"
-                                                    {{ $studentSectionId == $section->id ? 'selected' : '' }}>
+                                                    {{ old('section_id', $studentSectionId) == $section->id ? 'selected' : '' }}>
                                                     {{ $section->section_name }}
                                                 </option>
                                                 @endforeach
@@ -69,7 +132,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Class Dropdown -->
                                     <div class="form-group row mb-4">
                                         <label class="col-form-label text-md-right col-12 col-md-3 col-lg-3">Class</label>
                                         <div class="col-sm-12 col-md-7">
@@ -77,7 +139,7 @@
                                                 <option value="">-- Select Class --</option>
                                                 @foreach($classes as $class)
                                                 @if($class->section_id == $studentSectionId)
-                                                <option value="{{ $class->id }}" {{ $student->class_id == $class->id ? 'selected' : '' }}>
+                                                <option value="{{ $class->id }}" {{ old('class_id', $student->class_id) == $class->id ? 'selected' : '' }}>
                                                     {{ $class->name }}
                                                 </option>
                                                 @endif
@@ -88,6 +150,7 @@
 
                                     <div class="card-footer text-left mt-5 pt-5">
                                         <button type="submit" class="btn btn-primary">Update Student</button>
+                                        <a href="{{ route('students.index') }}" class="btn btn-secondary">Cancel</a>
                                     </div>
                                 </form>
 
@@ -119,6 +182,14 @@
                     .catch(err => console.error('Error fetching classes:', err));
             }
         });
+
+        // Prevent double form submission
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Updating...';
+        });
     </script>
 
     @include('includes.edit_footer')
+</body>
