@@ -95,7 +95,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/add-teacher', [UserController::class, 'createTeacher'])->name('teacher.add');
     Route::post('/add-teacher', [UserController::class, 'storeTeacher'])->name('teacher.store');
     Route::get('/manage-teacher', [UserController::class, 'manageTeacher'])->name('teachers.index');
-    Route::get('/get-classes-by-sections', [UserController::class, 'getClassesBySections'])->name('sections.classes');
+    Route::get('/get-classes-by-sections', [UserController::class, 'getClassesBySections'])
+    ->name('users.classes_by_sections');
     Route::get('/edit-teacher/{id}', [UserController::class, 'editTeacher'])->name('teachers.edit');
     Route::patch('teachers/toggle-active/{id}', [UserController::class, 'toggleActiveTeacher'])->name('teachers.toggleActive');
     Route::get('/reset-password/{id}', [UserController::class, 'resetPasswordTeacher'])->name('teachers.reset');
