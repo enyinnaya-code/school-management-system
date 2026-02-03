@@ -23,35 +23,57 @@
                                 </div>
                             </div>
                             <div class="card-body">
-                                <!-- Filters for Term and Subject -->
+
+                                <!-- Filters for Session, Term and Subject -->
                                 <div class="row mb-4">
                                     <div class="col-md-12">
-                                        <form method="GET" action="{{ route('students.performance', $student->id) }}" class="row">
+                                        <form method="GET" action="{{ route('students.performance', $student->id) }}"
+                                            class="row">
                                             <div class="form-group col-md-3">
-                                                <label>Term</label>
-                                                <select class="form-control" name="term">
-                                                    <option value="">All Terms</option>
-                                                    <option value="Term 1" {{ ($term ?? '') == 'Term 1' ? 'selected' : '' }}>Term 1</option>
-                                                    <option value="Term 2" {{ ($term ?? '') == 'Term 2' ? 'selected' : '' }}>Term 2</option>
-                                                    <option value="Term 3" {{ ($term ?? '') == 'Term 3' ? 'selected' : '' }}>Term 3</option>
+                                                <label>Academic Session</label>
+                                                <select class="form-control" name="session_id" id="sessionFilter">
+                                                    <option value="">All Sessions</option>
+                                                    @foreach($sessions as $session)
+                                                    <option value="{{ $session->id }}" {{ ($sessionId ?? ''
+                                                        )==$session->id ? 'selected' : '' }}>
+                                                        {{ $session->name }}
+                                                    </option>
+                                                    @endforeach
                                                 </select>
                                             </div>
                                             <div class="form-group col-md-3">
+                                                <label>Term</label>
+                                                <select class="form-control" name="term_id" id="termFilter">
+                                                    <option value="">All Terms</option>
+                                                    @foreach($terms as $term)
+                                                    <option value="{{ $term->id }}"
+                                                        data-session="{{ $term->session_id }}" {{ ($termId ?? ''
+                                                        )==$term->id ? 'selected' : '' }}>
+                                                        {{ $term->name }} ({{ $term->session->name ?? '' }})
+                                                    </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="form-group col-md-2">
                                                 <label>Subject</label>
                                                 <select class="form-control" name="subject_id">
                                                     <option value="">All Subjects</option>
                                                     @foreach($subjects as $subject)
-                                                        <option value="{{ $subject->id }}" {{ ($subjectId ?? '') == $subject->id ? 'selected' : '' }}>{{ $subject->course_name }}</option>
+                                                    <option value="{{ $subject->id }}" {{ ($subjectId ?? ''
+                                                        )==$subject->id ? 'selected' : '' }}>
+                                                        {{ $subject->course_name }}
+                                                    </option>
                                                     @endforeach
                                                 </select>
                                             </div>
-                                            <div class="form-group col-md-3 d-flex align-items-end">
-                                                <button type="submit" class="btn btn-primary">
+                                            <div class="form-group col-md-2 d-flex align-items-end">
+                                                <button type="submit" class="btn btn-primary mr-2">
                                                     <i class="fas fa-search"></i> Filter
                                                 </button>
                                             </div>
-                                            <div class="form-group col-md-3 d-flex align-items-end">
-                                                <a href="{{ route('students.performance', $student->id) }}" class="btn btn-light">
+                                            <div class="form-group col-md-2 d-flex align-items-end">
+                                                <a href="{{ route('students.performance', $student->id) }}"
+                                                    class="btn btn-light">
                                                     <i class="fas fa-sync"></i> Reset
                                                 </a>
                                             </div>
@@ -60,13 +82,27 @@
                                 </div>
 
                                 <!-- Student Summary -->
+                                <!-- Student Summary -->
                                 <div class="row mb-4">
                                     <div class="col-md-6">
                                         <strong>Class:</strong> {{ $student->class->name ?? 'Not Assigned' }}<br>
                                         <strong>Overall Average:</strong> {{ number_format($average, 2) }}%
                                     </div>
                                     <div class="col-md-6">
-                                        <strong>Term:</strong> {{ $term ?? 'All' }}<br>
+                                        <strong>Session:</strong>
+                                        @if(isset($sessionId) && $sessionId)
+                                        {{ $sessions->firstWhere('id', $sessionId)->name ?? 'N/A' }}
+                                        @else
+                                        All
+                                        @endif
+                                        <br>
+                                        <strong>Term:</strong>
+                                        @if(isset($termId) && $termId)
+                                        {{ $terms->firstWhere('id', $termId)->name ?? 'N/A' }}
+                                        @else
+                                        All
+                                        @endif
+                                        <br>
                                         <strong>Total Subjects:</strong> {{ $results->count() }}
                                     </div>
                                 </div>
@@ -121,7 +157,8 @@
                                 </div>
                                 @else
                                 <div class="alert alert-info">
-                                    <i class="fas fa-info-circle"></i> No performance records found for this student in the selected term and subject.
+                                    <i class="fas fa-info-circle"></i> No performance records found for this student in
+                                    the selected term and subject.
                                 </div>
                                 @endif
                             </div>
@@ -227,6 +264,44 @@
             }
         });
     </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+    const sessionFilter = document.getElementById('sessionFilter');
+    const termFilter = document.getElementById('termFilter');
+    
+    if (sessionFilter && termFilter) {
+        sessionFilter.addEventListener('change', function() {
+            const selectedSession = this.value;
+            const termOptions = termFilter.querySelectorAll('option');
+            
+            termOptions.forEach(option => {
+                if (option.value === '') {
+                    option.style.display = 'block';
+                    return;
+                }
+                
+                const termSession = option.getAttribute('data-session');
+                
+                if (selectedSession === '' || termSession === selectedSession) {
+                    option.style.display = 'block';
+                } else {
+                    option.style.display = 'none';
+                    if (option.selected) {
+                        termFilter.value = '';
+                    }
+                }
+            });
+        });
+        
+        // Trigger on page load to filter terms if session is pre-selected
+        if (sessionFilter.value) {
+            sessionFilter.dispatchEvent(new Event('change'));
+        }
+    }
+});
+    </script>
     @endif
 </body>
+
 </html>

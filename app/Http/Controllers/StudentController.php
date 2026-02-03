@@ -333,13 +333,24 @@ class StudentController extends Controller
             $subjects = Course::where('section_id', $student->class->section->id)->get();
         }
 
+        // Get all sessions and terms for dropdowns
+        $sessions = \App\Models\Session::orderBy('id', 'desc')->get();
+        $terms = Term::with('session')->orderBy('id', 'desc')->get();
+
         $resultsQuery = Result::with(['course', 'student', 'uploader'])
             ->where('student_id', $id);
 
-        if ($term = $request->get('term')) {
-            $resultsQuery->where('term', $term);
+        // Filter by session
+        if ($sessionId = $request->get('session_id')) {
+            $resultsQuery->where('session_id', $sessionId);
         }
 
+        // Filter by term
+        if ($termId = $request->get('term_id')) {
+            $resultsQuery->where('term_id', $termId);
+        }
+
+        // Filter by subject
         if ($subjectId = $request->get('subject_id')) {
             $resultsQuery->where('course_id', $subjectId);
         }
@@ -364,9 +375,12 @@ class StudentController extends Controller
             'student',
             'results',
             'average',
-            'term',
+            'sessionId',
+            'termId',
             'subjectId',
             'subjects',
+            'sessions',
+            'terms',
             'chartLabels',
             'chartData'
         ));
@@ -389,58 +403,58 @@ class StudentController extends Controller
     }
 
     public function update(Request $request, $id)
-{
-    if (!in_array(Auth::user()->user_type, [1, 2, 3, 7, 8, 9, 10])) {
-        abort(403, 'Unauthorized access.');
-    }
-
-    $student = User::where('user_type', 4)->findOrFail($id);
-
-    $validated = $request->validate([
-        'student_name' => 'required|string|max:255',
-        'email' => 'nullable|email',
-        'dob' => 'required|date',
-        'phone' => 'nullable|string|max:20',
-        'gender' => 'required|in:Male,Female',
-        'address' => 'nullable|string',
-        
-        'guardian_name' => 'nullable|string|max:255',
-        'guardian_phone' => 'nullable|string|max:20',
-        'guardian_email' => 'nullable|email',
-        'guardian_address' => 'nullable|string',
-        
-        'section_id' => 'required|exists:sections,id',
-        'class_id' => 'required|exists:school_classes,id',
-    ]);
-
-    // Normalize email
-    $normalizedEmail = $this->normalizeStudentEmail($validated['email']);
-
-    // Check uniqueness (excluding current student)
-    if ($normalizedEmail && $normalizedEmail !== $student->email) {
-        $exists = User::where('email', $normalizedEmail)->where('id', '!=', $id)->exists();
-        if ($exists) {
-            return back()->withErrors(['email' => 'This email (after normalization) is already taken.'])->withInput();
+    {
+        if (!in_array(Auth::user()->user_type, [1, 2, 3, 7, 8, 9, 10])) {
+            abort(403, 'Unauthorized access.');
         }
+
+        $student = User::where('user_type', 4)->findOrFail($id);
+
+        $validated = $request->validate([
+            'student_name' => 'required|string|max:255',
+            'email' => 'nullable|email',
+            'dob' => 'required|date',
+            'phone' => 'nullable|string|max:20',
+            'gender' => 'required|in:Male,Female',
+            'address' => 'nullable|string',
+
+            'guardian_name' => 'nullable|string|max:255',
+            'guardian_phone' => 'nullable|string|max:20',
+            'guardian_email' => 'nullable|email',
+            'guardian_address' => 'nullable|string',
+
+            'section_id' => 'required|exists:sections,id',
+            'class_id' => 'required|exists:school_classes,id',
+        ]);
+
+        // Normalize email
+        $normalizedEmail = $this->normalizeStudentEmail($validated['email']);
+
+        // Check uniqueness (excluding current student)
+        if ($normalizedEmail && $normalizedEmail !== $student->email) {
+            $exists = User::where('email', $normalizedEmail)->where('id', '!=', $id)->exists();
+            if ($exists) {
+                return back()->withErrors(['email' => 'This email (after normalization) is already taken.'])->withInput();
+            }
+        }
+
+        $student->update([
+            'name' => strtoupper($validated['student_name']),
+            'email' => $normalizedEmail,
+            'dob' => $validated['dob'],
+            'phone' => $validated['phone'],
+            'gender' => $validated['gender'],
+            'address' => $validated['address'],
+            'guardian_name' => $validated['guardian_name'],
+            'guardian_phone' => $validated['guardian_phone'],
+            'guardian_email' => $validated['guardian_email'],
+            'guardian_address' => $validated['guardian_address'],
+            'section' => $validated['section_id'],
+            'class_id' => $validated['class_id'],
+        ]);
+
+        return redirect()->route('students.index')->with('success', 'Student updated successfully.');
     }
-
-    $student->update([
-        'name' => strtoupper($validated['student_name']),
-        'email' => $normalizedEmail,
-        'dob' => $validated['dob'],
-        'phone' => $validated['phone'],
-        'gender' => $validated['gender'],
-        'address' => $validated['address'],
-        'guardian_name' => $validated['guardian_name'],
-        'guardian_phone' => $validated['guardian_phone'],
-        'guardian_email' => $validated['guardian_email'],
-        'guardian_address' => $validated['guardian_address'],
-        'section' => $validated['section_id'],
-        'class_id' => $validated['class_id'],
-    ]);
-
-    return redirect()->route('students.index')->with('success', 'Student updated successfully.');
-}
 
 
     public function myStudents()
