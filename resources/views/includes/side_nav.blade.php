@@ -65,7 +65,7 @@
       </li>
 
 
-
+{{-- 
       <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
           <i data-feather="home"></i><span>Hostels</span>
@@ -75,7 +75,7 @@
           <li><a class="nav-link" href="{{ route('hostels.manage') }}">Manage Hostels</a></li>
           <li><a class="nav-link" href="{{ route('hostels.allocate') }}">Allocate Hostels</a></li>
         </ul>
-      </li>
+      </li> --}}
 
 
       @if(auth()->user()->user_type == 1 || auth()->user()->user_type == 2 ||
