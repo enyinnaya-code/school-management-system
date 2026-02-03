@@ -96,7 +96,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/add-teacher', [UserController::class, 'storeTeacher'])->name('teacher.store');
     Route::get('/manage-teacher', [UserController::class, 'manageTeacher'])->name('teachers.index');
     Route::get('/get-classes-by-sections', [UserController::class, 'getClassesBySections'])
-    ->name('users.classes_by_sections');
+        ->name('users.classes_by_sections');
     Route::get('/edit-teacher/{id}', [UserController::class, 'editTeacher'])->name('teachers.edit');
     Route::patch('teachers/toggle-active/{id}', [UserController::class, 'toggleActiveTeacher'])->name('teachers.toggleActive');
     Route::get('/reset-password/{id}', [UserController::class, 'resetPasswordTeacher'])->name('teachers.reset');
@@ -252,7 +252,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/parents/dashboard', [ParentController::class, 'dashboard'])
         ->name('parents.dashboard');
 
-   
+
     Route::get('/parents/transaction-history', [ParentController::class, 'transactionHistory'])
         ->name('parents.transaction.history');
     // Physical Library routes
@@ -398,7 +398,7 @@ Route::middleware(['auth'])->group(function () {
 
 
     Route::get('/finance/payroll/all-sessions', [ProcessPayrollController::class, 'getAllSessions'])
-    ->name('finance.payroll.all.sessions');
+        ->name('finance.payroll.all.sessions');
     Route::get('/payroll', [ProcessPayrollController::class, 'index'])->name('finance.payroll.index');
     Route::get('/payroll/create', [ProcessPayrollController::class, 'create'])->name('finance.payroll.create'); // Add this line
     Route::post('/payroll', [ProcessPayrollController::class, 'store'])->name('finance.payroll.store');
@@ -557,10 +557,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/results/class/{class_id}/export', [ResultsController::class, 'exportClassResults'])
         ->name('results.class.export');
 
-        // Admin: View all teachers' teaching schedules
-Route::get('/admin/teaching-schedules', [TimetableController::class, 'allTeachingSchedules'])
-    ->name('admin.teaching-schedules')
-    ->middleware('auth');
+    // Admin: View all teachers' teaching schedules
+    Route::get('/admin/teaching-schedules', [TimetableController::class, 'allTeachingSchedules'])
+        ->name('admin.teaching-schedules')
+        ->middleware('auth');
 
     // List teacher's exams (or all for admins)
     Route::get('/exam-questions', [ExamQuestionController::class, 'index'])
