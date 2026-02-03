@@ -13,18 +13,18 @@
                 <section class="section mb-5 pb-1 px-0">
                     <div class="col-12">
                         <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h4 class="mb-0"><i data-feather="calendar"></i> School Calendar</h4>
-                                <div>
-                                    <button class="btn btn-sm btn-info mr-2" id="todayBtn">
-                                        <i data-feather="calendar"></i> Today
+                            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                                <h4 class="mb-2 mb-md-0"><i data-feather="calendar"></i> School Calendar</h4>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button class="btn btn-sm btn-info mr-2 mb-2 mb-md-0" id="todayBtn">
+                                        <i data-feather="calendar"></i> <span class="d-none d-sm-inline">Today</span>
                                     </button>
-                                    <button class="btn btn-sm btn-success mr-2" id="viewUpcomingBtn">
-                                        <i data-feather="list"></i> Upcoming Events
+                                    <button class="btn btn-sm btn-success mr-2 mb-2 mb-md-0" id="viewUpcomingBtn">
+                                        <i data-feather="list"></i> <span class="d-none d-sm-inline">Upcoming</span>
                                     </button>
                                     @if(in_array(auth()->user()->user_type, [1, 2]))
-                                    <button class="btn btn-primary" id="addEventBtn">
-                                        <i data-feather="plus"></i> Add Event
+                                    <button class="btn btn-sm btn-primary mb-2 mb-md-0" id="addEventBtn">
+                                        <i data-feather="plus"></i> <span class="d-none d-sm-inline">Add Event</span>
                                     </button>
                                     @endif
                                 </div>
@@ -33,17 +33,21 @@
                                 <!-- Calendar Legend -->
                                 <div class="mb-3 d-flex align-items-center flex-wrap">
                                     @if(in_array(auth()->user()->user_type, [1, 2, 7]))
-                                    <small class="text-muted mr-3"><i data-feather="info" class="feather-sm"></i> Click
-                                        on any date to create an event, click an event to edit</small>
-                                    <span class="badge badge-info">Drag to move</span>
-                                    <span class="badge badge-primary ml-2">Resize to change duration</span>
+                                    <small class="text-muted mr-3 mb-2"><i data-feather="info" class="feather-sm"></i> 
+                                        <span class="d-none d-md-inline">Click on any date to create an event, click an event to edit</span>
+                                        <span class="d-md-none">Tap date/event to manage</span>
+                                    </small>
+                                    <span class="badge badge-info mr-2 mb-2 d-none d-md-inline-block">Drag to move</span>
+                                    <span class="badge badge-primary mb-2 d-none d-md-inline-block">Resize to change duration</span>
                                     @else
-                                    <small class="text-muted mr-3"><i data-feather="info" class="feather-sm"></i> View
+                                    <small class="text-muted mr-3 mb-2"><i data-feather="info" class="feather-sm"></i> View
                                         school events and important dates</small>
-                                    <span class="badge badge-secondary">Read-only view</span>
+                                    <span class="badge badge-secondary mb-2">Read-only view</span>
                                     @endif
                                 </div>
-                                <div id="calendar"></div>
+                                <div class="calendar-wrapper">
+                                    <div id="calendar"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -55,7 +59,7 @@
 
     <!-- Add/Edit/View Event Modal -->
     <div class="modal fade" id="eventModal" tabindex="-1" role="dialog" aria-labelledby="modalTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
             <div class="modal-content">
                 <form id="eventForm">
                     <div class="modal-header bg-primary text-white">
@@ -89,14 +93,14 @@
                             </div>
 
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-12 col-md-6">
                                     <div class="form-group">
                                         <label for="start_date">Start Date & Time <span
                                                 class="text-danger">*</span></label>
                                         <input type="datetime-local" class="form-control" id="start_date" required>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-12 col-md-6">
                                     <div class="form-group">
                                         <label for="end_date">End Date & Time</label>
                                         <input type="datetime-local" class="form-control" id="end_date">
@@ -116,10 +120,10 @@
 
                             <div class="form-group">
                                 <label for="color">Event Color</label>
-                                <div class="d-flex align-items-center">
-                                    <input type="color" class="form-control" id="color" value="#3788d8"
+                                <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center">
+                                    <input type="color" class="form-control mb-2 mb-sm-0" id="color" value="#3788d8"
                                         style="width: 80px; height: 40px;">
-                                    <div class="ml-3">
+                                    <div class="ml-sm-3 d-flex flex-wrap">
                                         <button type="button" class="btn btn-sm btn-outline-primary color-preset"
                                             data-color="#3788d8">Blue</button>
                                         <button type="button" class="btn btn-sm btn-outline-success color-preset"
@@ -140,14 +144,14 @@
                             <i data-feather="user" class="feather-sm"></i> <span id="creatorName"></span>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <div class="modal-footer flex-column flex-sm-row">
+                        <button type="button" class="btn btn-secondary btn-block btn-sm-auto mb-2 mb-sm-0" data-dismiss="modal">
                             <i data-feather="x"></i> <span id="closeText">Cancel</span>
                         </button>
-                        <button type="submit" class="btn btn-primary" id="saveBtn">
+                        <button type="submit" class="btn btn-primary btn-block btn-sm-auto mb-2 mb-sm-0" id="saveBtn">
                             <i data-feather="save"></i> <span id="saveBtnText">Save Event</span>
                         </button>
-                        <button type="button" class="btn btn-danger d-none" id="deleteBtn">
+                        <button type="button" class="btn btn-danger btn-block btn-sm-auto d-none" id="deleteBtn">
                             <i data-feather="trash-2"></i> Delete Event
                         </button>
                     </div>
@@ -158,7 +162,7 @@
 
     <!-- Upcoming Events Modal -->
     <div class="modal fade" id="upcomingEventsModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title">
@@ -172,7 +176,7 @@
                     <div id="upcomingEventsList"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <button type="button" class="btn btn-secondary btn-block btn-sm-auto" data-dismiss="modal">
                         <i data-feather="x"></i> Close
                     </button>
                 </div>
@@ -185,8 +189,17 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
 
     <style>
+        /* Calendar wrapper for horizontal scrolling */
+        .calendar-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        }
+
         #calendar {
             font-family: 'Nunito', sans-serif;
+            min-width: 100%;
         }
 
         .fc-event {
@@ -268,6 +281,206 @@
         .fc-event-resizable {
             cursor: ew-resize;
         }
+
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            /* Enable horizontal scrolling for calendar on small screens */
+            .calendar-wrapper {
+                position: relative;
+            }
+
+            .calendar-wrapper::after {
+                content: '← Swipe to view more →';
+                display: block;
+                text-align: center;
+                font-size: 0.75rem;
+                color: #6c757d;
+                padding: 0.5rem;
+                background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.9));
+                position: sticky;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                pointer-events: none;
+            }
+
+            #calendar {
+                min-width: 600px; /* Ensures calendar maintains readable size */
+            }
+
+            /* Calendar toolbar responsive */
+            .fc .fc-toolbar {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .fc .fc-toolbar-chunk {
+                display: flex;
+                justify-content: center;
+                width: 100%;
+            }
+
+            .fc-toolbar-title {
+                font-size: 1.2rem !important;
+                text-align: center;
+            }
+
+            /* Make calendar buttons smaller on mobile */
+            .fc .fc-button {
+                padding: 0.4em 0.65em;
+                font-size: 0.85rem;
+            }
+
+            /* Adjust event display */
+            .fc-daygrid-event {
+                font-size: 0.75rem;
+                padding: 1px 2px;
+            }
+
+            /* Stack modal footer buttons */
+            .modal-footer {
+                flex-direction: column;
+            }
+
+            .modal-footer .btn {
+                width: 100%;
+                margin: 0 0 0.5rem 0 !important;
+            }
+
+            .modal-footer .btn:last-child {
+                margin-bottom: 0 !important;
+            }
+
+            /* Responsive color presets */
+            .color-preset {
+                font-size: 0.75rem;
+                padding: 3px 8px;
+            }
+
+            /* Adjust card header spacing */
+            .card-header h4 {
+                font-size: 1.1rem;
+            }
+
+            /* Hide some calendar features on very small screens */
+            .fc-dayGridMonth-button,
+            .fc-timeGridWeek-button,
+            .fc-timeGridDay-button,
+            .fc-listWeek-button {
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            /* Further adjustments for very small screens */
+            #calendar {
+                min-width: 500px; /* Smaller minimum width for very small screens */
+            }
+
+            .calendar-wrapper {
+                /* Add scrollbar styling for better UX */
+                scrollbar-width: thin;
+                scrollbar-color: #6c757d #f8f9fa;
+            }
+
+            .calendar-wrapper::-webkit-scrollbar {
+                height: 8px;
+            }
+
+            .calendar-wrapper::-webkit-scrollbar-track {
+                background: #f8f9fa;
+                border-radius: 4px;
+            }
+
+            .calendar-wrapper::-webkit-scrollbar-thumb {
+                background: #6c757d;
+                border-radius: 4px;
+            }
+
+            .calendar-wrapper::-webkit-scrollbar-thumb:hover {
+                background: #495057;
+            }
+
+            .fc .fc-button {
+                padding: 0.3em 0.5em;
+                font-size: 0.75rem;
+            }
+
+            .fc-toolbar-title {
+                font-size: 1rem !important;
+            }
+
+            /* Make day numbers more visible */
+            .fc .fc-daygrid-day-number {
+                font-size: 0.9rem;
+                padding: 4px;
+            }
+
+            /* Adjust event titles */
+            .fc-event-title {
+                font-size: 0.7rem;
+            }
+
+            /* Compact upcoming events list */
+            .upcoming-event-item {
+                padding: 0.75rem;
+            }
+
+            .upcoming-event-item h6 {
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Tablet specific styles */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .fc-toolbar-title {
+                font-size: 1.3rem !important;
+            }
+
+            .fc .fc-button {
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Disable drag and resize on mobile for better UX */
+        @media (max-width: 768px) {
+            .fc-event-draggable {
+                cursor: pointer;
+            }
+
+            .fc-event-resizable {
+                cursor: pointer;
+            }
+        }
+
+        /* Ensure modals are scrollable on small screens */
+        @media (max-width: 576px) {
+            .modal-dialog {
+                margin: 0.5rem;
+            }
+
+            .modal-content {
+                max-height: calc(100vh - 1rem);
+            }
+        }
+
+        /* Better button spacing */
+        .gap-2 {
+            gap: 0.5rem;
+        }
+
+        /* Utility class for button responsiveness */
+        .btn-sm-auto {
+            width: auto;
+        }
+
+        @media (max-width: 576px) {
+            .btn-block {
+                display: block;
+                width: 100%;
+            }
+        }
     </style>
 
     <script>
@@ -277,6 +490,10 @@
     const canEditAnyEvent = [1, 2, 7].includes(userType);
     const canCreateEvents = [1, 2].includes(userType);
 
+    // Detect if device is mobile
+    const isMobile = window.innerWidth <= 768;
+    const isVerySmallScreen = window.innerWidth <= 576;
+
     document.addEventListener('DOMContentLoaded', function () {
         const calendarEl = document.getElementById('calendar');
         let calendar;
@@ -284,37 +501,49 @@
         // Store original modal body content for restoration
         const originalFormHTML = document.getElementById('originalFormContent').innerHTML;
 
-        calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
+        // Responsive calendar configuration
+        const calendarConfig = {
+            initialView: isMobile ? 'listWeek' : 'dayGridMonth',
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                right: isMobile ? 'dayGridMonth,listWeek' : 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
             },
             buttonText: {
-                today: 'Today',
+                today: isMobile ? 'Today' : 'Today',
                 month: 'Month',
                 week: 'Week',
                 day: 'Day',
                 list: 'List'
             },
             height: 'auto',
+            contentHeight: 'auto',
+            aspectRatio: isMobile ? 1 : 1.8,
             events: '{{ route("events.fetch") }}',
-            editable: canEditAnyEvent,
+            editable: canEditAnyEvent && !isMobile, // Disable drag/resize on mobile
             selectable: canCreateEvents,
             selectMirror: true,
-            dayMaxEvents: true,
+            dayMaxEvents: isMobile ? 2 : true,
             navLinks: true,
             nowIndicator: true,
             eventTimeFormat: { 
                 hour: '2-digit', 
                 minute: '2-digit', 
-                meridiem: 'short' 
+                meridiem: isMobile ? false : 'short'
             },
-            displayEventEnd: true,
-            eventResizableFromStart: true,
-            eventDurationEditable: true,
+            displayEventEnd: !isMobile,
+            eventResizableFromStart: !isMobile,
+            eventDurationEditable: !isMobile,
             dragRevertDuration: 500,
+            windowResize: function(view) {
+                // Adjust view when window is resized
+                const newIsMobile = window.innerWidth <= 768;
+                if (newIsMobile && !isMobile) {
+                    calendar.changeView('listWeek');
+                } else if (!newIsMobile && isMobile) {
+                    calendar.changeView('dayGridMonth');
+                }
+            },
 
             loading: function(isLoading) {
                 calendarEl.classList.toggle('fc-loading', isLoading);
@@ -331,6 +560,10 @@
             },
 
             eventDrop: function(info) {
+                if (isMobile) {
+                    info.revert();
+                    return;
+                }
                 const eventCreatedBy = info.event.extendedProps.created_by;
                 if (canEditAnyEvent || eventCreatedBy === currentUserId) {
                     updateEventDates(info.event);
@@ -341,6 +574,10 @@
             },
 
             eventResize: function(info) {
+                if (isMobile) {
+                    info.revert();
+                    return;
+                }
                 const eventCreatedBy = info.event.extendedProps.created_by;
                 if (canEditAnyEvent || eventCreatedBy === currentUserId) {
                     updateEventDates(info.event);
@@ -351,23 +588,27 @@
             },
 
             eventAllow: function(dropInfo, draggedEvent) {
+                if (isMobile) return false;
                 const eventCreatedBy = draggedEvent.extendedProps.created_by;
                 return canEditAnyEvent || eventCreatedBy === currentUserId;
             },
 
             eventDidMount: function(info) {
-                const tooltipContent = info.event.extendedProps.description || info.event.title;
-                const creatorName = info.event.extendedProps.creator_name || 'Unknown';
-                $(info.el).tooltip({
-                    title: `${tooltipContent}<br><small class="text-muted">By: ${creatorName}</small>`,
-                    placement: 'top',
-                    trigger: 'hover',
-                    container: 'body',
-                    html: true
-                });
+                if (!isMobile) {
+                    const tooltipContent = info.event.extendedProps.description || info.event.title;
+                    const creatorName = info.event.extendedProps.creator_name || 'Unknown';
+                    $(info.el).tooltip({
+                        title: `${tooltipContent}<br><small class="text-muted">By: ${creatorName}</small>`,
+                        placement: 'top',
+                        trigger: 'hover',
+                        container: 'body',
+                        html: true
+                    });
+                }
             }
-        });
+        };
 
+        calendar = new FullCalendar.Calendar(calendarEl, calendarConfig);
         calendar.render();
 
         if (typeof feather !== 'undefined') feather.replace();
@@ -488,12 +729,12 @@
                     
                     html += `
                         <div class="list-group-item upcoming-event-item" style="border-left-color: ${event.backgroundColor}">
-                            <div class="d-flex w-100 justify-content-between align-items-start mb-2">
+                            <div class="d-flex w-100 justify-content-between align-items-start mb-2 flex-wrap">
                                 <h6 class="mb-0 font-weight-bold">
                                     <span class="event-color-badge" style="background-color: ${event.backgroundColor}"></span>
                                     ${event.title}
                                 </h6>
-                                <span class="badge badge-light">${creatorName}</span>
+                                <span class="badge badge-light mt-1 mt-sm-0">${creatorName}</span>
                             </div>
                             <div class="mb-1">
                                 <small class="text-success">
@@ -577,8 +818,8 @@
                     <div class="form-group"><label>Event Title</label><p class="font-weight-bold mb-0">${title}</p></div>
                     <div class="form-group"><label>Description</label><div class="p-3 bg-light rounded border" style="min-height:60px;">${description.replace(/\n/g, '<br>')}</div></div>
                     <div class="row">
-                        <div class="col-md-6"><div class="form-group"><label>Start Date & Time</label><p class="mb-0">${start}</p></div></div>
-                        <div class="col-md-6"><div class="form-group"><label>End Date & Time</label><p class="mb-0">${end}</p></div></div>
+                        <div class="col-12 col-md-6"><div class="form-group"><label>Start Date & Time</label><p class="mb-0">${start}</p></div></div>
+                        <div class="col-12 col-md-6"><div class="form-group"><label>End Date & Time</label><p class="mb-0">${end}</p></div></div>
                     </div>
                     <div class="form-group"><label>All Day Event</label><p class="mb-0">${allDay}</p></div>
                 `);

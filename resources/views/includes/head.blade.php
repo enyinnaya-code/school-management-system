@@ -54,6 +54,12 @@
       margin: 5px 0;
     }
 
-   
+    @media (max-width: 1024px) {
+      .main-content {
+        padding-left: 5px;
+        padding-right: 5px;
+        width: 100% !important;
+      }
+    }
   </style>
 </head>
