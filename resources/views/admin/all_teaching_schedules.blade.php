@@ -254,21 +254,31 @@
             const listView = document.getElementById('listView');
             const gridView = document.getElementById('gridView');
             const toggleText = document.getElementById('viewToggleText');
+            const body = document.body;
             
             if (gridView.style.display === 'none') {
                 gridView.style.display = 'block';
                 listView.style.display = 'none';
                 toggleText.textContent = 'List View';
+                body.classList.remove('list-view-active');
+                body.classList.add('grid-view-active');
             } else {
                 gridView.style.display = 'none';
                 listView.style.display = 'block';
                 toggleText.textContent = 'Grid View';
+                body.classList.remove('grid-view-active');
+                body.classList.add('list-view-active');
             }
         }
 
         function printSchedule() {
             window.print();
         }
+
+        // Set initial view state
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.classList.add('grid-view-active');
+        });
     </script>
 
     <style>
@@ -306,6 +316,14 @@
                 size: A4 landscape;
                 margin: 10mm 8mm;
             }
+            
+            /* Portrait orientation for list view */
+            body.list-view-active {
+                @page {
+                    size: A4 portrait;
+                    margin: 15mm 10mm;
+                }
+            }
 
             /* Hide unnecessary elements */
             .card-header-action,
@@ -318,9 +336,24 @@
             .navbar,
             form,
             .loader,
-            #listView,
             .row.mt-4 {
                 display: none !important;
+            }
+            
+            /* By default, hide both views */
+            #listView,
+            #gridView {
+                display: none !important;
+            }
+            
+            /* Show grid view when grid is active */
+            body.grid-view-active #gridView {
+                display: block !important;
+            }
+            
+            /* Show list view when list is active */
+            body.list-view-active #listView {
+                display: block !important;
             }
             
             /* Reset body and main content */
@@ -480,12 +513,73 @@
                 transform-origin: top left;
                 width: 105%;
             }
+
+            /* List View Print Styles */
+            #listView .card {
+                page-break-inside: avoid;
+                border: 1px solid #ddd !important;
+                margin-bottom: 8px !important;
+            }
+
+            #listView .card-header {
+                padding: 6px 10px !important;
+                background-color: #007bff !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            #listView .card-header h6 {
+                font-size: 12px !important;
+                margin: 0 !important;
+            }
+
+            #listView .card-body {
+                padding: 8px 10px !important;
+            }
+
+            #listView .table {
+                font-size: 10px !important;
+            }
+
+            #listView .table thead th {
+                padding: 5px !important;
+                font-size: 10px !important;
+                background-color: #f0f0f0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            #listView .table tbody td {
+                padding: 4px 5px !important;
+                font-size: 9px !important;
+            }
+
+            #listView .badge {
+                font-size: 8px !important;
+                padding: 2px 4px !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            #listView h6.mb-3 {
+                font-size: 13px !important;
+                margin-bottom: 8px !important;
+            }
         }
 
         /* Landscape print optimization */
         @media print and (orientation: landscape) {
             .table {
                 max-width: 100% !important;
+            }
+        }
+
+        /* Portrait orientation for list view */
+        @media print {
+            /* Auto-detect: If list view is visible, suggest portrait might work better */
+            #listView:not([style*="display: none"]) ~ * {
+                /* List view works well in portrait too */
             }
         }
     </style>
