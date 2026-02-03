@@ -636,7 +636,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/delete/{id}', [HostelController::class, 'destroy'])->name('delete');
 
         Route::get('/allocate', [HostelController::class, 'allocateForm'])->name('allocate');
-        Route::post('/allocate', [HostelController::class, 'allocate'])->name('allocate.store');
+        // Route::post('/allocate', [HostelController::class, 'allocate'])->name('allocate.store');
     });
 
     // Hostel Allocation Routes
