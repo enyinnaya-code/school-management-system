@@ -97,6 +97,7 @@ class LoginController extends Controller
             // Redirect based on actual user_type in database
             switch ($user->user_type) {
                 case 1: // superAdmin
+                case 2: // Admin
                 case 7: // principal
                 case 8: // viceprincipal
                 case 9: // dean of studies
