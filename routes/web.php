@@ -34,7 +34,7 @@ use App\Http\Controllers\SchoolSettingController;
 use App\Http\Controllers\EClassController;
 use App\Http\Controllers\HostelController;
 use App\Http\Controllers\EventController;
-use App\http\Controllers\StudentReportCardController;
+use App\Http\Controllers\StudentReportCardController;
 use App\Http\Controllers\ParentReportCardController;
 use App\Http\Controllers\CounsellorController;
 
