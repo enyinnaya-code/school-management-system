@@ -39,4 +39,16 @@ class Result extends Model
     {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
+
+
+      public function session()
+    {
+        return $this->belongsTo(Session::class, 'session_id');
+    }
+
+    public function term()
+    {
+        return $this->belongsTo(Term::class, 'term_id');
+    }
+    
 }

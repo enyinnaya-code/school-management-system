@@ -97,6 +97,11 @@
                                                 class="btn btn-success mb-0 m-1">
                                                 <i class="fas fa-table"></i> Master List
                                             </a>
+
+                                            <a href="{{ route('results.cumulative', $class->id) }}"
+                                                class="btn btn-info mb-0 m-1">
+                                                <i class="fas fa-chart-line"></i> Cumulative Results
+                                            </a>
                                             @endif
                                         </form>
                                     </div>
@@ -148,6 +153,10 @@
                                                         class="btn btn-sm btn-warning ml-1"
                                                         title="Edit Skills & Remarks">
                                                         <i class="fas fa-comment-dots"></i> Remarks
+                                                    </a>
+                                                    <a href="{{ route('results.transcript', $student->id) }}"
+                                                        class="btn btn-sm btn-success" target="_blank">
+                                                        <i class="fas fa-file-alt"></i> Transcript
                                                     </a>
                                                     @else
                                                     <span class="text-muted">Select session & term first</span>

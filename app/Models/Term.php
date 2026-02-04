@@ -15,4 +15,10 @@ class Term extends Model
     {
         return $this->belongsTo(Session::class);
     }
+
+      public function results()
+    {
+        return $this->hasMany(Result::class);
+    }
+    
 }

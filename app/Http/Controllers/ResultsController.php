@@ -881,4 +881,208 @@ class ResultsController extends Controller
 
         return redirect()->back()->with('success', 'Affective & Psychomotor skills and remarks saved successfully.');
     }
+
+    public function cumulativeResults(Request $request, $classId)
+    {
+        $class = SchoolClass::findOrFail($classId);
+        $section = Section::find($class->section_id);
+        $user = Auth::user();
+
+        // Security check for non-admin users
+        if (!in_array($user->user_type, [1, 2])) {
+            $allowed = $this->isTeacherAssignedToClass($user->id, $classId);
+            if (!$allowed && $user->is_form_teacher && $user->form_class_id == $classId) {
+                $allowed = true;
+            }
+            if (!$allowed) {
+                abort(403, 'You are not authorized to view cumulative results for this class.');
+            }
+        }
+
+        // Fetch all sessions
+        $sessions = Session::orderByDesc('name')->get();
+
+        // Get selected session or default to current
+        $selectedSessionId = $request->input('session_id');
+        if (!$selectedSessionId) {
+            $currentSession = Session::where('is_current', true)->first();
+            $selectedSessionId = $currentSession?->id;
+        }
+        $selectedSession = Session::find($selectedSessionId);
+
+        if (!$selectedSession) {
+            return redirect()->back()->with('error', 'Selected session not found.');
+        }
+
+        // Get all terms for the selected session
+        $terms = $selectedSession->terms()->orderBy('name')->get();
+
+        if ($terms->isEmpty()) {
+            return redirect()->back()->with('error', 'No terms found for this session.');
+        }
+
+        // Get all subjects offered by this class
+        $subjects = Course::whereHas('schoolClasses', function ($query) use ($class) {
+            $query->where('school_classes.id', $class->id);
+        })->orderBy('course_name')->get();
+
+        // Fetch all students in the class
+        $students = User::where('user_type', 4)
+            ->where('class_id', $classId)
+            ->orderBy('name')
+            ->get();
+
+        // Fetch results for all terms in the session
+        $allResults = Result::where('session_id', $selectedSession->id)
+            ->whereIn('term_id', $terms->pluck('id'))
+            ->whereIn('student_id', $students->pluck('id'))
+            ->whereIn('course_id', $subjects->pluck('id'))
+            ->get()
+            ->groupBy(['student_id', 'term_id', 'course_id']);
+
+        // Calculate cumulative data for each student
+        $cumulativeData = $students->map(function ($student) use ($allResults, $subjects, $terms) {
+            $studentResults = $allResults->get($student->id, collect());
+
+            $termTotals = [];
+            $cumulativeTotal = 0;
+
+            foreach ($terms as $term) {
+                $termResults = $studentResults->get($term->id, collect());
+                $termTotal = 0;
+
+                foreach ($subjects as $subject) {
+                    $result = $termResults->get($subject->id);
+                    if ($result) {
+                        $termTotal += $result->first()->total;
+                    }
+                }
+
+                $termTotals[$term->id] = $termTotal;
+                $cumulativeTotal += $termTotal;
+            }
+
+            $totalPossible = $subjects->count() * $terms->count() * 100;
+            $cumulativeAverage = $totalPossible > 0 ? round(($cumulativeTotal / $totalPossible) * 100, 2) : 0;
+            $grade = $this->calculateGrade($cumulativeAverage);
+
+            return [
+                'student' => $student,
+                'term_totals' => $termTotals,
+                'cumulative_total' => $cumulativeTotal,
+                'cumulative_average' => $cumulativeAverage,
+                'grade' => $grade,
+            ];
+        });
+
+        // Sort by cumulative total descending
+        $sortedStudents = $cumulativeData->sortByDesc('cumulative_total')->values();
+
+        // Assign positions
+        $sortedStudents = $sortedStudents->map(function ($item, $index) {
+            $item['position'] = $index + 1;
+            $item['formatted_position'] = ($index + 1) . $this->getPositionSuffix($index + 1);
+            return $item;
+        });
+
+        return view('results.cumulative_results', compact(
+            'class',
+            'section',
+            'students',
+            'subjects',
+            'sortedStudents',
+            'sessions',
+            'selectedSession',
+            'terms',
+            'allResults'
+        ));
+    }
+
+    public function printTranscript($studentId, $action = 'stream')
+    {
+        $student = User::where('user_type', 4)->findOrFail($studentId);
+        $class = SchoolClass::findOrFail($student->class_id);
+        $section = Section::find($class->section_id);
+
+        // Get all sessions the student has results for
+        $sessions = Session::whereHas('results', function ($query) use ($studentId) {
+            $query->where('student_id', $studentId);
+        })->orderBy('name')->get();
+
+        // Get all subjects the student has taken
+        $subjects = Course::whereHas('results', function ($query) use ($studentId) {
+            $query->where('student_id', $studentId);
+        })->orderBy('course_name')->get();
+
+        // Fetch all results for this student
+        $allResults = Result::where('student_id', $studentId)
+            ->with(['session', 'term', 'course'])
+            ->get()
+            ->groupBy(['session_id', 'term_id']);
+
+        // Calculate overall statistics
+        $transcriptData = [];
+        $grandTotal = 0;
+        $totalSubjectsAcrossSessions = 0;
+
+        foreach ($sessions as $session) {
+            $sessionResults = $allResults->get($session->id, collect());
+            $terms = Term::where('session_id', $session->id)->orderBy('name')->get();
+
+            $sessionData = [
+                'session' => $session,
+                'terms' => []
+            ];
+
+            $sessionTotal = 0;
+            $sessionSubjectCount = 0;
+
+            foreach ($terms as $term) {
+                $termResults = $sessionResults->get($term->id, collect());
+
+                if ($termResults->isNotEmpty()) {
+                    $termTotal = $termResults->sum('total');
+                    $termAverage = $termResults->count() > 0 ? round($termTotal / $termResults->count(), 2) : 0;
+
+                    $sessionData['terms'][] = [
+                        'term' => $term,
+                        'results' => $termResults,
+                        'total' => $termTotal,
+                        'average' => $termAverage,
+                        'grade' => $this->calculateGrade($termAverage)
+                    ];
+
+                    $sessionTotal += $termTotal;
+                    $sessionSubjectCount += $termResults->count();
+                }
+            }
+
+            $sessionData['session_total'] = $sessionTotal;
+            $sessionData['session_average'] = $sessionSubjectCount > 0 ? round($sessionTotal / $sessionSubjectCount, 2) : 0;
+            $sessionData['session_grade'] = $this->calculateGrade($sessionData['session_average']);
+
+            $transcriptData[] = $sessionData;
+            $grandTotal += $sessionTotal;
+            $totalSubjectsAcrossSessions += $sessionSubjectCount;
+        }
+
+        $overallAverage = $totalSubjectsAcrossSessions > 0 ? round($grandTotal / $totalSubjectsAcrossSessions, 2) : 0;
+        $overallGrade = $this->calculateGrade($overallAverage);
+
+        // Generate PDF
+        $pdf = Pdf::loadView('results.student_transcript', [
+            'student' => $student,
+            'class' => $class,
+            'section' => $section,
+            'transcriptData' => $transcriptData,
+            'subjects' => $subjects,
+            'grandTotal' => $grandTotal,
+            'overallAverage' => $overallAverage,
+            'overallGrade' => $overallGrade,
+        ])->setPaper('a4', 'portrait');
+
+        $filename = strtoupper($student->name) . '_Transcript.pdf';
+
+        return $action === 'download' ? $pdf->download($filename) : $pdf->stream($filename);
+    }
 }

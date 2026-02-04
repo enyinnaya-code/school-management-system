@@ -129,5 +129,16 @@ class SchoolClassController extends Controller
         
         return view('manage_class', compact('schoolClasses', 'sections'));
     }
+
+
+    public function getClassesBySection($sectionId)
+{
+    $classes = SchoolClass::where('section_id', $sectionId)
+        ->select('id', 'name')
+        ->orderBy('name')
+        ->get();
+    
+    return response()->json(['classes' => $classes]);
+}
     
 }

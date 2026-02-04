@@ -28,4 +28,11 @@ class Session extends Model
     {
         return $this->hasMany(IssuedPin::class);
     }
+
+     // Add this relationship
+    public function results()
+    {
+        return $this->hasMany(Result::class);
+    }
+    
 }

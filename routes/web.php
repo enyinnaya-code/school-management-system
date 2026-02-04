@@ -380,6 +380,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/results/master-list/{class}/export', [ResultsController::class, 'exportMasterList'])
         ->name('results.exportMasterList');
 
+    // Add these routes to your existing routes
+    Route::get('/results/cumulative/{classId}', [ResultsController::class, 'cumulativeResults'])->name('results.cumulative');
+    Route::get('/results/transcript/{studentId}', [ResultsController::class, 'printTranscript'])->name('results.transcript');
+
     // Edit Remarks for a student
     Route::get('/results/remarks/{student}', [ResultsController::class, 'editRemarks'])
         ->name('results.remarks.edit');
@@ -532,6 +536,13 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::get('/pins/{id}/details', [PinController::class, 'showDetails'])->name('pins.details');
+
+    // Print Issued PINs Route
+    Route::get('/pins/print', [PinController::class, 'printIssuedPins'])->name('pins.print');
+
+    // Also add this API route for fetching classes by section (if not already present)
+    Route::get('/api/classes/{sectionId}', [SchoolClassController::class, 'getClassesBySection'])
+        ->name('api.classes.by.section');
 
     // Timetable Routes
     Route::get('/timetables', [TimetableController::class, 'index'])->name('timetables.index');

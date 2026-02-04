@@ -19,6 +19,9 @@
                                         <i class="fas fa-filter"></i> Filter Pins
                                     </button>
                                     <a href="{{ route('pins.create') }}" class="btn btn-success ml-2">Generate New Pins</a>
+                                    <button class="btn btn-info ml-2" type="button" data-toggle="modal" data-target="#printModal">
+                                        <i class="fas fa-print"></i> Print Issued PINs
+                                    </button>
                                 </div>
                             </div>
 
@@ -244,6 +247,71 @@
         </div>
     </div>
 
+    <!-- Print Issued PINs Modal -->
+    <div class="modal fade" id="printModal" tabindex="-1" role="dialog" aria-labelledby="printModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="printModalLabel">
+                        <i class="fas fa-print"></i> Print Issued PINs
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form action="{{ route('pins.print') }}" method="GET" target="_blank">
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Select filters to print issued PINs. Leave all blank to print all issued PINs.
+                        </div>
+                        
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label>Section</label>
+                                <select class="form-control" name="section_id" id="print_section">
+                                    <option value="">All Sections</option>
+                                    @foreach($sections as $section)
+                                        <option value="{{ $section->id }}">{{ $section->section_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Class</label>
+                                <select class="form-control" name="class_id" id="print_class">
+                                    <option value="">All Classes</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Session</label>
+                                <select class="form-control" name="session_id" id="print_session">
+                                    <option value="">All Sessions</option>
+                                    @foreach($sessions as $session)
+                                        <option value="{{ $session->id }}">{{ $session->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Term</label>
+                                <select class="form-control" name="term_id" id="print_term">
+                                    <option value="">All Terms</option>
+                                    @foreach($terms as $term)
+                                        <option value="{{ $term->id }}">{{ $term->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-info">
+                            <i class="fas fa-print"></i> Generate Print View
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Pin Details Modal -->
     <div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
@@ -308,6 +376,25 @@
 
                 $('#pinCode').text(pinCode);
                 $('#resetForm').attr('action', '{{ url("pins/reset") }}/' + id);
+            });
+
+            // Print Modal - Load classes when section changes
+            $('#print_section').on('change', function() {
+                const sectionId = $(this).val();
+                const classSelect = $('#print_class');
+                
+                classSelect.html('<option value="">Loading...</option>');
+                
+                if (sectionId) {
+                    $.get('{{ url("api/classes") }}/' + sectionId, function(data) {
+                        classSelect.html('<option value="">All Classes</option>');
+                        data.classes.forEach(function(cls) {
+                            classSelect.append(`<option value="${cls.id}">${cls.name}</option>`);
+                        });
+                    });
+                } else {
+                    classSelect.html('<option value="">All Classes</option>');
+                }
             });
 
             // View Details Button

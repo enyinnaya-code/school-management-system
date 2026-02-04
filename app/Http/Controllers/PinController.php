@@ -275,4 +275,31 @@ class PinController extends Controller
             return redirect()->back()->with('error', 'An error occurred while issuing PINs: ' . $e->getMessage());
         }
     }
+
+    public function printIssuedPins(Request $request)
+    {
+        $query = IssuedPin::with(['pin', 'student', 'schoolClass', 'session', 'term']);
+
+        // Apply filters if provided
+        if ($request->section_id) {
+            $query->where('section_id', $request->section_id);
+        }
+        if ($request->class_id) {
+            $query->where('class_id', $request->class_id);
+        }
+        if ($request->session_id) {
+            $query->where('session_id', $request->session_id);
+        }
+        if ($request->term_id) {
+            $query->where('term_id', $request->term_id);
+        }
+
+        $issuedPins = $query->orderBy('created_at', 'desc')->get();
+
+        if ($issuedPins->isEmpty()) {
+            return redirect()->back()->with('error', 'No issued PINs found matching your criteria.');
+        }
+
+        return view('print_issued_pins', compact('issuedPins'));
+    }
 }
