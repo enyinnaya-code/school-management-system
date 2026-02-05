@@ -136,11 +136,10 @@
                                                 <th>S/N</th>
                                                 <th>Name</th>
                                                 <th>Email</th>
-
                                                 <th>Gender</th>
                                                 <th>Class</th>
+                                                <th>Date Added</th>
                                                 <th>Status</th>
-
                                                 <th>Actions</th>
                                             </tr>
                                         </thead>
@@ -152,6 +151,7 @@
                                                 <td>{{ $student->email }}</td>
                                                 <td>{{ ucfirst($student->gender ?? '-') }}</td>
                                                 <td>{{ $student->class->name ?? 'N/A' }}</td>
+                                                <td>{{ $student->created_at->format('d M, Y') }}</td>
                                                 <td>
                                                     @if($student->is_active)
                                                     <span class="badge badge-success">Active</span>
@@ -205,13 +205,10 @@
                                             </tr>
                                             @endforeach
                                         </tbody>
-
-
                                     </table>
                                     <div class="mt-3">
                                         {{ $students->appends(request()->query())->links() }}
                                     </div>
-
                                 </div>
                             </div>
                         </div>
