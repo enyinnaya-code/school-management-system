@@ -297,18 +297,23 @@
       </li>
 
       <!-- Results -->
-      <li class="dropdown">
-        <a href="#" class="menu-toggle nav-link has-dropdown">
-          <i data-feather="file-text"></i><span>Results</span>
-        </a>
-        <ul class="dropdown-menu">
-          <li><a class="nav-link" href="{{ route('results.upload') }}">Upload Results</a></li>
-          @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 &&
-          Auth::user()->is_form_teacher))
-          <li><a class="nav-link" href="{{ route('results.print') }}">Print Results</a></li>
-          @endif
-        </ul>
-      </li>
+    <li class="dropdown">
+  <a href="#" class="menu-toggle nav-link has-dropdown">
+    <i data-feather="file-text"></i><span>Results</span>
+  </a>
+  <ul class="dropdown-menu">
+    <li><a class="nav-link" href="{{ route('results.upload') }}">Upload Results</a></li>
+    @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 && Auth::user()->is_form_teacher))
+      <li><a class="nav-link" href="{{ route('results.print') }}">Print Results</a></li>
+      <li><a class="nav-link" href="{{ route('students.promote') }}">
+        Promote Students
+      </a></li>
+      <li><a class="nav-link" href="{{ route('students.promotion.history') }}">
+        Promotion History
+      </a></li>
+    @endif
+  </ul>
+</li>
 
       @endif
 

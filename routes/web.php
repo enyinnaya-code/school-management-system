@@ -65,10 +65,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/dashboard', [DashboardController::class, 'adminDashboard'])->name('admins.dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/get-classes/{section_id}', [StudentController::class, 'getClasses']);
+    // Route::get('/get-classes/{section_id}', [StudentController::class, 'getClasses']);
     //passwordchange
     Route::get('/change-password', [PasswordController::class, 'showChangePasswordForm'])->name('password.change');
     Route::post('/change-password', [PasswordController::class, 'changePassword'])->name('password.update');
+
+    Route::get('/get-third-term/{sessionId}', [StudentController::class, 'getThirdTerm'])->name('get.third.term');
 
     Route::get('/teachers/my-students', [StudentController::class, 'myStudents'])
         ->name('teachers.my_students');
@@ -364,6 +366,23 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/student-result-upload/{student}', [ResultsController::class, 'studentResultUpload'])->name('student.result.upload');
     Route::post('/upload-result', [ResultsController::class, 'uploadResult'])->name('results.uploadResult');
     Route::post('/save-result', [ResultsController::class, 'saveResult'])->name('results.saveResult');
+
+    // Class Promotion Routes
+    Route::get('/students/promote', [StudentController::class, 'promoteForm'])->name('students.promote');
+    Route::get('/students/promote/preview', [StudentController::class, 'getPromotionPreview'])->name('students.promote.preview');
+    Route::post('/students/promote/process', [StudentController::class, 'processPromotion'])->name('students.promote.process');
+
+    Route::get('/students/promote/preview-multiple', [StudentController::class, 'getPromotionPreviewMultiple'])->name('students.promote.preview.multiple');
+    Route::post('/students/promote/process-enhanced', [StudentController::class, 'processPromotionEnhanced'])->name('students.promote.process.enhanced');
+
+      // NEW: Enhanced promotion processing with tracking
+    Route::post('/students/promote/process', [StudentController::class, 'processPromotionEnhanced'])->name('students.promote.process');
+    
+    // NEW: Promotion history and tracking routes
+    Route::get('/students/promotion/history', [StudentController::class, 'promotionHistory'])->name('students.promotion.history');
+    Route::get('/students/promotion/{id}/details', [StudentController::class, 'viewPromotionDetails'])->name('students.promotion.details');
+    Route::post('/students/promotion/{id}/rollback', [StudentController::class, 'rollbackPromotion'])->name('students.promotion.rollback');
+    
 
     Route::get('/student/{studentId}/results/upload', [ResultsController::class, 'studentResultUpload'])->name('student.results.upload');
     Route::post('/student/{studentId}/results/save', [ResultsController::class, 'saveStudentResults'])->name('student.results.save');

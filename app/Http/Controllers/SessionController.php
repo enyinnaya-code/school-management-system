@@ -38,20 +38,53 @@ class SessionController extends Controller
         return view('manage_session', compact('sessions', 'sections', 'sectionId'));
     }
 
-    public function create(Request $request)
+     public function create(Request $request)
     {
-        // Fetch sections (optionally filter by created_by if only the creator should see their sections)
+        // Debug: Log authentication status
+        Log::info('Session Create - Auth Check', [
+            'is_authenticated' => Auth::check(),
+            'user_id' => Auth::id(),
+            'user' => Auth::user()
+        ]);
+
+        // Fetch sections with better error handling
         $sections = Section::when(Auth::check(), function ($query) {
             return $query->where('created_by', Auth::id());
         })->get();
 
+        // Debug: Log sections retrieved
+        Log::info('Sections Retrieved', [
+            'count' => $sections->count(),
+            'sections' => $sections->pluck('id', 'section_name')->toArray()
+        ]);
+
         // Get the selected section ID from the request (if any)
         $sectionId = $request->query('section_id');
+
+        // Debug: Log selected section
+        if ($sectionId) {
+            Log::info('Selected Section', ['section_id' => $sectionId]);
+        }
 
         // Fetch the current session and its terms for the selected section (if provided)
         $currentSession = $sectionId
             ? Session::where('section_id', $sectionId)->where('is_current', true)->with('terms')->first()
             : null;
+
+        // Debug: Log current session
+        if ($currentSession) {
+            Log::info('Current Session Found', [
+                'session_id' => $currentSession->id,
+                'session_name' => $currentSession->name
+            ]);
+        }
+
+        // If no sections found and user is authenticated, log a warning
+        if ($sections->isEmpty() && Auth::check()) {
+            Log::warning('No sections found for authenticated user', [
+                'user_id' => Auth::id()
+            ]);
+        }
 
         return view('set_session', compact('sections', 'currentSession', 'sectionId'));
     }
