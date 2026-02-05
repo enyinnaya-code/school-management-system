@@ -17,7 +17,8 @@
                                 <h4>Manage Students</h4>
 
                                 <div class="card-header-action">
-                                    <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#filterCollapse">
+                                    <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                        data-target="#filterCollapse">
                                         <i class="fas fa-filter"></i> Filter students
                                     </button>
                                 </div>
@@ -29,14 +30,17 @@
                                     <form action="{{ route('students.index') }}" method="GET" class="row mb-4">
                                         <div class="form-group col-md-3">
                                             <label>Student Name</label>
-                                            <input type="text" class="form-control" name="filter_name" value="{{ request('filter_name') }}">
+                                            <input type="text" class="form-control" name="filter_name"
+                                                value="{{ request('filter_name') }}">
                                         </div>
                                         <div class="form-group col-md-3">
                                             <label>Section</label>
                                             <select class="form-control" name="filter_section">
                                                 <option value="">-- All Sections --</option>
                                                 @foreach($sections as $section)
-                                                <option value="{{ $section->id }}" {{ request('filter_section') == $section->id ? 'selected' : '' }}>{{ $section->section_name }}</option>
+                                                <option value="{{ $section->id }}" {{
+                                                    request('filter_section')==$section->id ? 'selected' : '' }}>{{
+                                                    $section->section_name }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -45,7 +49,8 @@
                                             <select class="form-control" name="filter_class">
                                                 <option value="">-- Select Class --</option>
                                                 @foreach($classes as $class)
-                                                <option value="{{ $class->id }}" {{ request('filter_class') == $class->id ? 'selected' : '' }}>{{ $class->name }}</option>
+                                                <option value="{{ $class->id }}" {{ request('filter_class')==$class->id
+                                                    ? 'selected' : '' }}>{{ $class->name }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -53,13 +58,16 @@
                                             <label>Gender</label>
                                             <select class="form-control" name="filter_gender">
                                                 <option value="">-- Select Gender --</option>
-                                                <option value="Male" {{ request('filter_gender') == 'Male' ? 'selected' : '' }}>Male</option>
-                                                <option value="Female" {{ request('filter_gender') == 'Female' ? 'selected' : '' }}>Female</option>
+                                                <option value="Male" {{ request('filter_gender')=='Male' ? 'selected'
+                                                    : '' }}>Male</option>
+                                                <option value="Female" {{ request('filter_gender')=='Female'
+                                                    ? 'selected' : '' }}>Female</option>
                                             </select>
                                         </div>
                                         <div class="form-group col-md-3">
                                             <label>Date Added</label>
-                                            <input type="date" class="form-control" name="filter_date_added" value="{{ request('filter_date_added') }}">
+                                            <input type="date" class="form-control" name="filter_date_added"
+                                                value="{{ request('filter_date_added') }}">
                                         </div>
                                         <div class="form-group col-md-3">
                                             <button type="submit" class="btn btn-primary mr-2">
@@ -74,12 +82,14 @@
                             </div>
                             <div class="card-body">
                                 <!-- Table to display students -->
-                                @if(request('filter_name') || request('filter_section') || request('filter_class') || request('filter_gender') || request('filter_date_added'))
+                                @if(request('filter_name') || request('filter_section') || request('filter_class') ||
+                                request('filter_gender') || request('filter_date_added'))
                                 <div class="mb-3">
                                     <h6>Active Filters:</h6>
                                     <div class="active-filters">
                                         @if(request('filter_name'))
-                                        <span class="badge badge-info mr-2">Student Name: {{ request('filter_name') }}</span>
+                                        <span class="badge badge-info mr-2">Student Name: {{ request('filter_name')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_section'))
@@ -101,14 +111,17 @@
                                         @endif
 
                                         @if(request('filter_gender'))
-                                        <span class="badge badge-info mr-2">Gender: {{ request('filter_gender') }}</span>
+                                        <span class="badge badge-info mr-2">Gender: {{ request('filter_gender')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_date_added'))
-                                        <span class="badge badge-info mr-2">Date Added: {{ request('filter_date_added') }}</span>
+                                        <span class="badge badge-info mr-2">Date Added: {{ request('filter_date_added')
+                                            }}</span>
                                         @endif
 
-                                        <a href="{{ route('students.index') }}" class="btn btn-sm m-1 btn-outline-danger">
+                                        <a href="{{ route('students.index') }}"
+                                            class="btn btn-sm m-1 btn-outline-danger">
                                             <i class="fas fa-times"></i> Clear All
                                         </a>
                                     </div>
@@ -148,39 +161,46 @@
                                                 </td>
 
                                                 <td>
-    <a href="{{ route('students.edit', $student->id) }}" class="btn m-1 btn-sm btn-info" title="Edit">
-        <i class="fas fa-edit"></i>
-    </a>
-<a href="{{ route('students.profile', $student->id) }}" class="btn m-1 btn-sm btn-primary" title="View Profile">
-    <i class="fas fa-user"></i>
-</a>
-<a href="{{ route('students.performance', $student->id) }}" class="btn m-1 btn-sm btn-success" title="View Performance">
-    <i class="fas fa-chart-bar"></i>
-</a>
+                                                    <a href="{{ route('students.edit', $student->id) }}"
+                                                        class="btn m-1 btn-sm btn-info" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{{ route('students.profile', $student->id) }}"
+                                                        class="btn m-1 btn-sm btn-primary" title="View Profile">
+                                                        <i class="fas fa-user"></i>
+                                                    </a>
+                                                    <a href="{{ route('students.performance', $student->id) }}"
+                                                        class="btn m-1 btn-sm btn-success" title="View Performance">
+                                                        <i class="fas fa-chart-bar"></i>
+                                                    </a>
 
 
-    @if($student->is_active)
-    <button type="button" class="btn m-1 btn-sm btn-warning" title="Suspend"
-        data-toggle="modal" data-target="#suspendModal{{ $student->id }}">
-        <i class="fas fa-user-slash"></i>
-    </button>
-    @else
-    <button type="button" class="btn btn-sm m-1 btn-success" title="Activate"
-        data-toggle="modal" data-target="#activateModal{{ $student->id }}">
-        <i class="fas fa-user-check"></i>
-    </button>
-    @endif
+                                                    @if($student->is_active)
+                                                    <button type="button" class="btn m-1 btn-sm btn-warning"
+                                                        title="Suspend" data-toggle="modal"
+                                                        data-target="#suspendModal{{ $student->id }}">
+                                                        <i class="fas fa-user-slash"></i>
+                                                    </button>
+                                                    @else
+                                                    <button type="button" class="btn btn-sm m-1 btn-success"
+                                                        title="Activate" data-toggle="modal"
+                                                        data-target="#activateModal{{ $student->id }}">
+                                                        <i class="fas fa-user-check"></i>
+                                                    </button>
+                                                    @endif
 
-    <button type="button" class="btn btn-sm m-1 btn-secondary" title="Reset Password"
-        data-toggle="modal" data-target="#resetPasswordModal{{ $student->id }}">
-        <i class="fas fa-key"></i>
-    </button>
+                                                    <button type="button" class="btn btn-sm m-1 btn-secondary"
+                                                        title="Reset Password" data-toggle="modal"
+                                                        data-target="#resetPasswordModal{{ $student->id }}">
+                                                        <i class="fas fa-key"></i>
+                                                    </button>
 
-    <button type="button" class="btn btn-sm m-1 btn-danger" title="Delete"
-        data-toggle="modal" data-target="#deleteModal{{ $student->id }}">
-        <i class="fas fa-trash"></i>
-    </button>
-</td>
+                                                    <button type="button" class="btn btn-sm m-1 btn-danger"
+                                                        title="Delete" data-toggle="modal"
+                                                        data-target="#deleteModal{{ $student->id }}">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
 
                                             </tr>
                                             @endforeach
@@ -205,7 +225,8 @@
 
     <!-- Suspend Student Confirmation Modal -->
     @foreach($students as $student)
-    <div class="modal fade" id="suspendModal{{ $student->id }}" tabindex="-1" role="dialog" aria-labelledby="suspendModalLabel{{ $student->id }}" aria-hidden="true">
+    <div class="modal fade" id="suspendModal{{ $student->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="suspendModalLabel{{ $student->id }}" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -231,7 +252,8 @@
     </div>
 
     <!-- Activate Student Confirmation Modal -->
-    <div class="modal fade" id="activateModal{{ $student->id }}" tabindex="-1" role="dialog" aria-labelledby="activateModalLabel{{ $student->id }}" aria-hidden="true">
+    <div class="modal fade" id="activateModal{{ $student->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="activateModalLabel{{ $student->id }}" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -257,7 +279,8 @@
     </div>
 
     <!-- Reset Password Confirmation Modal -->
-    <div class="modal fade" id="resetPasswordModal{{ $student->id }}" tabindex="-1" role="dialog" aria-labelledby="resetPasswordModalLabel{{ $student->id }}" aria-hidden="true">
+    <div class="modal fade" id="resetPasswordModal{{ $student->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="resetPasswordModalLabel{{ $student->id }}" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -281,10 +304,11 @@
             </div>
         </div>
     </div>
-    
+
 
     <!-- Delete Student Confirmation Modal -->
-    <div class="modal fade" id="deleteModal{{ $student->id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ $student->id }}" aria-hidden="true">
+    <div class="modal fade" id="deleteModal{{ $student->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="deleteModalLabel{{ $student->id }}" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -331,7 +355,8 @@
 
     <!-- Delete Student Confirmation Modal -->
     @foreach($students as $student)
-    <div class="modal fade" id="deleteModal{{ $student->id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ $student->id }}" aria-hidden="true">
+    <div class="modal fade" id="deleteModal{{ $student->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="deleteModalLabel{{ $student->id }}" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -363,42 +388,56 @@
 
     @include('includes.new_footer')
     <script>
-document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function () {
     const sectionSelect = document.querySelector('select[name="filter_section"]');
     const classSelect = document.querySelector('select[name="filter_class"]');
 
     if (!sectionSelect || !classSelect) return;
 
-    // Store original "all classes" options if needed (but we'll reload fully)
     function updateClasses(sectionId) {
         if (!sectionId) {
             classSelect.innerHTML = '<option value="">-- Select Class --</option>';
             return;
         }
 
+        // Show loading state
+        classSelect.innerHTML = '<option value="">Loading...</option>';
+
         fetch(`{{ url('/get-classes') }}/${sectionId}`)
-            .then(response => response.json())
-            .then(classes => {
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {  // ✅ Changed from 'classes' to 'data'
+                console.log('Response:', data); // Debug log
+                
                 let options = '<option value="">-- Select Class --</option>';
-                classes.forEach(cls => {
-                    const selected = cls.id == '{{ request('filter_class') }}' ? 'selected' : '';
-                    options += `<option value="${cls.id}" ${selected}>${cls.name}</option>`;
-                });
+                
+                // ✅ Access data.classes since controller returns {classes: [...]}
+                if (data.classes && data.classes.length > 0) {
+                    data.classes.forEach(cls => {
+                        const selected = cls.id == '{{ request('filter_class') }}' ? 'selected' : '';
+                        options += `<option value="${cls.id}" ${selected}>${cls.name}</option>`;
+                    });
+                } else {
+                    options = '<option value="">No classes found</option>';
+                }
+                
                 classSelect.innerHTML = options;
             })
             .catch(err => {
                 console.error('Error loading classes:', err);
-                classSelect.innerHTML = '<option value="">-- Error loading --</option>';
+                classSelect.innerHTML = '<option value="">Error loading classes</option>';
+                alert('Failed to load classes. Please try again.');
             });
     }
 
-    // On section change: update classes and clear class filter if needed
+    // On section change: update classes
     sectionSelect.addEventListener('change', function () {
         const sectionId = this.value;
         updateClasses(sectionId);
-
-        // Optional: auto-submit form on section change for instant filtering
-        // this.form.submit();
     });
 
     // Initial load if section is pre-selected (e.g., after applying filter)
@@ -406,5 +445,5 @@ document.addEventListener('DOMContentLoaded', function () {
         updateClasses(sectionSelect.value);
     }
 });
-</script>
+    </script>
 </body>
