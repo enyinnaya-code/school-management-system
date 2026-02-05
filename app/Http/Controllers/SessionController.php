@@ -12,82 +12,71 @@ use Illuminate\Support\Facades\Log;
 
 class SessionController extends Controller
 {
-    public function index(Request $request)
-    {
-        // Fetch sections (filtered by created_by if user is authenticated)
-        $sections = Section::when(Auth::check(), function ($query) {
-            return $query->where('created_by', Auth::id());
-        })->get();
+   public function index(Request $request)
+{
+    // Fetch ALL sections (no filtering by created_by)
+    $sections = Section::get();
 
-        // Get the selected section ID from the request (if any)
-        $sectionId = $request->query('section_id');
+    // Get the selected section ID from the request (if any)
+    $sectionId = $request->query('section_id');
 
-        // Fetch sessions with their terms, optionally filtered by section_id
-        $sessions = Session::when($sectionId, function ($query) use ($sectionId) {
-            return $query->where('section_id', $sectionId);
-        })
-            ->when(Auth::check(), function ($query) {
-                return $query->whereHas('section', function ($q) {
-                    $q->where('created_by', Auth::id());
-                });
-            })
-            ->with(['section', 'terms'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+    // Fetch sessions with their terms, optionally filtered by section_id
+    $sessions = Session::when($sectionId, function ($query) use ($sectionId) {
+        return $query->where('section_id', $sectionId);
+    })
+        ->with(['section', 'terms'])
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-        return view('manage_session', compact('sessions', 'sections', 'sectionId'));
+    return view('manage_session', compact('sessions', 'sections', 'sectionId'));
+}
+
+public function create(Request $request)
+{
+    // Debug: Log authentication status
+    Log::info('Session Create - Auth Check', [
+        'is_authenticated' => Auth::check(),
+        'user_id' => Auth::id(),
+        'user' => Auth::user()
+    ]);
+
+    // Fetch ALL sections (no filtering)
+    $sections = Section::get();
+
+    // Debug: Log sections retrieved
+    Log::info('Sections Retrieved', [
+        'count' => $sections->count(),
+        'sections' => $sections->pluck('id', 'section_name')->toArray()
+    ]);
+
+    // Get the selected section ID from the request (if any)
+    $sectionId = $request->query('section_id');
+
+    // Debug: Log selected section
+    if ($sectionId) {
+        Log::info('Selected Section', ['section_id' => $sectionId]);
     }
 
-     public function create(Request $request)
-    {
-        // Debug: Log authentication status
-        Log::info('Session Create - Auth Check', [
-            'is_authenticated' => Auth::check(),
-            'user_id' => Auth::id(),
-            'user' => Auth::user()
+    // Fetch the current session and its terms for the selected section (if provided)
+    $currentSession = $sectionId
+        ? Session::where('section_id', $sectionId)->where('is_current', true)->with('terms')->first()
+        : null;
+
+    // Debug: Log current session
+    if ($currentSession) {
+        Log::info('Current Session Found', [
+            'session_id' => $currentSession->id,
+            'session_name' => $currentSession->name
         ]);
-
-        // Fetch sections with better error handling
-        $sections = Section::when(Auth::check(), function ($query) {
-            return $query->where('created_by', Auth::id());
-        })->get();
-
-        // Debug: Log sections retrieved
-        Log::info('Sections Retrieved', [
-            'count' => $sections->count(),
-            'sections' => $sections->pluck('id', 'section_name')->toArray()
-        ]);
-
-        // Get the selected section ID from the request (if any)
-        $sectionId = $request->query('section_id');
-
-        // Debug: Log selected section
-        if ($sectionId) {
-            Log::info('Selected Section', ['section_id' => $sectionId]);
-        }
-
-        // Fetch the current session and its terms for the selected section (if provided)
-        $currentSession = $sectionId
-            ? Session::where('section_id', $sectionId)->where('is_current', true)->with('terms')->first()
-            : null;
-
-        // Debug: Log current session
-        if ($currentSession) {
-            Log::info('Current Session Found', [
-                'session_id' => $currentSession->id,
-                'session_name' => $currentSession->name
-            ]);
-        }
-
-        // If no sections found and user is authenticated, log a warning
-        if ($sections->isEmpty() && Auth::check()) {
-            Log::warning('No sections found for authenticated user', [
-                'user_id' => Auth::id()
-            ]);
-        }
-
-        return view('set_session', compact('sections', 'currentSession', 'sectionId'));
     }
+
+    // If no sections found, log a warning
+    if ($sections->isEmpty()) {
+        Log::warning('No sections found in database');
+    }
+
+    return view('set_session', compact('sections', 'currentSession', 'sectionId'));
+}
 
     public function store(Request $request)
     {
