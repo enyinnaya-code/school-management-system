@@ -163,25 +163,33 @@
             emailField.value = cleanName + '@sms.com';
         }
 
-        document.getElementById('section_id').addEventListener('change', function() {
-            let sectionId = this.value;
-            let classSelect = document.getElementById('class_id');
-            classSelect.innerHTML = '<option value="">-- Select Class --</option>'; // Reset classes
+       document.getElementById('section_id').addEventListener('change', function() {
+    let sectionId = this.value;
+    let classSelect = document.getElementById('class_id');
+    classSelect.innerHTML = '<option value="">-- Select Class --</option>'; // Reset classes
 
-            if (sectionId) {
-                fetch(`/get-classes/${sectionId}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        data.forEach(cls => {
-                            let option = document.createElement('option');
-                            option.value = cls.id;
-                            option.textContent = cls.name;
-                            classSelect.appendChild(option);
-                        });
-                    })
-                    .catch(err => console.error('Error fetching classes:', err));
-            }
-        });
+    if (sectionId) {
+        fetch(`/get-classes/${sectionId}`)
+            .then(res => res.json())
+            .then(data => {
+                // FIX: Access data.classes instead of data directly
+                if (data.classes && data.classes.length > 0) {
+                    data.classes.forEach(cls => {
+                        let option = document.createElement('option');
+                        option.value = cls.id;
+                        option.textContent = cls.name;
+                        classSelect.appendChild(option);
+                    });
+                } else {
+                    console.log('No classes found for this section');
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching classes:', err);
+                alert('Error loading classes. Please try again.');
+            });
+    }
+});
 
         // Add this to prevent double form submission
         document.querySelector('form').addEventListener('submit', function(e) {
