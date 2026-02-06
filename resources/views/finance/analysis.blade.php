@@ -25,7 +25,7 @@
                             <h4><i class="fas fa-filter"></i> Filters</h4>
                             <div class="card-header-action">
                                 <a href="{{ route('finance.analysis') }}" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-refresh"></i> Clear Filters
+                                    <i class="fas fa-sync"></i> Clear Filters
                                 </a>
                                 <a href="{{ route('finance.analysis.export', request()->query()) }}" class="btn btn-success btn-sm">
                                     <i class="fas fa-file-pdf"></i> Export PDF
@@ -166,217 +166,235 @@
                         </div>
                     </div>
 
-                    <!-- Breakdown Sections -->
-                    <div class="row">
-                        <!-- Section Breakdown -->
-                        @if($sectionBreakdown->isNotEmpty())
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4>Breakdown by Section</h4>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-md">
-                                            <thead>
-                                                <tr>
-                                                    <th>Section</th>
-                                                    <th class="text-right">Expected</th>
-                                                    <th class="text-right">Paid</th>
-                                                    <th class="text-right">Outstanding</th>
-                                                    <th class="text-right">Rate</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($sectionBreakdown as $item)
-                                                <tr>
-                                                    <td>{{ $item['name'] }}</td>
-                                                    <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
-                                                    <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
-                                                    <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
-                                                    <td class="text-right">
-                                                        <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
-                                                            {{ number_format($item['rate'], 2) }}%
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-
-                        <!-- Session Breakdown -->
-                        @if($sessionBreakdown->isNotEmpty())
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4>Breakdown by Session</h4>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-md">
-                                            <thead>
-                                                <tr>
-                                                    <th>Session</th>
-                                                    <th class="text-right">Expected</th>
-                                                    <th class="text-right">Paid</th>
-                                                    <th class="text-right">Outstanding</th>
-                                                    <th class="text-right">Rate</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($sessionBreakdown as $item)
-                                                <tr>
-                                                    <td>{{ $item['name'] }}</td>
-                                                    <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
-                                                    <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
-                                                    <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
-                                                    <td class="text-right">
-                                                        <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
-                                                            {{ number_format($item['rate'], 2) }}%
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-
-                        <!-- Term Breakdown -->
-                        @if($termBreakdown->isNotEmpty())
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4>Breakdown by Term</h4>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-md">
-                                            <thead>
-                                                <tr>
-                                                    <th>Term</th>
-                                                    <th class="text-right">Expected</th>
-                                                    <th class="text-right">Paid</th>
-                                                    <th class="text-right">Outstanding</th>
-                                                    <th class="text-right">Rate</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($termBreakdown as $item)
-                                                <tr>
-                                                    <td>{{ $item['name'] }}</td>
-                                                    <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
-                                                    <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
-                                                    <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
-                                                    <td class="text-right">
-                                                        <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
-                                                            {{ number_format($item['rate'], 2) }}%
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-
-                        <!-- Class Breakdown -->
-                        @if($classBreakdown->isNotEmpty())
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4>Breakdown by Class</h4>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-md">
-                                            <thead>
-                                                <tr>
-                                                    <th>Class</th>
-                                                    <th class="text-right">Expected</th>
-                                                    <th class="text-right">Paid</th>
-                                                    <th class="text-right">Outstanding</th>
-                                                    <th class="text-right">Rate</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($classBreakdown as $item)
-                                                <tr>
-                                                    <td>{{ $item['name'] }}</td>
-                                                    <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
-                                                    <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
-                                                    <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
-                                                    <td class="text-right">
-                                                        <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
-                                                            {{ number_format($item['rate'], 2) }}%
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-                    </div>
-
-                    <!-- Top Debtors -->
-                    @if($topDebtors->isNotEmpty())
+                    <!-- Single Card with Tabs for Breakdowns -->
                     <div class="row">
                         <div class="col-12">
                             <div class="card">
                                 <div class="card-header">
-                                    <h4>Top 10 Outstanding Debtors</h4>
+                                    <h4>Financial Breakdown</h4>
                                 </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-md">
-                                            <thead>
-                                                <tr>
-                                                    <th>#</th>
-                                                    <th>Admission No</th>
-                                                    <th>Student Name</th>
-                                                    <th>Class</th>
-                                                    <th>Section</th>
-                                                    <th class="text-right">Expected</th>
-                                                    <th class="text-right">Paid</th>
-                                                    <th class="text-right">Outstanding</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($topDebtors as $index => $debtor)
-                                                <tr>
-                                                    <td>{{ $index + 1 }}</td>
-                                                    <td>{{ $debtor['admission_no'] }}</td>
-                                                    <td>{{ $debtor['name'] }}</td>
-                                                    <td>{{ $debtor['class'] }}</td>
-                                                    <td>{{ $debtor['section'] }}</td>
-                                                    <td class="text-right">₦{{ number_format($debtor['expected'], 2) }}</td>
-                                                    <td class="text-right text-success">₦{{ number_format($debtor['paid'], 2) }}</td>
-                                                    <td class="text-right text-danger font-weight-bold">₦{{ number_format($debtor['outstanding'], 2) }}</td>
-                                                </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
+                                <div class="card-body">
+                                    <!-- Nav Tabs -->
+                                    <ul class="nav nav-tabs" id="breakdownTabs" role="tablist">
+                                        @if($sectionBreakdown->isNotEmpty())
+                                        <li class="nav-item">
+                                            <a class="nav-link active" id="section-tab" data-toggle="tab" href="#section" role="tab">
+                                                <i class="fas fa-building"></i> By Section
+                                            </a>
+                                        </li>
+                                        @endif
+                                        
+                                        @if($sessionBreakdown->isNotEmpty())
+                                        <li class="nav-item">
+                                            <a class="nav-link {{ $sectionBreakdown->isEmpty() ? 'active' : '' }}" id="session-tab" data-toggle="tab" href="#session" role="tab">
+                                                <i class="fas fa-calendar-alt"></i> By Session
+                                            </a>
+                                        </li>
+                                        @endif
+                                        
+                                        @if($termBreakdown->isNotEmpty())
+                                        <li class="nav-item">
+                                            <a class="nav-link {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() ? 'active' : '' }}" id="term-tab" data-toggle="tab" href="#term" role="tab">
+                                                <i class="fas fa-clock"></i> By Term
+                                            </a>
+                                        </li>
+                                        @endif
+                                        
+                                        @if($classBreakdown->isNotEmpty())
+                                        <li class="nav-item">
+                                            <a class="nav-link {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() && $termBreakdown->isEmpty() ? 'active' : '' }}" id="class-tab" data-toggle="tab" href="#class" role="tab">
+                                                <i class="fas fa-users"></i> By Class
+                                            </a>
+                                        </li>
+                                        @endif
+
+                                        @if($topDebtors->isNotEmpty())
+                                        <li class="nav-item">
+                                            <a class="nav-link" id="debtors-tab" data-toggle="tab" href="#debtors" role="tab">
+                                                <i class="fas fa-exclamation-circle"></i> Top Debtors
+                                            </a>
+                                        </li>
+                                        @endif
+                                    </ul>
+
+                                    <!-- Tab Content -->
+                                    <div class="tab-content mt-3" id="breakdownTabsContent">
+                                        <!-- Section Breakdown Tab -->
+                                        @if($sectionBreakdown->isNotEmpty())
+                                        <div class="tab-pane fade show active" id="section" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-striped table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Section</th>
+                                                            <th class="text-right">Expected</th>
+                                                            <th class="text-right">Paid</th>
+                                                            <th class="text-right">Outstanding</th>
+                                                            <th class="text-right">Collection Rate</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($sectionBreakdown as $item)
+                                                        <tr>
+                                                            <td><strong>{{ $item['name'] }}</strong></td>
+                                                            <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
+                                                            <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
+                                                            <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
+                                                            <td class="text-right">
+                                                                <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
+                                                                    {{ number_format($item['rate'], 2) }}%
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        <!-- Session Breakdown Tab -->
+                                        @if($sessionBreakdown->isNotEmpty())
+                                        <div class="tab-pane fade {{ $sectionBreakdown->isEmpty() ? 'show active' : '' }}" id="session" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-striped table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Session</th>
+                                                            <th class="text-right">Expected</th>
+                                                            <th class="text-right">Paid</th>
+                                                            <th class="text-right">Outstanding</th>
+                                                            <th class="text-right">Collection Rate</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($sessionBreakdown as $item)
+                                                        <tr>
+                                                            <td><strong>{{ $item['name'] }}</strong></td>
+                                                            <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
+                                                            <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
+                                                            <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
+                                                            <td class="text-right">
+                                                                <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
+                                                                    {{ number_format($item['rate'], 2) }}%
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        <!-- Term Breakdown Tab -->
+                                        @if($termBreakdown->isNotEmpty())
+                                        <div class="tab-pane fade {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() ? 'show active' : '' }}" id="term" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-striped table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Term</th>
+                                                            <th class="text-right">Expected</th>
+                                                            <th class="text-right">Paid</th>
+                                                            <th class="text-right">Outstanding</th>
+                                                            <th class="text-right">Collection Rate</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($termBreakdown as $item)
+                                                        <tr>
+                                                            <td><strong>{{ $item['name'] }}</strong></td>
+                                                            <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
+                                                            <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
+                                                            <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
+                                                            <td class="text-right">
+                                                                <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
+                                                                    {{ number_format($item['rate'], 2) }}%
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        <!-- Class Breakdown Tab -->
+                                        @if($classBreakdown->isNotEmpty())
+                                        <div class="tab-pane fade {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() && $termBreakdown->isEmpty() ? 'show active' : '' }}" id="class" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-striped table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Class</th>
+                                                            <th class="text-right">Expected</th>
+                                                            <th class="text-right">Paid</th>
+                                                            <th class="text-right">Outstanding</th>
+                                                            <th class="text-right">Collection Rate</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($classBreakdown as $item)
+                                                        <tr>
+                                                            <td><strong>{{ $item['name'] }}</strong></td>
+                                                            <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
+                                                            <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
+                                                            <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
+                                                            <td class="text-right">
+                                                                <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
+                                                                    {{ number_format($item['rate'], 2) }}%
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        <!-- Top Debtors Tab -->
+                                        @if($topDebtors->isNotEmpty())
+                                        <div class="tab-pane fade" id="debtors" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-striped table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>#</th>
+                                                            <th>Admission No</th>
+                                                            <th>Student Name</th>
+                                                            <th>Class</th>
+                                                            <th>Section</th>
+                                                            <th class="text-right">Expected</th>
+                                                            <th class="text-right">Paid</th>
+                                                            <th class="text-right">Outstanding</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($topDebtors as $index => $debtor)
+                                                        <tr>
+                                                            <td>{{ $index + 1 }}</td>
+                                                            <td>{{ $debtor['admission_no'] }}</td>
+                                                            <td><strong>{{ $debtor['name'] }}</strong></td>
+                                                            <td>{{ $debtor['class'] }}</td>
+                                                            <td>{{ $debtor['section'] }}</td>
+                                                            <td class="text-right">₦{{ number_format($debtor['expected'], 2) }}</td>
+                                                            <td class="text-right text-success">₦{{ number_format($debtor['paid'], 2) }}</td>
+                                                            <td class="text-right text-danger font-weight-bold">₦{{ number_format($debtor['outstanding'], 2) }}</td>
+                                                        </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    @endif
 
                     <!-- Payment Trends Chart -->
                     @if($paymentTrends->isNotEmpty())
@@ -454,28 +472,35 @@
             $('#section_id').change(function() {
                 var sectionId = $(this).val();
                 
-                // Update sessions
-                $.ajax({
-                    url: '/api/sessions',
-                    data: { section_id: sectionId },
-                    success: function(data) {
-                        $('#session_id').html('<option value="">All Sessions</option>');
-                        $.each(data, function(key, value) {
-                            $('#session_id').append('<option value="' + value.id + '">' + value.name + '</option>');
-                        });
-                    }
-                });
-                
-                // Update classes
-                $.ajax({
-                    url: '/api/sections/' + sectionId + '/classes',
-                    success: function(data) {
-                        $('#class_id').html('<option value="">All Classes</option>');
-                        $.each(data.classes, function(key, value) {
-                            $('#class_id').append('<option value="' + value.id + '">' + value.name + '</option>');
-                        });
-                    }
-                });
+                if (sectionId) {
+                    // Update sessions
+                    $.ajax({
+                        url: '/api/sessions',
+                        data: { section_id: sectionId },
+                        success: function(data) {
+                            $('#session_id').html('<option value="">All Sessions</option>');
+                            $.each(data, function(key, value) {
+                                $('#session_id').append('<option value="' + value.id + '">' + value.name + '</option>');
+                            });
+                        }
+                    });
+                    
+                    // Update classes
+                    $.ajax({
+                        url: '/api/sections/' + sectionId + '/classes',
+                        success: function(data) {
+                            $('#class_id').html('<option value="">All Classes</option>');
+                            $.each(data.classes, function(key, value) {
+                                $('#class_id').append('<option value="' + value.id + '">' + value.name + '</option>');
+                            });
+                        }
+                    });
+                } else {
+                    // Reset when "All Sections" is selected
+                    $('#session_id').html('<option value="">All Sessions</option>');
+                    $('#term_id').html('<option value="">All Terms</option>');
+                    $('#class_id').html('<option value="">All Classes</option>');
+                }
                 
                 // Clear terms
                 $('#term_id').html('<option value="">All Terms</option>');
@@ -496,6 +521,8 @@
                             });
                         }
                     });
+                } else {
+                    $('#term_id').html('<option value="">All Terms</option>');
                 }
             });
         });
