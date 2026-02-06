@@ -11,16 +11,18 @@
             <!-- Main Content -->
             <div class="main-content pt-5 mt-5">
                 <section class="section">
-                    <div class="section-header">
+                 
+
+                    <!-- Filter Section -->
+                    <div class="card">
+                           <div class="section-header">
                         <h1>Financial Analysis</h1>
                         <div class="section-header-breadcrumb">
                             <div class="breadcrumb-item active"><a href="{{ route('dynamic.dashboard') }}">Dashboard</a></div>
                             <div class="breadcrumb-item">Financial Analysis</div>
                         </div>
                     </div>
-
-                    <!-- Filter Section -->
-                    <div class="card">
+                    
                         <div class="card-header">
                             <h4><i class="fas fa-filter"></i> Filters</h4>
                             <div class="card-header-action">

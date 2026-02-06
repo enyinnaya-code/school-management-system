@@ -492,64 +492,77 @@ class FinanceReportController extends Controller
     }
 
     private function getTopDebtors($sectionId, $sessionId, $termId, $classId, $limit = 10)
-    {
-        // Get all students with fee prospectus
-        $studentsQuery = User::where('user_type', 4)
-            ->when($sectionId, function($q) use ($sectionId) {
-                return $q->where('section_id', $sectionId);
-            })
-            ->when($classId, function($q) use ($classId) {
-                return $q->where('class_id', $classId);
-            })
-            ->with(['section', 'schoolClass']);
+{
+    // Get all students with fee prospectus
+    $studentsQuery = User::where('user_type', 4)
+        ->with(['section', 'schoolClass']);
 
-        $students = $studentsQuery->get()->map(function($student) use ($sessionId, $termId) {
-            // Calculate expected fees
-            $prospectusQuery = FeeProspectus::where('section_id', $student->section_id)
-                ->where('class_id', $student->class_id);
-
-            if ($sessionId) {
-                $prospectusQuery->whereHas('term', function($q) use ($sessionId) {
-                    $q->where('session_id', $sessionId);
-                });
-            }
-
-            if ($termId) {
-                $prospectusQuery->where('term_id', $termId);
-            }
-
-            $totalExpected = $prospectusQuery->sum('total_amount');
-
-            // Calculate payments
-            $paymentsQuery = Payment::where('student_id', $student->id);
-
-            if ($sessionId) {
-                $paymentsQuery->where('session_id', $sessionId);
-            }
-
-            if ($termId) {
-                $paymentsQuery->where('term_id', $termId);
-            }
-
-            $totalPaid = $paymentsQuery->sum('amount');
-            $outstanding = $totalExpected - $totalPaid;
-
-            return [
-                'student_id' => $student->id,
-                'name' => $student->name,
-                'admission_no' => $student->admission_no,
-                'class' => $student->schoolClass->name ?? 'N/A',
-                'section' => $student->section->section_name ?? 'N/A',
-                'expected' => $totalExpected,
-                'paid' => $totalPaid,
-                'outstanding' => $outstanding
-            ];
-        })->filter(function($item) {
-            return $item['outstanding'] > 0;
-        })->sortByDesc('outstanding')->take($limit);
-
-        return $students;
+    // Filter by class if specified
+    if ($classId) {
+        $studentsQuery->where('class_id', $classId);
     }
+    
+    // If section is specified but not class, get all classes in that section first
+    if ($sectionId && !$classId) {
+        $classIds = SchoolClass::where('section_id', $sectionId)->pluck('id');
+        $studentsQuery->whereIn('class_id', $classIds);
+    }
+
+    $students = $studentsQuery->get()->map(function($student) use ($sessionId, $termId) {
+        // Skip if student doesn't have class_id or section_id
+        if (!$student->class_id || !$student->section_id) {
+            return null;
+        }
+
+        // Calculate expected fees
+        $prospectusQuery = FeeProspectus::where('section_id', $student->section_id)
+            ->where('class_id', $student->class_id);
+
+        if ($sessionId) {
+            $prospectusQuery->whereHas('term', function($q) use ($sessionId) {
+                $q->where('session_id', $sessionId);
+            });
+        }
+
+        if ($termId) {
+            $prospectusQuery->where('term_id', $termId);
+        }
+
+        $totalExpected = $prospectusQuery->sum('total_amount');
+
+        // Calculate payments
+        $paymentsQuery = Payment::where('student_id', $student->id)
+            ->where('section_id', $student->section_id)
+            ->where('class_id', $student->class_id);
+
+        if ($sessionId) {
+            $paymentsQuery->where('session_id', $sessionId);
+        }
+
+        if ($termId) {
+            $paymentsQuery->where('term_id', $termId);
+        }
+
+        $totalPaid = $paymentsQuery->sum('amount');
+        $outstanding = $totalExpected - $totalPaid;
+
+        return [
+            'student_id' => $student->id,
+            'name' => $student->name,
+            'admission_no' => $student->admission_no,
+            'class' => $student->schoolClass->name ?? 'N/A',
+            'section' => $student->section->section_name ?? 'N/A',
+            'expected' => $totalExpected,
+            'paid' => $totalPaid,
+            'outstanding' => $outstanding
+        ];
+    })->filter(function($item) {
+        // Remove null items and items with no outstanding balance
+        return $item !== null && $item['outstanding'] > 0;
+    })->sortByDesc('outstanding')->take($limit)->values();
+
+    return $students;
+}
 
     private function getPaymentTrends($sectionId, $sessionId, $termId, $classId)
     {
