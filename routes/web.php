@@ -516,6 +516,10 @@ Route::middleware(['auth'])->group(function () {
     // Add this route to your web.php for OtherExpense show
     Route::get('/other-expense/{otherExpense}', [OtherExpenseController::class, 'show'])->name('other.expense.show');
 
+    // Add this in the authenticated routes group
+Route::get('/finance/analysis', [FinanceReportController::class, 'analysis'])->name('finance.analysis');
+Route::get('/finance/analysis/export', [FinanceReportController::class, 'exportAnalysis'])->name('finance.analysis.export');
+
 
     Route::post('/payments/select', [BursarController::class, 'selectStudentForPayment'])->name('bursar.selectStudentForPayment');
     Route::get('/bursar/payment/{studentId}/details/{sectionId}/{classId}', [BursarController::class, 'paymentDetails'])->name('bursar.payment.details');

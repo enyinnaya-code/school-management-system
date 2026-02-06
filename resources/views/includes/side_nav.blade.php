@@ -209,14 +209,15 @@
       </li>
 
       <!-- Financial Reports -->
-      <li class="dropdown">
-        <a href="#" class="menu-toggle nav-link has-dropdown">
-          <i data-feather="bar-chart-2"></i><span>Financial Reports</span>
-        </a>
-        <ul class="dropdown-menu">
-          <li><a class="nav-link" href="{{ route('finance.overview') }}">Income & Expenses</a></li>
-        </ul>
-      </li>
+<li class="dropdown">
+    <a href="#" class="menu-toggle nav-link has-dropdown">
+        <i data-feather="bar-chart-2"></i><span>Financial Reports</span>
+    </a>
+    <ul class="dropdown-menu">
+        <li><a class="nav-link" href="{{ route('finance.overview') }}">Income & Expenses</a></li>
+        <li><a class="nav-link" href="{{ route('finance.analysis') }}">Financial Analysis</a></li>
+    </ul>
+</li>
 
       @endif
 
