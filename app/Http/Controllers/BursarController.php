@@ -155,58 +155,104 @@ class BursarController extends Controller
     }
 
     public function paymentDetails(int $studentId, int $sectionId, int $classId, Request $request)
-    {
-        // Remove the section check from the student query
-        $student = User::where('id', $studentId)
-            ->where('user_type', 4)
+{
+    $student = User::where('id', $studentId)
+        ->where('user_type', 4)
+        ->where('class_id', $classId)
+        ->firstOrFail();
+
+    $section = Section::findOrFail($sectionId);
+    $class = SchoolClass::findOrFail($classId);
+    $currentTerm = $this->getCurrentTerm($sectionId);
+
+    if (!$currentTerm) {
+        return redirect()->route('payment.create')->with('error', 'No current term found for this section.');
+    }
+
+    $currentTerm->load('session');
+
+    if (!$currentTerm->session) {
+        return redirect()->route('payment.create')->with('error', 'No valid session found for the current term.');
+    }
+
+    $sessionId = $currentTerm->session->id;
+    $currentSession = $currentTerm->session;
+
+    $prospectus = FeeProspectus::where('section_id', $sectionId)
+        ->where('class_id', $classId)
+        ->where('term_id', $currentTerm->id)
+        ->first();
+
+    $totalDue = $prospectus ? $prospectus->total_amount : 0;
+
+    // Fetch ALL payments for this student (for history)
+    $paymentsQuery = Payment::where('student_id', $studentId)
+        ->where('section_id', $sectionId)
+        ->where('class_id', $classId)
+        ->with(['term.session'])
+        ->orderBy('created_at', 'desc');
+
+    $payments = $paymentsQuery->paginate(15);
+    $payments->onEachSide(0);
+    
+    // Current term payments
+    $paid = Payment::where('student_id', $studentId)
+        ->where('section_id', $sectionId)
+        ->where('class_id', $classId)
+        ->where('term_id', $currentTerm->id)
+        ->where('session_id', $sessionId)
+        ->sum('amount');
+    
+    $balance = $totalDue - $paid;
+
+    // Fetch previous outstanding balances with more details
+    $previousBalances = collect();
+
+    // Past terms in current session
+    $pastTermsCurrent = Term::where('session_id', $currentSession->id)
+        ->where('is_current', false)
+        ->get();
+
+    foreach ($pastTermsCurrent as $pastTerm) {
+        $pastProspectus = FeeProspectus::where('section_id', $sectionId)
             ->where('class_id', $classId)
-            ->firstOrFail();
-
-        $section = Section::findOrFail($sectionId);
-        $class = SchoolClass::findOrFail($classId);
-        $currentTerm = $this->getCurrentTerm($sectionId);
-
-        if (!$currentTerm) {
-            return redirect()->route('payment.create')->with('error', 'No current term found for this section.');
-        }
-
-        $currentTerm->load('session');
-
-        if (!$currentTerm->session) {
-            return redirect()->route('payment.create')->with('error', 'No valid session found for the current term.');
-        }
-
-        $sessionId = $currentTerm->session->id;
-        $currentSession = $currentTerm->session;
-
-        $prospectus = FeeProspectus::where('section_id', $sectionId)
-            ->where('class_id', $classId)
-            ->where('term_id', $currentTerm->id)
+            ->where('term_id', $pastTerm->id)
             ->first();
 
-        $totalDue = $prospectus ? $prospectus->total_amount : 0;
+        if ($pastProspectus) {
+            $pastPaymentsSum = Payment::where('student_id', $studentId)
+                ->where('section_id', $sectionId)
+                ->where('class_id', $classId)
+                ->where('term_id', $pastTerm->id)
+                ->where('session_id', $currentSession->id)
+                ->sum('amount');
 
-        $paymentsQuery = Payment::where('student_id', $studentId)
-            ->where('section_id', $sectionId)
-            ->where('class_id', $classId)
-            ->where('term_id', $currentTerm->id)
-            ->where('session_id', $sessionId)
-            ->orderBy('created_at', 'desc');
+            $pastBalance = $pastProspectus->total_amount - $pastPaymentsSum;
 
-        $payments = $paymentsQuery->paginate(15);
-        $payments->onEachSide(0);
-        $paid = $paymentsQuery->sum('amount');
-        $balance = $totalDue - $paid;
+            if ($pastBalance > 0) {
+                $previousBalances->push([
+                    'term_id' => $pastTerm->id,
+                    'session_id' => $currentSession->id,
+                    'term_name' => $pastTerm->name,
+                    'session_name' => $currentSession->name,
+                    'total' => $pastProspectus->total_amount,
+                    'paid' => $pastPaymentsSum,
+                    'balance' => $pastBalance
+                ]);
+            }
+        }
+    }
 
-        // Fetch previous outstanding balances
-        $previousBalances = collect();
+    // Past sessions
+    $pastSessions = Session::where('section_id', $sectionId)
+        ->where('is_current', false)
+        ->get();
 
-        // Past terms in current session
-        $pastTermsCurrent = Term::where('session_id', $currentSession->id)
-            ->where('is_current', false)
+    foreach ($pastSessions as $pastSession) {
+        $pastTerms = Term::where('session_id', $pastSession->id)
             ->get();
 
-        foreach ($pastTermsCurrent as $pastTerm) {
+        foreach ($pastTerms as $pastTerm) {
             $pastProspectus = FeeProspectus::where('section_id', $sectionId)
                 ->where('class_id', $classId)
                 ->where('term_id', $pastTerm->id)
@@ -217,15 +263,17 @@ class BursarController extends Controller
                     ->where('section_id', $sectionId)
                     ->where('class_id', $classId)
                     ->where('term_id', $pastTerm->id)
-                    ->where('session_id', $currentSession->id)
+                    ->where('session_id', $pastSession->id)
                     ->sum('amount');
 
                 $pastBalance = $pastProspectus->total_amount - $pastPaymentsSum;
 
                 if ($pastBalance > 0) {
                     $previousBalances->push([
+                        'term_id' => $pastTerm->id,
+                        'session_id' => $pastSession->id,
                         'term_name' => $pastTerm->name,
-                        'session_name' => $currentSession->name,
+                        'session_name' => $pastSession->name,
                         'total' => $pastProspectus->total_amount,
                         'paid' => $pastPaymentsSum,
                         'balance' => $pastBalance
@@ -233,64 +281,31 @@ class BursarController extends Controller
                 }
             }
         }
-
-        // Past sessions
-        $pastSessions = Session::where('section_id', $sectionId)
-            ->where('is_current', false)
-            ->get();
-
-        foreach ($pastSessions as $pastSession) {
-            $pastTerms = Term::where('session_id', $pastSession->id)
-                ->get();
-
-            foreach ($pastTerms as $pastTerm) {
-                $pastProspectus = FeeProspectus::where('section_id', $sectionId)
-                    ->where('class_id', $classId)
-                    ->where('term_id', $pastTerm->id)
-                    ->first();
-
-                if ($pastProspectus) {
-                    $pastPaymentsSum = Payment::where('student_id', $studentId)
-                        ->where('section_id', $sectionId)
-                        ->where('class_id', $classId)
-                        ->where('term_id', $pastTerm->id)
-                        ->where('session_id', $pastSession->id)
-                        ->sum('amount');
-
-                    $pastBalance = $pastProspectus->total_amount - $pastPaymentsSum;
-
-                    if ($pastBalance > 0) {
-                        $previousBalances->push([
-                            'term_name' => $pastTerm->name,
-                            'session_name' => $pastSession->name,
-                            'total' => $pastProspectus->total_amount,
-                            'paid' => $pastPaymentsSum,
-                            'balance' => $pastBalance
-                        ]);
-                    }
-                }
-            }
-        }
-
-        // Sort by session and term
-        $previousBalances = $previousBalances->sortByDesc(function ($item) {
-            return $item['session_name'] . $item['term_name'];
-        });
-
-        return view('payment_details', compact(
-            'student',
-            'section',
-            'class',
-            'currentTerm',
-            'prospectus',
-            'totalDue',
-            'paid',
-            'balance',
-            'payments',
-            'sessionId',
-            'previousBalances'
-        ));
     }
+
+    // Sort by session and term (most recent first)
+    $previousBalances = $previousBalances->sortByDesc(function ($item) {
+        return $item['session_name'] . $item['term_name'];
+    });
+
+    // Calculate total outstanding (all terms)
+    $totalOutstanding = $balance + $previousBalances->sum('balance');
+
+    return view('payment_details', compact(
+        'student',
+        'section',
+        'class',
+        'currentTerm',
+        'prospectus',
+        'totalDue',
+        'paid',
+        'balance',
+        'payments',
+        'sessionId',
+        'previousBalances',
+        'totalOutstanding'
+    ));
+}
 
 
     private function generateReceiptPdf(Payment $payment)
@@ -334,63 +349,59 @@ class BursarController extends Controller
     }
 
 
-    public function processPayment(Request $request)
-    {
-        $request->validate([
-            'student_id' => 'required|exists:users,id',
-            'section_id' => 'required|exists:sections,id',
-            'class_id' => 'required|exists:school_classes,id',
-            'term_id' => 'required|exists:terms,id',
-            'session_id' => 'required|exists:school_sessions,id',
-            'amount' => 'required|numeric|min:0.01',
-            'payment_type' => 'required|in:Cash,Bank Transfer,Online Payment,Cheque',
-            'description' => 'nullable|string|max:500',
-        ]);
+   public function processPayment(Request $request)
+{
+    $request->validate([
+        'student_id' => 'required|exists:users,id',
+        'section_id' => 'required|exists:sections,id',
+        'class_id' => 'required|exists:school_classes,id',
+        'term_id' => 'required|exists:terms,id',
+        'session_id' => 'required|exists:school_sessions,id',
+        'amount' => 'required|numeric|min:0.01',
+        'payment_type' => 'required|in:Cash,Bank Transfer,Online Payment,Cheque',
+        'description' => 'nullable|string|max:500',
+        'payment_allocation' => 'nullable|string|in:current,oldest,custom',
+    ]);
 
-        // Generate a one-time idempotency key stored in session
-        $paymentKey = $request->session()->get('current_payment_key');
+    // Generate a one-time idempotency key stored in session
+    $paymentKey = $request->session()->get('current_payment_key');
 
-        if (!$paymentKey) {
-            $paymentKey = Str::uuid()->toString();
-            $request->session()->put('current_payment_key', $paymentKey);
+    if (!$paymentKey) {
+        $paymentKey = Str::uuid()->toString();
+        $request->session()->put('current_payment_key', $paymentKey);
+    }
+
+    return DB::transaction(function () use ($request, $paymentKey) {
+        // Prevent duplicate if already processed in this session
+        $existing = Payment::where('idempotency_key', $paymentKey)->first();
+        if ($existing) {
+            $request->session()->forget('current_payment_key');
+            return redirect()->route('bursar.payment.receipt', $existing)
+                ->with('info', 'This payment was already recorded.');
         }
 
-        return DB::transaction(function () use ($request, $paymentKey) {
-            // Prevent duplicate if already processed in this session
-            $existing = Payment::where('idempotency_key', $paymentKey)->first();
-            if ($existing) {
-                $request->session()->forget('current_payment_key'); // Clean up
-                return redirect()->route('bursar.payment.receipt', $existing)
-                    ->with('info', 'This payment was already recorded.');
-            }
+        $payment = Payment::create([
+            'student_id' => $request->student_id,
+            'section_id' => $request->section_id,
+            'class_id' => $request->class_id,
+            'term_id' => $request->term_id,
+            'session_id' => $request->session_id,
+            'amount' => $request->amount,
+            'payment_type' => $request->payment_type,
+            'description' => $request->description,
+            'created_by' => Auth::id(),
+            'idempotency_key' => $paymentKey,
+        ]);
 
-            $payment = Payment::create([
-                'student_id' => $request->student_id,
-                'section_id' => $request->section_id,
-                'class_id' => $request->class_id,
-                'term_id' => $request->term_id,
-                'session_id' => $request->session_id,
-                'amount' => $request->amount,
-                'payment_type' => $request->payment_type,
-                'description' => $request->description,
-                'created_by' => Auth::id(),
-                'idempotency_key' => $paymentKey,
-            ]);
+        // Clear the session key after successful creation
+        $request->session()->forget('current_payment_key');
 
-            // Critical: Clear the session key after successful creation
-            $request->session()->forget('current_payment_key');
+        session()->flash('just_paid', true);
 
-            // return redirect()->route('bursar.payment.receipt', $payment)
-            //     ->with('success', 'Payment recorded successfully! Printing receipt...');
-
-            // Right after creating the payment and before redirecting
-            session()->flash('just_paid', true);
-
-            // Then redirect to receipt
-            return redirect()->route('bursar.payment.receipt', $payment)
-                ->with('success', 'Payment recorded successfully!');
-        });
-    }
+        return redirect()->route('bursar.payment.receipt', $payment)
+            ->with('success', 'Payment recorded successfully!');
+    });
+}
 
 
     public function managePayments(Request $request)
@@ -844,44 +855,46 @@ class BursarController extends Controller
         return redirect()->route('fee.prospectus.manage')->with('success', 'Fee Prospectus deleted successfully.');
     }
 
-    public function printReceipt(Payment $payment)
-    {
-        $student = User::findOrFail($payment->student_id);
-        $section = Section::findOrFail($payment->section_id);
-        $class = SchoolClass::findOrFail($payment->class_id);
-        $currentTerm = Term::findOrFail($payment->term_id);
-        $session = Session::findOrFail($payment->session_id);
+   public function printReceipt(Payment $payment)
+{
+    $student = User::findOrFail($payment->student_id);
+    $section = Section::findOrFail($payment->section_id);
+    $class = SchoolClass::findOrFail($payment->class_id);
+    
+    // Get the term THIS PAYMENT was made for (not current term)
+    $currentTerm = Term::findOrFail($payment->term_id);
+    $session = Session::findOrFail($payment->session_id);
 
-        $prospectus = FeeProspectus::where('section_id', $payment->section_id)
-            ->where('class_id', $payment->class_id)
-            ->where('term_id', $payment->term_id)
-            ->first();
+    $prospectus = FeeProspectus::where('section_id', $payment->section_id)
+        ->where('class_id', $payment->class_id)
+        ->where('term_id', $payment->term_id) // Use payment's term
+        ->first();
 
-        $totalDue = $prospectus ? $prospectus->total_amount : 0;
+    $totalDue = $prospectus ? $prospectus->total_amount : 0;
 
-        $allPaymentsSum = Payment::where('student_id', $payment->student_id)
-            ->where('term_id', $payment->term_id)
-            ->where('session_id', $payment->session_id)
-            ->sum('amount');
+    // Calculate total paid for THIS specific term
+    $allPaymentsSum = Payment::where('student_id', $payment->student_id)
+        ->where('term_id', $payment->term_id)
+        ->where('session_id', $payment->session_id)
+        ->sum('amount');
 
-        $balance = $totalDue - $allPaymentsSum;
+    $balance = $totalDue - $allPaymentsSum;
 
-        $pdf = Pdf::loadView('payment_receipt', compact(
-            'payment',
-            'student',
-            'section',
-            'class',
-            'currentTerm',
-            'session',
-            'totalDue',
-            'balance'
-        ));
+    $pdf = Pdf::loadView('payment_receipt', compact(
+        'payment',
+        'student',
+        'section',
+        'class',
+        'currentTerm',
+        'session',
+        'totalDue',
+        'balance'
+    ));
 
-        // Set paper size suitable for thermal printer (approx 80mm width, custom height)
-        $pdf->setPaper([0, 0, 227, 500], 'mm'); // 80mm width ≈ 227 points, height adjusted
+    $pdf->setPaper([0, 0, 227, 500], 'mm');
 
-        $filename = 'payment-receipt-' . $student->admission_no . '-' . $payment->id . '.pdf';
+    $filename = 'payment-receipt-' . $student->admission_no . '-' . $payment->id . '.pdf';
 
-        return $pdf->stream($filename);
-    }
+    return $pdf->stream($filename);
+}
 }

@@ -163,59 +163,138 @@
                                 @endif
 
                                 <!-- Payment Form -->
-                                <form action="{{ route('bursar.processPayment') }}" method="POST"
-                                    class="needs-validation px-3" novalidate>
-                                    @csrf
-                                    <input type="hidden" name="student_id" value="{{ $student->id }}">
-                                    <input type="hidden" name="section_id" value="{{ $section->id }}">
-                                    <input type="hidden" name="class_id" value="{{ $class->id }}">
-                                    <input type="hidden" name="term_id" value="{{ $currentTerm->id }}">
-                                    <input type="hidden" name="session_id" value="{{ $sessionId }}">
+                                <!-- Payment Form -->
+<form action="{{ route('bursar.processPayment') }}" method="POST"
+    class="needs-validation px-3" novalidate id="paymentForm">
+    @csrf
+    <input type="hidden" name="student_id" value="{{ $student->id }}">
+    <input type="hidden" name="section_id" value="{{ $section->id }}">
+    <input type="hidden" name="class_id" value="{{ $class->id }}">
+    <input type="hidden" name="term_id" value="{{ $currentTerm->id }}" id="selected_term_id">
+    <input type="hidden" name="session_id" value="{{ $sessionId }}" id="selected_session_id">
 
-                                    <div class="form-group row mb-3">
-                                        <label class="col-md-3 col-form-label">Amount</label>
-                                        <div class="col-md-9">
-                                            <input type="number" class="form-control" name="amount" step="0.01" min="0"
-                                                max="{{ $balance > 0 ? $balance : 0 }}" required>
-                                            @error('amount')
-                                            <span class="text-danger">{{ $message }}</span>
-                                            @enderror
-                                        </div>
-                                    </div>
+    <!-- Payment Allocation Section -->
+    <div class="alert alert-info mb-4">
+        <h6><i class="fas fa-info-circle"></i> Payment Allocation</h6>
+        <p class="mb-2">Choose how to allocate this payment:</p>
+        
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="payment_allocation" 
+                   id="current_term" value="current" checked>
+            <label class="form-check-label" for="current_term">
+                <strong class="text-white">Current Term ({{ $currentTerm->name }})</strong>
+                <br>
+                <small class="text-white">
+                    Balance: ₦{{ number_format($balance, 2) }}
+                </small>
+            </label>
+        </div>
 
-                                    <div class="form-group row mb-3">
-                                        <label class="col-md-3 col-form-label">Payment Type</label>
-                                        <div class="col-md-9">
-                                            <select class="form-control" name="payment_type" required>
-                                                <option value="">Select payment type...</option>
-                                                <option value="Cash">Cash</option>
-                                                <option value="Bank Transfer">Bank Transfer</option>
-                                                <option value="Online Payment">Online Payment</option>
-                                                <option value="Cheque">Cheque</option>
-                                            </select>
-                                            @error('payment_type')
-                                            <span class="text-danger">{{ $message }}</span>
-                                            @enderror
-                                        </div>
-                                    </div>
+        @if($previousBalances->isNotEmpty())
+        <div class="form-check mt-2">
+            <input class="form-check-input" type="radio" name="payment_allocation" 
+                   id="oldest_first" value="oldest">
+            <label class="form-check-label" for="oldest_first">
+                <strong>Oldest Outstanding Balance First</strong>
+                <br>
+                <small class="text-muted">
+                    Will apply to: {{ $previousBalances->last()['session_name'] }} - {{ $previousBalances->last()['term_name'] }}
+                    (₦{{ number_format($previousBalances->last()['balance'], 2) }})
+                </small>
+            </label>
+        </div>
 
-                                    <div class="form-group row mb-3">
-                                        <label class="col-md-3 col-form-label">Description (Optional)</label>
-                                        <div class="col-md-9">
-                                            <textarea class="form-control" name="description" rows="3"></textarea>
-                                            @error('description')
-                                            <span class="text-danger">{{ $message }}</span>
-                                            @enderror
-                                        </div>
-                                    </div>
+        <div class="form-check mt-2">
+            <input class="form-check-input" type="radio" name="payment_allocation" 
+                   id="custom_term" value="custom">
+            <label class="form-check-label" for="custom_term">
+                <strong>Select Specific Term</strong>
+            </label>
+        </div>
 
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i> Record Payment
-                                    </button>
-                                    <a href="{{ route('payment.create') }}" class="btn btn-secondary">
-                                        Back to Selection
-                                    </a>
-                                </form>
+        <div id="custom_term_selector" class="mt-3" style="display: none;">
+            <label>Select Session & Term:</label>
+            <select class="form-control" id="custom_term_select">
+                <option value="">-- Select a term to pay --</option>
+                @foreach($previousBalances as $bal)
+                <option value="{{ $bal['term_id'] }}" 
+                        data-session="{{ $bal['session_id'] }}"
+                        data-balance="{{ $bal['balance'] }}">
+                    {{ $bal['session_name'] }} - {{ $bal['term_name'] }} 
+                    (Balance: ₦{{ number_format($bal['balance'], 2) }})
+                </option>
+                @endforeach
+            </select>
+        </div>
+        @endif
+    </div>
+
+    <!-- Total Outstanding Summary -->
+    @if($previousBalances->isNotEmpty())
+    <div class="alert alert-warning mb-4">
+        <h6><i class="fas fa-exclamation-triangle"></i> Outstanding Balance Summary</h6>
+        <div class="row">
+            <div class="col-md-4">
+                <strong>Current Term:</strong> ₦{{ number_format($balance, 2) }}
+            </div>
+            <div class="col-md-4">
+                <strong>Previous Terms:</strong> ₦{{ number_format($previousBalances->sum('balance'), 2) }}
+            </div>
+            <div class="col-md-4">
+                <strong>Total Outstanding:</strong> 
+                <span class="text-danger">₦{{ number_format($totalOutstanding, 2) }}</span>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <div class="form-group row mb-3">
+        <label class="col-md-3 col-form-label">Amount <span class="text-danger">*</span></label>
+        <div class="col-md-9">
+            <input type="number" class="form-control" name="amount" id="payment_amount" 
+                   step="0.01" min="0" max="{{ $totalOutstanding > 0 ? $totalOutstanding : 0 }}" required>
+            <small class="form-text text-muted" id="amount_helper">
+                Maximum: ₦{{ number_format($balance > 0 ? $balance : 0, 2) }}
+            </small>
+            @error('amount')
+            <span class="text-danger">{{ $message }}</span>
+            @enderror
+        </div>
+    </div>
+
+    <div class="form-group row mb-3">
+        <label class="col-md-3 col-form-label">Payment Type <span class="text-danger">*</span></label>
+        <div class="col-md-9">
+            <select class="form-control" name="payment_type" required>
+                <option value="">Select payment type...</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Online Payment">Online Payment</option>
+                <option value="Cheque">Cheque</option>
+            </select>
+            @error('payment_type')
+            <span class="text-danger">{{ $message }}</span>
+            @enderror
+        </div>
+    </div>
+
+    <div class="form-group row mb-3">
+        <label class="col-md-3 col-form-label">Description (Optional)</label>
+        <div class="col-md-9">
+            <textarea class="form-control" name="description" rows="3" id="payment_description"></textarea>
+            @error('description')
+            <span class="text-danger">{{ $message }}</span>
+            @enderror
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        <i class="fas fa-save"></i> Record Payment
+    </button>
+    <a href="{{ route('payment.create') }}" class="btn btn-secondary">
+        Back to Selection
+    </a>
+</form>
                             </div>
                         </div>
                     </div>
@@ -226,64 +305,78 @@
     </div>
 
     <!-- Payment History Modal -->
-    <div class="modal fade" id="paymentHistoryModal" tabindex="-1" role="dialog"
-        aria-labelledby="paymentHistoryModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="paymentHistoryModalLabel">
-                        Payment History - {{ $student->name }}
-                    </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+    <!-- Payment History Modal -->
+<div class="modal fade" id="paymentHistoryModal" tabindex="-1" role="dialog"
+    aria-labelledby="paymentHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentHistoryModalLabel">
+                    Payment History - {{ $student->name }}
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-0" id="paymentHistoryContent">
+                <div class="table-responsive">
+                    <table class="table table-striped payment-history-table mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Session</th>
+                                <th>Term</th>
+                                <th>Amount</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($payments as $payment)
+                            <tr>
+                                <td>{{ $payment->created_at->format('M d, Y h:i A') }}</td>
+                                <td>
+                                    <span class="badge badge-secondary">
+                                        {{ $payment->term->session->name ?? 'N/A' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-primary">
+                                        {{ $payment->term->name ?? 'N/A' }}
+                                    </span>
+                                </td>
+                                <td><strong>₦{{ number_format($payment->amount, 2) }}</strong></td>
+                                <td><span class="badge badge-info">{{ $payment->payment_type }}</span></td>
+                                <td>{{ $payment->description ?? 'N/A' }}</td>
+                                <td>
+                                    <a href="{{ route('bursar.payment.receipt', $payment->id) }}"
+                                        class="btn btn-sm btn-primary" target="_blank" title="Print Receipt">
+                                        <i class="fas fa-print"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">No payments recorded yet.</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
-                <div class="modal-body p-0" id="paymentHistoryContent">
-                    <div class="table-responsive">
-                        <table class="table table-striped payment-history-table mb-0">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Amount</th>
-                                    <th>Type</th>
-                                    <th>Description</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($payments as $payment)
-                                <tr>
-                                    <td>{{ $payment->created_at->format('M d, Y h:i A') }}</td>
-                                    <td><strong>₦{{ number_format($payment->amount, 2) }}</strong></td>
-                                    <td><span class="badge badge-info">{{ $payment->payment_type }}</span></td>
-                                    <td>{{ $payment->description ?? 'N/A' }}</td>
-                                    <td>
-                                        <a href="{{ route('bursar.payment.receipt', $payment->id) }}"
-                                            class="btn btn-sm btn-primary" target="_blank" title="Print Receipt">
-                                            <i class="fas fa-print"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">No payments recorded yet.</td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <div>
+                    <strong>Total Paid (Current Term):</strong> ₦{{ number_format($paid, 2) }}<br>
+                    <strong>All-Time Total:</strong> ₦{{ number_format($payments->sum('amount'), 2) }}
                 </div>
-                <div class="modal-footer d-flex justify-content-between">
-                    <div>
-                        <strong>Total Paid:</strong> ₦{{ number_format($paid, 2) }}
-                    </div>
-                    <div id="paginationContainer">
-                        {{ $payments->appends(request()->query())->links() }}
-                    </div>
+                <div id="paginationContainer">
+                    {{ $payments->appends(request()->query())->links() }}
                 </div>
             </div>
         </div>
     </div>
+</div>
 
     <script>
         $(document).ready(function() {
@@ -321,66 +414,72 @@
     </script>
 </body>
 
-<!-- Payment History Modal -->
-<div class="modal fade" id="paymentHistoryModal" tabindex="-1" role="dialog" aria-labelledby="paymentHistoryModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="paymentHistoryModalLabel">
-                    Payment History - {{ $student->name }}
-                </h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body p-0" id="paymentHistoryContent">
-                <div class="table-responsive">
-                    <table class="table table-striped payment-history-table mb-0">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Type</th>
-                                <th>Description</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($payments as $payment)
-                            <tr>
-                                <td>{{ $payment->created_at->format('M d, Y h:i A') }}</td>
-                                <td><strong>₦{{ number_format($payment->amount, 2) }}</strong></td>
-                                <td><span class="badge badge-info">{{ $payment->payment_type }}</span></td>
-                                <td>{{ $payment->description ?? 'N/A' }}</td>
-                                <td>
-                                    <a href="{{ route('bursar.payment.receipt', $payment->id) }}"
-                                        class="btn btn-sm btn-primary" target="_blank" title="Print Receipt">
-                                        <i class="fas fa-print"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-4">No payments recorded yet.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer d-flex justify-content-between">
-                <div>
-                    <strong>Total Paid:</strong> ₦{{ number_format($paid, 2) }}
-                </div>
-                <div id="paginationContainer">
-                    {{ $payments->appends(request()->query())->links() }}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
+
+<script>
+$(document).ready(function() {
+    // Handle payment allocation changes
+    $('input[name="payment_allocation"]').change(function() {
+        const selectedValue = $(this).val();
+        const $customSelector = $('#custom_term_selector');
+        const $amountHelper = $('#amount_helper');
+        const $paymentAmount = $('#payment_amount');
+        const $description = $('#payment_description');
+        
+        if (selectedValue === 'current') {
+            $customSelector.hide();
+            $('#selected_term_id').val('{{ $currentTerm->id }}');
+            $('#selected_session_id').val('{{ $sessionId }}');
+            $paymentAmount.attr('max', {{ $balance > 0 ? $balance : 0 }});
+            $amountHelper.text('Maximum: ₦{{ number_format($balance > 0 ? $balance : 0, 2) }}');
+            $description.val('');
+        } else if (selectedValue === 'oldest') {
+            $customSelector.hide();
+            @if($previousBalances->isNotEmpty())
+            const oldestTerm = {{ $previousBalances->last()['term_id'] }};
+            const oldestSession = {{ $previousBalances->last()['session_id'] }};
+            const oldestBalance = {{ $previousBalances->last()['balance'] }};
+            
+            $('#selected_term_id').val(oldestTerm);
+            $('#selected_session_id').val(oldestSession);
+            $paymentAmount.attr('max', oldestBalance);
+            $amountHelper.text('Maximum: ₦' + oldestBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $description.val('Payment for {{ $previousBalances->last()["session_name"] }} - {{ $previousBalances->last()["term_name"] }}');
+            @endif
+        } else if (selectedValue === 'custom') {
+            $customSelector.show();
+            $('#custom_term_select').val('');
+            $amountHelper.text('Please select a term first');
+        }
+    });
+    
+    // Handle custom term selection
+    $('#custom_term_select').change(function() {
+        const $selected = $(this).find('option:selected');
+        const termId = $(this).val();
+        const sessionId = $selected.data('session');
+        const balance = $selected.data('balance');
+        const termText = $selected.text();
+        
+        if (termId) {
+            $('#selected_term_id').val(termId);
+            $('#selected_session_id').val(sessionId);
+            $('#payment_amount').attr('max', balance);
+            $('#amount_helper').text('Maximum: ₦' + balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('#payment_description').val('Payment for ' + termText.split('(')[0].trim());
+        }
+    });
+    
+    // Form validation
+    $('#paymentForm').on('submit', function(e) {
+        if ($('input[name="payment_allocation"]:checked').val() === 'custom' && !$('#custom_term_select').val()) {
+            e.preventDefault();
+            alert('Please select a specific term for payment');
+            return false;
+        }
+    });
+});
+</script>
 <script>
     $(document).ready(function() {
             // Handle pagination clicks inside modal
@@ -421,4 +520,32 @@
             });
         });
 </script>
+
+<style>
+    .modal-dialog-scrollable .modal-body {
+        overflow-y: auto;
+    }
+
+    .payment-history-table {
+        margin-bottom: 0;
+    }
+
+    .modal-footer .pagination {
+        margin: 0;
+    }
+    
+    /* New styles for better readability */
+    .payment-history-table th {
+        white-space: nowrap;
+    }
+    
+    .payment-history-table td {
+        vertical-align: middle;
+    }
+    
+    .badge {
+        font-size: 0.85rem;
+        padding: 0.35em 0.65em;
+    }
+</style>
 </body>

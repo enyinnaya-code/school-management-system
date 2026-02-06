@@ -181,6 +181,14 @@
             margin-top: 3px;
         }
         
+        /* Highlight for payment term if different from current */
+        .payment-term-highlight {
+            background-color: #f0f0f0;
+            padding: 3px;
+            margin: 3px 0;
+            border: 1px solid #ccc;
+        }
+        
         /* Print Specific */
         @media print {
             body {
@@ -189,6 +197,10 @@
             
             .no-print {
                 display: none !important;
+            }
+            
+            .payment-term-highlight {
+                background-color: #e0e0e0;
             }
         }
         
@@ -284,19 +296,35 @@
 
         <div class="separator"></div>
 
-        <!-- Session/Term Information -->
+        <!-- Session/Term Information - UPDATED SECTION -->
         <div class="content">
+            {{-- Show the term this payment is FOR (from the payment record) --}}
+            @php
+                $paymentTerm = $payment->term;
+                $paymentSession = $payment->session;
+                $isCurrentTerm = ($payment->term_id == $currentTerm->id && $payment->session_id == $session->id);
+            @endphp
+            
             <div class="info-row">
                 <span class="label">Session:</span>
-                <span class="value">{{ $session->name }}</span>
+                <span class="value">{{ $paymentSession->name }}</span>
                 <div style="clear:both;"></div>
             </div>
             
             <div class="info-row">
                 <span class="label">Term:</span>
-                <span class="value">{{ $currentTerm->name }}</span>
+                <span class="value">{{ $paymentTerm->name }}</span>
                 <div style="clear:both;"></div>
             </div>
+            
+            {{-- Indicate if payment is for a previous term --}}
+            @if(!$isCurrentTerm)
+            <div class="payment-term-highlight">
+                <div style="text-align: center; font-size: 8px;">
+                    ** PAYMENT FOR PREVIOUS TERM **
+                </div>
+            </div>
+            @endif
         </div>
 
         <div class="separator-solid"></div>
@@ -322,7 +350,7 @@
             @endif
         </div>
 
-        <!-- Payment Summary Box -->
+        <!-- Payment Summary Box - UPDATED SECTION -->
         <div class="payment-summary">
             <div class="info-row">
                 <span class="label">Total Due:</span>
@@ -331,7 +359,7 @@
             </div>
             
             <div class="info-row">
-                <span class="label">Total Paid:</span>
+                <span class="label">Amount Paid:</span>
                 <span class="value">N{{ number_format($totalDue - $balance, 2) }}</span>
                 <div style="clear:both;"></div>
             </div>
@@ -341,6 +369,13 @@
                     <span class="label">Balance:</span>
                     <span class="value text-bold">N{{ number_format($balance, 2) }}</span>
                     <div style="clear:both;"></div>
+                </div>
+            </div>
+            
+            {{-- Show note about term balance --}}
+            <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #000;">
+                <div style="font-size: 7px; text-align: center;">
+                    Balance for {{ $paymentTerm->name }}, {{ $paymentSession->name }}
                 </div>
             </div>
         </div>
