@@ -15,18 +15,6 @@
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h4>Print Results - {{ $class->name }} ({{ $section->section_name }})</h4>
-                                <div>
-                                    @if($selectedSession && $selectedTerm)
-                                    {{-- <a
-                                        href="{{ route('results.masterList', $class->id) }}?session_id={{ $selectedSession->id }}&term_id={{ $selectedTerm->id }}"
-                                        class="btn btn-success mr-2">
-                                        <i class="fas fa-table"></i> View Master List
-                                    </a> --}}
-                                    @endif
-                                    {{-- <a href="{{ route('results.print') }}" class="btn btn-secondary">
-                                        <i class="fas fa-arrow-left"></i> Back to Select Class
-                                    </a> --}}
-                                </div>
                             </div>
 
                             <div class="card-body">
@@ -46,21 +34,25 @@
                                 <!-- Session & Term Filter -->
                                 <div class="row mb-4">
                                     <div class="col-12">
-                                        <form method="GET"
-                                            action="{{ request()->fullUrlWithoutQuery(['session_id', 'term_id', 'page']) }}"
+                                        {{-- 
+                                            FIX: This form posts to selectClassForPrint (POST route).
+                                            We pass section_id and class_id as hidden fields so the
+                                            route validation passes. This avoids any GET redirect loop.
+                                        --}}
+                                        <form method="POST" action="{{ route('results.selectClassForPrint') }}"
                                             class="d-flex flex-wrap align-items-end gap-3">
+                                            @csrf
                                             <input type="hidden" name="section_id" value="{{ $section->id }}">
                                             <input type="hidden" name="class_id" value="{{ $class->id }}">
 
                                             <div class="form-group mb-0 m-1">
-                                                <label for="session_id"
-                                                    class="font-weight-bold mr-2 mb-1">Session:</label>
+                                                <label for="session_id" class="font-weight-bold mr-2 mb-1">Session:</label>
                                                 <select name="session_id" id="session_id" class="form-control"
                                                     onchange="this.form.submit()">
                                                     <option value="">-- Select Session --</option>
                                                     @foreach($sessions as $sess)
-                                                    <option value="{{ $sess->id }}" {{ $selectedSession?->id ==
-                                                        $sess->id ? 'selected' : '' }}>
+                                                    <option value="{{ $sess->id }}"
+                                                        {{ $selectedSession?->id == $sess->id ? 'selected' : '' }}>
                                                         {{ $sess->name }}
                                                     </option>
                                                     @endforeach
@@ -69,12 +61,12 @@
 
                                             <div class="form-group mb-0 m-1 mx-0">
                                                 <label for="term_id" class="font-weight-bold mr-2 mb-1">Term:</label>
-                                                <select name="term_id" id="term_id" class="form-control" {{
-                                                    $terms->isEmpty() ? 'disabled' : '' }}>
+                                                <select name="term_id" id="term_id" class="form-control"
+                                                    {{ $terms->isEmpty() ? 'disabled' : '' }}>
                                                     <option value="">-- Select Term --</option>
                                                     @foreach($terms as $term)
-                                                    <option value="{{ $term->id }}" {{ $selectedTerm?->id == $term->id ?
-                                                        'selected' : '' }}>
+                                                    <option value="{{ $term->id }}"
+                                                        {{ $selectedTerm?->id == $term->id ? 'selected' : '' }}>
                                                         {{ $term->name }}
                                                     </option>
                                                     @endforeach
@@ -85,12 +77,12 @@
                                                 <i class="fas fa-filter"></i> Apply Filter
                                             </button>
 
-                                            @if(request()->has('session_id') || request()->has('term_id'))
-                                            <a href="{{ route('results.selectClassForPrint', ['section_id' => $section->id, 'class_id' => $class->id]) }}"
-                                                class="btn btn-outline-secondary mb-0 m-1">
+                                            {{-- Reset: re-submit the form without session/term so it loads defaults --}}
+                                            <button type="submit" name="reset_filter" value="1"
+                                                class="btn btn-outline-secondary mb-0 m-1"
+                                                onclick="document.getElementById('session_id').value=''; document.getElementById('term_id').value='';">
                                                 <i class="fas fa-sync"></i> Reset
-                                            </a>
-                                            @endif
+                                            </button>
 
                                             @if($selectedSession && $selectedTerm)
                                             <a href="{{ route('results.masterList', $class->id) }}?session_id={{ $selectedSession->id }}&term_id={{ $selectedTerm->id }}"
@@ -138,22 +130,20 @@
                                                 <td>{{ $students->firstItem() + $index }}</td>
                                                 <td>{{ $student->name }}</td>
                                                 <td>{{ $student->admission_no }}</td>
-                                                <!-- Inside the Actions column -->
                                                 <td>
                                                     @if($selectedSession && $selectedTerm)
-                                                    <!-- Only Preview (streams in browser/tab) -->
                                                     <a href="{{ route('results.printStudent', [$student->id, 'stream']) }}?session_id={{ $selectedSession->id }}&term_id={{ $selectedTerm->id }}"
                                                         class="btn btn-sm btn-info" title="Preview Report Card"
                                                         target="_blank">
                                                         <i class="fas fa-eye"></i> Preview Only
                                                     </a>
 
-                                                    <!-- Optional: Add Remarks button if needed -->
                                                     <a href="{{ route('results.remarks.edit', $student->id) }}?session_id={{ $selectedSession->id }}&term_id={{ $selectedTerm->id }}"
                                                         class="btn btn-sm btn-warning ml-1"
                                                         title="Edit Skills & Remarks">
                                                         <i class="fas fa-comment-dots"></i> Remarks
                                                     </a>
+
                                                     <a href="{{ route('results.transcript', $student->id) }}"
                                                         class="btn btn-sm btn-success" target="_blank">
                                                         <i class="fas fa-file-alt"></i> Transcript
@@ -162,7 +152,6 @@
                                                     <span class="text-muted">Select session & term first</span>
                                                     @endif
                                                 </td>
-
                                             </tr>
                                             @empty
                                             <tr>
