@@ -442,10 +442,19 @@ class ResultsController extends Controller
 
     public function selectClassForPrint(Request $request)
     {
-        $request->validate([
-            'section_id' => 'required|exists:sections,id',
-            'class_id' => 'required|exists:school_classes,id',
-        ]);
+
+        // Only validate on POST submissions, not GET redirects
+        if ($request->isMethod('post')) {
+            $request->validate([
+                'section_id' => 'required|exists:sections,id',
+                'class_id'   => 'required|exists:school_classes,id',
+            ]);
+        }
+
+        // Guard: if params are missing on GET, go back to selection screen
+        if (!$request->input('section_id') || !$request->input('class_id')) {
+            return redirect()->route('results.print');
+        }
 
         $class = SchoolClass::findOrFail($request->class_id);
         $section = Section::find($class->section_id);
@@ -775,7 +784,7 @@ class ResultsController extends Controller
             'verbal_fluency' => null,
             'sports'         => null,
             'handling_tools' => null,
-            'drawing_painting'=> null,
+            'drawing_painting' => null,
             // --- newly added ---
             'games'          => null,
             'musical_skills' => null,
