@@ -443,18 +443,23 @@ class ResultsController extends Controller
     public function selectClassForPrint(Request $request)
     {
 
-        // Only validate on POST submissions, not GET redirects
-        if ($request->isMethod('post')) {
-            $request->validate([
-                'section_id' => 'required|exists:sections,id',
-                'class_id'   => 'required|exists:school_classes,id',
-            ]);
-        }
+        // On POST, redirect to GET with all params in the URL
+    if ($request->isMethod('post')) {
+        $request->validate([
+            'section_id' => 'required|exists:sections,id',
+            'class_id'   => 'required|exists:school_classes,id',
+        ]);
 
-        // Guard: if params are missing on GET, go back to selection screen
-        if (!$request->input('section_id') || !$request->input('class_id')) {
-            return redirect()->route('results.print');
-        }
+        return redirect()->route('results.selectClassForPrint', $request->only([
+            'section_id', 'class_id', 'session_id', 'term_id'
+        ]));
+    }
+
+    // Guard: if params are missing on GET, go back to selection screen
+    if (!$request->input('section_id') || !$request->input('class_id')) {
+        return redirect()->route('results.print');
+    }
+
 
         $class = SchoolClass::findOrFail($request->class_id);
         $section = Section::find($class->section_id);
