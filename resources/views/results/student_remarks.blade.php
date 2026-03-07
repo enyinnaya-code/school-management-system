@@ -4,7 +4,6 @@
     .table:not(.table-sm):not(.table-md):not(.dataTable) th {
         padding: 0 5px;
         height: 40px;
-
     }
 </style>
 
@@ -23,10 +22,8 @@
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h4>
                                     Affective & Psychomotor Skills - {{ $student->name }}
-                                    <small class="text-dark">({{ $class->name }} - {{ $section->section_name
-                                        }})</small>
+                                    <small class="text-dark">({{ $class->name }} - {{ $section->section_name }})</small>
                                 </h4>
-                                
                             </div>
 
                             <div class="card-body">
@@ -42,7 +39,7 @@
                                     <div class="row">
                                         <!-- Affective Skills Table -->
                                         <div class="col-md-6">
-                                            <h6 class="mb-3 text-lef font-weight-bold">AFFECTIVE SKILLS</h6>
+                                            <h6 class="mb-3 text-left font-weight-bold">AFFECTIVE AREA</h6>
                                             <div class="table-responsive mb-5">
                                                 <table class="table table-bordered table-hover text-center">
                                                     <thead class="thead-light">
@@ -56,91 +53,86 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
+                                                        {{-- Existing affective skills --}}
                                                         <tr>
-                                                            <td><strong>Punctuality</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td>
-                                                                <input type="radio" name="affective[punctuality]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->affective_ratings['punctuality'] ?? null)
-                                                                ==
-                                                                $i
-                                                                ? 'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Punctuality</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[punctuality]" value="{{ $i }}" {{ ($remark->affective_ratings['punctuality'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Politeness</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td>
-                                                                <input type="radio" name="affective[politeness]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->affective_ratings['politeness'] ?? null)
-                                                                == $i
-                                                                ? 'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Politeness</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[politeness]" value="{{ $i }}" {{ ($remark->affective_ratings['politeness'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Neatness</strong></td>@for($i=1;$i<=5;$i++)<td>
-                                                                <input type="radio" name="affective[neatness]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->affective_ratings['neatness'] ?? null) ==
-                                                                $i ?
-                                                                'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Neatness</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[neatness]" value="{{ $i }}" {{ ($remark->affective_ratings['neatness'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Honesty</strong></td>@for($i=1;$i<=5;$i++)<td>
-                                                                <input type="radio" name="affective[honesty]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->affective_ratings['honesty'] ?? null) ==
-                                                                $i
-                                                                ?
-                                                                'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Honesty</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[honesty]" value="{{ $i }}" {{ ($remark->affective_ratings['honesty'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Leadership Skill</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td>
-                                                                <input type="radio" name="affective[leadership_skill]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->affective_ratings['leadership_skill'] ??
-                                                                null)
-                                                                ==
-                                                                $i ? 'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Leadership Skill</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[leadership_skill]" value="{{ $i }}" {{ ($remark->affective_ratings['leadership_skill'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Cooperation</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td>
-                                                                <input type="radio" name="affective[cooperation]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->affective_ratings['cooperation'] ?? null)
-                                                                ==
-                                                                $i
-                                                                ? 'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Cooperation</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[cooperation]" value="{{ $i }}" {{ ($remark->affective_ratings['cooperation'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Attentiveness</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td>
-                                                                <input type="radio" name="affective[attentiveness]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->affective_ratings['attentiveness'] ??
-                                                                null) ==
-                                                                $i
-                                                                ? 'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Attentiveness</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[attentiveness]" value="{{ $i }}" {{ ($remark->affective_ratings['attentiveness'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Perseverance</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td>
-                                                                <input type="radio" name="affective[perseverance]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->affective_ratings['perseverance'] ?? null)
-                                                                ==
-                                                                $i ?
-                                                                'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Perseverance</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[perseverance]" value="{{ $i }}" {{ ($remark->affective_ratings['perseverance'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Attitude to Work</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td>
-                                                                <input type="radio" name="affective[attitude_to_work]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->affective_ratings['attitude_to_work'] ??
-                                                                null)
-                                                                ==
-                                                                $i ? 'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Attitude to Work</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[attitude_to_work]" value="{{ $i }}" {{ ($remark->affective_ratings['attitude_to_work'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
+                                                        </tr>
+
+                                                        {{-- Newly added affective skills --}}
+                                                        <tr>
+                                                            <td><strong>Helping Other</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[helping_other]" value="{{ $i }}" {{ ($remark->affective_ratings['helping_other'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
+                                                        </tr>
+                                                        <tr>
+                                                            <td><strong>Emotional Stability</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[emotional_stability]" value="{{ $i }}" {{ ($remark->affective_ratings['emotional_stability'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
+                                                        </tr>
+                                                        <tr>
+                                                            <td><strong>Health</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[health]" value="{{ $i }}" {{ ($remark->affective_ratings['health'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
+                                                        </tr>
+                                                        <tr>
+                                                            <td><strong>Speaking/Handwriting</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="affective[speaking_handwriting]" value="{{ $i }}" {{ ($remark->affective_ratings['speaking_handwriting'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -163,52 +155,50 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
+                                                        {{-- Existing psychomotor skills --}}
                                                         <tr>
-                                                            <td><strong>Handwriting</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td>
-                                                                <input type="radio" name="psychomotor[handwriting]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->psychomotor_ratings['handwriting'] ??
-                                                                null) ==
-                                                                $i
-                                                                ? 'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Handwriting</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="psychomotor[handwriting]" value="{{ $i }}" {{ ($remark->psychomotor_ratings['handwriting'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Verbal Fluency</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td>
-                                                                <input type="radio" name="psychomotor[verbal_fluency]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->psychomotor_ratings['verbal_fluency'] ??
-                                                                null)
-                                                                ==
-                                                                $i ? 'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Verbal Fluency</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="psychomotor[verbal_fluency]" value="{{ $i }}" {{ ($remark->psychomotor_ratings['verbal_fluency'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Sports</strong></td>@for($i=1;$i<=5;$i++)<td>
-                                                                <input type="radio" name="psychomotor[sports]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->psychomotor_ratings['sports'] ?? null) ==
-                                                                $i ?
-                                                                'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Sports</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="psychomotor[sports]" value="{{ $i }}" {{ ($remark->psychomotor_ratings['sports'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Handling Tools</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td>
-                                                                <input type="radio" name="psychomotor[handling_tools]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->psychomotor_ratings['handling_tools'] ??
-                                                                null)
-                                                                ==
-                                                                $i ? 'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Handling Tools</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="psychomotor[handling_tools]" value="{{ $i }}" {{ ($remark->psychomotor_ratings['handling_tools'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>Drawing & Painting</strong></td>@for($i=1;$i
-                                                            <=5;$i++)<td><input type="radio"
-                                                                    name="psychomotor[drawing_painting]"
-                                                                    value="{{ $i }}" {{
-                                                                    ($remark->psychomotor_ratings['drawing_painting'] ??
-                                                                null)
-                                                                == $i ? 'checked' : '' }} required></td>@endfor
+                                                            <td><strong>Drawing & Painting</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="psychomotor[drawing_painting]" value="{{ $i }}" {{ ($remark->psychomotor_ratings['drawing_painting'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
+                                                        </tr>
+
+                                                        {{-- Newly added psychomotor skills --}}
+                                                        <tr>
+                                                            <td><strong>Games</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="psychomotor[games]" value="{{ $i }}" {{ ($remark->psychomotor_ratings['games'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
+                                                        </tr>
+                                                        <tr>
+                                                            <td><strong>Musical Skills</strong></td>
+                                                            @for($i = 1; $i <= 5; $i++)
+                                                                <td><input type="radio" name="psychomotor[musical_skills]" value="{{ $i }}" {{ ($remark->psychomotor_ratings['musical_skills'] ?? null) == $i ? 'checked' : '' }} required></td>
+                                                            @endfor
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -219,15 +209,13 @@
                                     <!-- Remarks -->
                                     <div class="form-group">
                                         <label><strong>Class Teacher's Remark</strong></label>
-                                        <textarea name="teacher_remark" class="form-control" rows="4"
-                                            required>{{ old('teacher_remark', $remark->teacher_remark) }}</textarea>
+                                        <textarea name="teacher_remark" class="form-control" rows="4" required>{{ old('teacher_remark', $remark->teacher_remark) }}</textarea>
                                     </div>
 
                                     @if(in_array(Auth::user()->user_type, [1,2]))
                                     <div class="form-group">
                                         <label><strong>Principal's Remark</strong></label>
-                                        <textarea name="principal_remark" class="form-control"
-                                            rows="4">{{ old('principal_remark', $remark->principal_remark) }}</textarea>
+                                        <textarea name="principal_remark" class="form-control" rows="4">{{ old('principal_remark', $remark->principal_remark) }}</textarea>
                                     </div>
                                     @endif
 

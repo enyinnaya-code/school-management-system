@@ -11,25 +11,27 @@
             <!-- Main Content -->
             <div class="main-content pt-5 mt-5">
                 <section class="section">
-                 
+
 
                     <!-- Filter Section -->
                     <div class="card">
-                           <div class="section-header">
-                        <h1>Financial Analysis</h1>
-                        <div class="section-header-breadcrumb">
-                            <div class="breadcrumb-item active"><a href="{{ route('dynamic.dashboard') }}">Dashboard</a></div>
-                            <div class="breadcrumb-item">Financial Analysis</div>
+                        <div class="section-header">
+                            <h1>Financial Analysis</h1>
+                            <div class="section-header-breadcrumb">
+                                <div class="breadcrumb-item active"><a
+                                        href="{{ route('dynamic.dashboard') }}">Dashboard</a></div>
+                                <div class="breadcrumb-item">Financial Analysis</div>
+                            </div>
                         </div>
-                    </div>
-                    
+
                         <div class="card-header">
                             <h4><i class="fas fa-filter"></i> Filters</h4>
                             <div class="card-header-action">
                                 <a href="{{ route('finance.analysis') }}" class="btn btn-primary btn-sm">
                                     <i class="fas fa-sync"></i> Clear Filters
                                 </a>
-                                <a href="{{ route('finance.analysis.export', request()->query()) }}" class="btn btn-success btn-sm">
+                                <a href="{{ route('finance.analysis.export', request()->query()) }}"
+                                    class="btn btn-success btn-sm">
                                     <i class="fas fa-file-pdf"></i> Export PDF
                                 </a>
                             </div>
@@ -43,7 +45,8 @@
                                             <select name="section_id" id="section_id" class="form-control">
                                                 <option value="">All Sections</option>
                                                 @foreach($sections as $section)
-                                                <option value="{{ $section->id }}" {{ $sectionId == $section->id ? 'selected' : '' }}>
+                                                <option value="{{ $section->id }}" {{ $sectionId==$section->id ?
+                                                    'selected' : '' }}>
                                                     {{ $section->section_name }}
                                                 </option>
                                                 @endforeach
@@ -57,7 +60,8 @@
                                             <select name="session_id" id="session_id" class="form-control">
                                                 <option value="">All Sessions</option>
                                                 @foreach($sessions as $session)
-                                                <option value="{{ $session->id }}" {{ $sessionId == $session->id ? 'selected' : '' }}>
+                                                <option value="{{ $session->id }}" {{ $sessionId==$session->id ?
+                                                    'selected' : '' }}>
                                                     {{ $session->name }}
                                                 </option>
                                                 @endforeach
@@ -71,7 +75,8 @@
                                             <select name="term_id" id="term_id" class="form-control">
                                                 <option value="">All Terms</option>
                                                 @foreach($terms as $term)
-                                                <option value="{{ $term->id }}" {{ $termId == $term->id ? 'selected' : '' }}>
+                                                <option value="{{ $term->id }}" {{ $termId==$term->id ? 'selected' : ''
+                                                    }}>
                                                     {{ $term->name }}
                                                 </option>
                                                 @endforeach
@@ -85,7 +90,8 @@
                                             <select name="class_id" id="class_id" class="form-control">
                                                 <option value="">All Classes</option>
                                                 @foreach($classes as $class)
-                                                <option value="{{ $class->id }}" {{ $classId == $class->id ? 'selected' : '' }}>
+                                                <option value="{{ $class->id }}" {{ $classId==$class->id ? 'selected' :
+                                                    '' }}>
                                                     {{ $class->name }}
                                                 </option>
                                                 @endforeach
@@ -180,31 +186,35 @@
                                     <ul class="nav nav-tabs" id="breakdownTabs" role="tablist">
                                         @if($sectionBreakdown->isNotEmpty())
                                         <li class="nav-item">
-                                            <a class="nav-link active" id="section-tab" data-toggle="tab" href="#section" role="tab">
+                                            <a class="nav-link active" id="section-tab" data-toggle="tab"
+                                                href="#section" role="tab">
                                                 <i class="fas fa-building"></i> By Section
                                             </a>
                                         </li>
                                         @endif
-                                        
+
                                         @if($sessionBreakdown->isNotEmpty())
                                         <li class="nav-item">
-                                            <a class="nav-link {{ $sectionBreakdown->isEmpty() ? 'active' : '' }}" id="session-tab" data-toggle="tab" href="#session" role="tab">
+                                            <a class="nav-link {{ $sectionBreakdown->isEmpty() ? 'active' : '' }}"
+                                                id="session-tab" data-toggle="tab" href="#session" role="tab">
                                                 <i class="fas fa-calendar-alt"></i> By Session
                                             </a>
                                         </li>
                                         @endif
-                                        
+
                                         @if($termBreakdown->isNotEmpty())
                                         <li class="nav-item">
-                                            <a class="nav-link {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() ? 'active' : '' }}" id="term-tab" data-toggle="tab" href="#term" role="tab">
+                                            <a class="nav-link {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() ? 'active' : '' }}"
+                                                id="term-tab" data-toggle="tab" href="#term" role="tab">
                                                 <i class="fas fa-clock"></i> By Term
                                             </a>
                                         </li>
                                         @endif
-                                        
+
                                         @if($classBreakdown->isNotEmpty())
                                         <li class="nav-item">
-                                            <a class="nav-link {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() && $termBreakdown->isEmpty() ? 'active' : '' }}" id="class-tab" data-toggle="tab" href="#class" role="tab">
+                                            <a class="nav-link {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() && $termBreakdown->isEmpty() ? 'active' : '' }}"
+                                                id="class-tab" data-toggle="tab" href="#class" role="tab">
                                                 <i class="fas fa-users"></i> By Class
                                             </a>
                                         </li>
@@ -212,7 +222,8 @@
 
                                         @if($topDebtors->isNotEmpty())
                                         <li class="nav-item">
-                                            <a class="nav-link" id="debtors-tab" data-toggle="tab" href="#debtors" role="tab">
+                                            <a class="nav-link" id="debtors-tab" data-toggle="tab" href="#debtors"
+                                                role="tab">
                                                 <i class="fas fa-exclamation-circle"></i> Top Debtors
                                             </a>
                                         </li>
@@ -239,11 +250,15 @@
                                                         @foreach($sectionBreakdown as $item)
                                                         <tr>
                                                             <td><strong>{{ $item['name'] }}</strong></td>
-                                                            <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
-                                                            <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
-                                                            <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
+                                                            <td class="text-right">₦{{ number_format($item['expected'],
+                                                                2) }}</td>
+                                                            <td class="text-right text-success">₦{{
+                                                                number_format($item['paid'], 2) }}</td>
+                                                            <td class="text-right text-danger">₦{{
+                                                                number_format($item['outstanding'], 2) }}</td>
                                                             <td class="text-right">
-                                                                <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
+                                                                <span
+                                                                    class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
                                                                     {{ number_format($item['rate'], 2) }}%
                                                                 </span>
                                                             </td>
@@ -257,7 +272,8 @@
 
                                         <!-- Session Breakdown Tab -->
                                         @if($sessionBreakdown->isNotEmpty())
-                                        <div class="tab-pane fade {{ $sectionBreakdown->isEmpty() ? 'show active' : '' }}" id="session" role="tabpanel">
+                                        <div class="tab-pane fade {{ $sectionBreakdown->isEmpty() ? 'show active' : '' }}"
+                                            id="session" role="tabpanel">
                                             <div class="table-responsive">
                                                 <table class="table table-striped table-hover">
                                                     <thead>
@@ -273,11 +289,15 @@
                                                         @foreach($sessionBreakdown as $item)
                                                         <tr>
                                                             <td><strong>{{ $item['name'] }}</strong></td>
-                                                            <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
-                                                            <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
-                                                            <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
+                                                            <td class="text-right">₦{{ number_format($item['expected'],
+                                                                2) }}</td>
+                                                            <td class="text-right text-success">₦{{
+                                                                number_format($item['paid'], 2) }}</td>
+                                                            <td class="text-right text-danger">₦{{
+                                                                number_format($item['outstanding'], 2) }}</td>
                                                             <td class="text-right">
-                                                                <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
+                                                                <span
+                                                                    class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
                                                                     {{ number_format($item['rate'], 2) }}%
                                                                 </span>
                                                             </td>
@@ -291,7 +311,8 @@
 
                                         <!-- Term Breakdown Tab -->
                                         @if($termBreakdown->isNotEmpty())
-                                        <div class="tab-pane fade {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() ? 'show active' : '' }}" id="term" role="tabpanel">
+                                        <div class="tab-pane fade {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() ? 'show active' : '' }}"
+                                            id="term" role="tabpanel">
                                             <div class="table-responsive">
                                                 <table class="table table-striped table-hover">
                                                     <thead>
@@ -307,11 +328,15 @@
                                                         @foreach($termBreakdown as $item)
                                                         <tr>
                                                             <td><strong>{{ $item['name'] }}</strong></td>
-                                                            <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
-                                                            <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
-                                                            <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
+                                                            <td class="text-right">₦{{ number_format($item['expected'],
+                                                                2) }}</td>
+                                                            <td class="text-right text-success">₦{{
+                                                                number_format($item['paid'], 2) }}</td>
+                                                            <td class="text-right text-danger">₦{{
+                                                                number_format($item['outstanding'], 2) }}</td>
                                                             <td class="text-right">
-                                                                <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
+                                                                <span
+                                                                    class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
                                                                     {{ number_format($item['rate'], 2) }}%
                                                                 </span>
                                                             </td>
@@ -325,7 +350,8 @@
 
                                         <!-- Class Breakdown Tab -->
                                         @if($classBreakdown->isNotEmpty())
-                                        <div class="tab-pane fade {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() && $termBreakdown->isEmpty() ? 'show active' : '' }}" id="class" role="tabpanel">
+                                        <div class="tab-pane fade {{ $sectionBreakdown->isEmpty() && $sessionBreakdown->isEmpty() && $termBreakdown->isEmpty() ? 'show active' : '' }}"
+                                            id="class" role="tabpanel">
                                             <div class="table-responsive">
                                                 <table class="table table-striped table-hover">
                                                     <thead>
@@ -341,11 +367,15 @@
                                                         @foreach($classBreakdown as $item)
                                                         <tr>
                                                             <td><strong>{{ $item['name'] }}</strong></td>
-                                                            <td class="text-right">₦{{ number_format($item['expected'], 2) }}</td>
-                                                            <td class="text-right text-success">₦{{ number_format($item['paid'], 2) }}</td>
-                                                            <td class="text-right text-danger">₦{{ number_format($item['outstanding'], 2) }}</td>
+                                                            <td class="text-right">₦{{ number_format($item['expected'],
+                                                                2) }}</td>
+                                                            <td class="text-right text-success">₦{{
+                                                                number_format($item['paid'], 2) }}</td>
+                                                            <td class="text-right text-danger">₦{{
+                                                                number_format($item['outstanding'], 2) }}</td>
                                                             <td class="text-right">
-                                                                <span class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
+                                                                <span
+                                                                    class="badge badge-{{ $item['rate'] >= 75 ? 'success' : ($item['rate'] >= 50 ? 'warning' : 'danger') }}">
                                                                     {{ number_format($item['rate'], 2) }}%
                                                                 </span>
                                                             </td>
@@ -382,9 +412,12 @@
                                                             <td><strong>{{ $debtor['name'] }}</strong></td>
                                                             <td>{{ $debtor['class'] }}</td>
                                                             <td>{{ $debtor['section'] }}</td>
-                                                            <td class="text-right">₦{{ number_format($debtor['expected'], 2) }}</td>
-                                                            <td class="text-right text-success">₦{{ number_format($debtor['paid'], 2) }}</td>
-                                                            <td class="text-right text-danger font-weight-bold">₦{{ number_format($debtor['outstanding'], 2) }}</td>
+                                                            <td class="text-right">₦{{
+                                                                number_format($debtor['expected'], 2) }}</td>
+                                                            <td class="text-right text-success">₦{{
+                                                                number_format($debtor['paid'], 2) }}</td>
+                                                            <td class="text-right text-danger font-weight-bold">₦{{
+                                                                number_format($debtor['outstanding'], 2) }}</td>
                                                         </tr>
                                                         @endforeach
                                                     </tbody>
@@ -529,4 +562,64 @@
             });
         });
     </script>
+
+    <style>
+        /* Fix for uniform card heights in Financial Analysis page */
+
+        /* Ensure all statistic cards have the same height */
+        .card-statistic-1 {
+            height: 100%;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+
+        /* Make the card wrap fill available space */
+        .card-statistic-1 .card-wrap {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Ensure consistent spacing */
+        .card-statistic-1 .card-header h4 {
+            font-size: 12px;
+            margin-bottom: 3px;
+            white-space: nowrap;
+        }
+
+        .card-statistic-1 .card-body {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 3px;
+        }
+
+        /* Ensure the icon container is consistent */
+        .card-statistic-1 .card-icon {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-statistic-1 .card-icon i {
+            font-size: 28px;
+        }
+
+        .card.card-statistic-1 .card-icon,
+        .card.card-statistic-2 .card-icon {
+            width: 60px;
+            height: 60px;
+            margin: 10px;
+            border-radius: 3px;
+            line-height: 94px;
+            text-align: center;
+            float: left;
+            border-radius: 50px;
+            margin-right: 15px;
+        }
+    </style>
 </body>

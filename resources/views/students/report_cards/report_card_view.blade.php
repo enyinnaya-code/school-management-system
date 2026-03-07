@@ -40,8 +40,8 @@
                                             style="display: table-cell; text-align: center; padding: 0 10px;">
                                             <div style="font-size: 18px; font-weight: bold;">{{
                                                 strtoupper(school_name()) }}</div>
-                                            <div style="font-style: italic; font-size: 12px;">Motto: Excellence
-                                                Personified</div>
+                                            {{-- <div style="font-style: italic; font-size: 12px;">Motto: Excellence
+                                                Personified</div> --}}
                                             <div style="font-size: 13px;">{{ $settings->address ?? 'School Address' }}
                                             </div>
                                             <div style="font-size: 14px; font-weight: bold; margin-top: 5px;">STUDENT'S

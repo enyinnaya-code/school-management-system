@@ -750,25 +750,35 @@ class ResultsController extends Controller
     {
         if ($type === 'affective') {
             return [
-                'punctuality'       => null,
-                'politeness'        => null,
-                'neatness'          => null,
-                'honesty'           => null,
-                'leadership_skill'  => null,
-                'cooperation'       => null,
-                'attentiveness'     => null,
-                'perseverance'      => null,
-                'attitude_to_work'  => null,
+                // --- original ---
+                'punctuality'          => null,
+                'politeness'           => null,
+                'neatness'             => null,
+                'honesty'              => null,
+                'leadership_skill'     => null,
+                'cooperation'          => null,
+                'attentiveness'        => null,
+                'perseverance'         => null,
+                'attitude_to_work'     => null,
+                // --- newly added ---
+                'helping_other'        => null,
+                'emotional_stability'  => null,
+                'health'               => null,
+                'speaking_handwriting' => null,
             ];
         }
 
         // psychomotor
         return [
-            'handwriting'       => null,
-            'verbal_fluency'    => null,
-            'sports'            => null,
-            'handling_tools'    => null,
-            'drawing_painting'  => null,
+            // --- original ---
+            'handwriting'    => null,
+            'verbal_fluency' => null,
+            'sports'         => null,
+            'handling_tools' => null,
+            'drawing_painting'=> null,
+            // --- newly added ---
+            'games'          => null,
+            'musical_skills' => null,
         ];
     }
 
@@ -827,26 +837,36 @@ class ResultsController extends Controller
             return redirect()->back()->with('error', 'No current academic session or term is set.');
         }
 
-        // Validation: each rating must be 1–5 or null
+        // Validation — all ratings 1-5 or null
         $request->validate([
-            'affective.punctuality'       => 'nullable|integer|between:1,5',
-            'affective.politeness'        => 'nullable|integer|between:1,5',
-            'affective.neatness'          => 'nullable|integer|between:1,5',
-            'affective.honesty'           => 'nullable|integer|between:1,5',
-            'affective.leadership_skill'  => 'nullable|integer|between:1,5',
-            'affective.cooperation'       => 'nullable|integer|between:1,5',
-            'affective.attentiveness'     => 'nullable|integer|between:1,5',
-            'affective.perseverance'      => 'nullable|integer|between:1,5',
-            'affective.attitude_to_work'  => 'nullable|integer|between:1,5',
+            // affective (original)
+            'affective.punctuality'          => 'nullable|integer|between:1,5',
+            'affective.politeness'           => 'nullable|integer|between:1,5',
+            'affective.neatness'             => 'nullable|integer|between:1,5',
+            'affective.honesty'              => 'nullable|integer|between:1,5',
+            'affective.leadership_skill'     => 'nullable|integer|between:1,5',
+            'affective.cooperation'          => 'nullable|integer|between:1,5',
+            'affective.attentiveness'        => 'nullable|integer|between:1,5',
+            'affective.perseverance'         => 'nullable|integer|between:1,5',
+            'affective.attitude_to_work'     => 'nullable|integer|between:1,5',
+            // affective (newly added)
+            'affective.helping_other'        => 'nullable|integer|between:1,5',
+            'affective.emotional_stability'  => 'nullable|integer|between:1,5',
+            'affective.health'               => 'nullable|integer|between:1,5',
+            'affective.speaking_handwriting' => 'nullable|integer|between:1,5',
 
-            'psychomotor.handwriting'       => 'nullable|integer|between:1,5',
-            'psychomotor.verbal_fluency'    => 'nullable|integer|between:1,5',
-            'psychomotor.sports'            => 'nullable|integer|between:1,5',
-            'psychomotor.handling_tools'    => 'nullable|integer|between:1,5',
-            'psychomotor.drawing_painting'  => 'nullable|integer|between:1,5',
+            // psychomotor (original)
+            'psychomotor.handwriting'        => 'nullable|integer|between:1,5',
+            'psychomotor.verbal_fluency'     => 'nullable|integer|between:1,5',
+            'psychomotor.sports'             => 'nullable|integer|between:1,5',
+            'psychomotor.handling_tools'     => 'nullable|integer|between:1,5',
+            'psychomotor.drawing_painting'   => 'nullable|integer|between:1,5',
+            // psychomotor (newly added)
+            'psychomotor.games'              => 'nullable|integer|between:1,5',
+            'psychomotor.musical_skills'     => 'nullable|integer|between:1,5',
 
-            'teacher_remark'    => 'nullable|string|max:1000',
-            'principal_remark'  => 'nullable|string|max:1000',
+            'teacher_remark'   => 'nullable|string|max:1000',
+            'principal_remark' => 'nullable|string|max:1000',
         ]);
 
         // Extract and clean ratings (only allowed keys)
@@ -860,7 +880,14 @@ class ResultsController extends Controller
             $this->defaultRatings('psychomotor')
         );
 
-        // Update or create the record
+        // Fetch existing record so we can preserve principal_remark for non-admins
+        $existingRemark = StudentRemark::where([
+            'student_id' => $student->id,
+            'class_id'   => $class->id,
+            'session_id' => $currentSession->id,
+            'term_id'    => $currentTerm->id,
+        ])->first();
+
         StudentRemark::updateOrCreate(
             [
                 'student_id' => $student->id,
@@ -874,7 +901,7 @@ class ResultsController extends Controller
                 'teacher_remark'      => $request->teacher_remark,
                 'principal_remark'    => in_array(Auth::user()->user_type, [1, 2])
                     ? $request->principal_remark
-                    : ($remark->principal_remark ?? null), // only admins can change principal remark
+                    : ($existingRemark?->principal_remark ?? null),
                 'updated_by'          => Auth::id(),
             ]
         );
