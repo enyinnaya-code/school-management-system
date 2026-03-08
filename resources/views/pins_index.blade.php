@@ -7,7 +7,6 @@
             <div class="navbar-bg"></div>
             @include('includes.right_top_nav')
             @include('includes.side_nav')
-            <!-- Main Content -->
             <div class="main-content pt-5 mt-5">
                 <section class="section mb-5 pb-1 px-0">
                     <div class="col-12">
@@ -85,7 +84,7 @@
                             </div>
 
                             <div class="card-body">
-                                <!-- Display Active Filters -->
+                                <!-- Active Filters -->
                                 @if(request('filter_section') || request('filter_session') || request('filter_term') || request('filter_status') !== null || request('filter_issued') !== null)
                                     <div class="mb-3">
                                         <h6>Active Filters:</h6>
@@ -134,9 +133,9 @@
                                                 <tr>
                                                     <td>{{ ($pins->currentPage() - 1) * $pins->perPage() + $index + 1 }}</td>
                                                     <td><strong>{{ $pin->pin_code }}</strong></td>
-                                                    <td>{{ $pin->section->section_name }}</td>
-                                                    <td>{{ $pin->session->name }}</td>
-                                                    <td>{{ $pin->term->name }}</td>
+                                                    <td>{{ $pin->section->section_name ?? '—' }}</td>
+                                                    <td>{{ $pin->session->name ?? '—' }}</td>
+                                                    <td>{{ $pin->term->name ?? '—' }}</td>
                                                     <td>{{ $pin->usage_count }} / 5</td>
                                                     <td>
                                                         @if($pin->is_used)
@@ -156,23 +155,21 @@
                                                             </span>
                                                         @endif
                                                     </td>
-                                                    <td>{{ $pin->createdBy->name }}</td>
+                                                    <td>{{ $pin->createdBy->name ?? '—' }}</td>
                                                     <td>{{ $pin->created_at->format('M d, Y') }}</td>
                                                     <td>
                                                         <div class="btn-group" role="group">
-                                                            <!-- View Details Button -->
-                                                            <button class="btn btn-sm m-1 btn-info view-details-btn" 
+                                                            <button class="btn btn-sm m-1 btn-info view-details-btn"
                                                                 data-id="{{ $pin->id }}"
                                                                 title="View Details">
                                                                 <i class="fas fa-eye"></i>
                                                             </button>
 
                                                             @if(Auth::user()->user_type == 1)
-                                                                <!-- Reset Usage Button -->
-                                                                <button class="btn btn-sm m-1 btn-warning" 
-                                                                    data-toggle="modal" 
+                                                                <button class="btn btn-sm m-1 btn-warning"
+                                                                    data-toggle="modal"
                                                                     data-target="#resetModal"
-                                                                    data-id="{{ $pin->id }}" 
+                                                                    data-id="{{ $pin->id }}"
                                                                     data-pin-code="{{ $pin->pin_code }}"
                                                                     title="Reset Usage">
                                                                     <i class="fas fa-undo"></i>
@@ -186,59 +183,115 @@
                                     </table>
                                 </div>
 
-                                <!-- Compact Pagination -->
-                                <div class="mt-4">
-                                    <nav aria-label="Page navigation">
-                                        <ul class="pagination justify-content-start">
-                                            <!-- Previous Button -->
-                                            <li class="page-item {{ $pins->onFirstPage() ? 'disabled' : '' }}">
-                                                <a class="page-link" href="{{ $pins->appends(request()->query())->previousPageUrl() }}" aria-label="Previous">
-                                                    <span aria-hidden="true">&laquo;</span>
-                                                </a>
-                                            </li>
+                                <!-- Intelligent Pagination -->
+                                @if($pins->lastPage() > 1)
+                                @php
+                                    $currentPage = $pins->currentPage();
+                                    $lastPage    = $pins->lastPage();
+                                    $total       = $pins->total();
+                                    $from        = $pins->firstItem();
+                                    $to          = $pins->lastItem();
+                                    $q           = $pins->appends(request()->query());
 
-                                            <!-- Page Numbers (Limited to ±2 around current page) -->
-                                            @php
-                                                $currentPage = $pins->currentPage();
-                                                $lastPage = $pins->lastPage();
-                                                $range = 2;
-                                                $start = max(1, $currentPage - $range);
-                                                $end = min($lastPage, $currentPage + $range);
-                                            @endphp
+                                    // Window of page numbers around current page
+                                    $window = 2;
+                                    $start  = max(2, $currentPage - $window);
+                                    $end    = min($lastPage - 1, $currentPage + $window);
+                                @endphp
+                                <div class="mt-3 d-flex flex-wrap align-items-start justify-content-between gap-2">
 
-                                            @if($start > 1)
-                                                <li class="page-item">
-                                                    <a class="page-link" href="{{ $pins->appends(request()->query())->url(1) }}">1</a>
+                                    {{-- Record count info --}}
+                                    <small class="text-muted">
+                                        Showing <strong>{{ $from }}</strong>–<strong>{{ $to }}</strong>
+                                        of <strong>{{ $total }}</strong> pins
+                                        &nbsp;|&nbsp; Page {{ $currentPage }} of {{ $lastPage }}
+                                    </small>
+
+                                    <div class="d-flex align-items-center gap-2">
+                                        {{-- Per-page jump --}}
+                                        <form method="GET" action="{{ route('pins.index') }}" class="d-inline-flex align-items-center mr-3">
+                                            @foreach(request()->except('page', 'per_page') as $key => $val)
+                                                <input type="hidden" name="{{ $key }}" value="{{ $val }}">
+                                            @endforeach
+                                            <label class="mb-0 mr-1 small text-muted">Show</label>
+                                            <select name="per_page" class="form-control form-control-sm" style="width:70px;" onchange="this.form.submit()">
+                                                @foreach([10, 25, 50, 100] as $size)
+                                                    <option value="{{ $size }}" {{ request('per_page', 10) == $size ? 'selected' : '' }}>{{ $size }}</option>
+                                                @endforeach
+                                            </select>
+                                        </form>
+
+                                        {{-- Pagination controls --}}
+                                        <nav aria-label="Pin pagination">
+                                            <ul class="pagination pagination-sm mb-0">
+
+                                                {{-- First --}}
+                                                <li class="page-item {{ $currentPage == 1 ? 'disabled' : '' }}" title="First page">
+                                                    <a class="page-link" href="{{ $q->url(1) }}">&laquo;&laquo;</a>
                                                 </li>
+
+                                                {{-- Previous --}}
+                                                <li class="page-item {{ $pins->onFirstPage() ? 'disabled' : '' }}">
+                                                    <a class="page-link" href="{{ $q->previousPageUrl() ?? '#' }}" aria-label="Previous">&laquo;</a>
+                                                </li>
+
+                                                {{-- Always show page 1 --}}
+                                                <li class="page-item {{ $currentPage == 1 ? 'active' : '' }}">
+                                                    <a class="page-link" href="{{ $q->url(1) }}">1</a>
+                                                </li>
+
+                                                {{-- Left ellipsis --}}
                                                 @if($start > 2)
-                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
                                                 @endif
-                                            @endif
 
-                                            @for($i = $start; $i <= $end; $i++)
-                                                <li class="page-item {{ $currentPage == $i ? 'active' : '' }}">
-                                                    <a class="page-link" href="{{ $pins->appends(request()->query())->url($i) }}">{{ $i }}</a>
-                                                </li>
-                                            @endfor
+                                                {{-- Window pages (excluding first and last) --}}
+                                                @for($i = $start; $i <= $end; $i++)
+                                                    <li class="page-item {{ $currentPage == $i ? 'active' : '' }}">
+                                                        <a class="page-link" href="{{ $q->url($i) }}">{{ $i }}</a>
+                                                    </li>
+                                                @endfor
 
-                                            @if($end < $lastPage)
+                                                {{-- Right ellipsis --}}
                                                 @if($end < $lastPage - 1)
-                                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
                                                 @endif
-                                                <li class="page-item">
-                                                    <a class="page-link" href="{{ $pins->appends(request()->query())->url($lastPage) }}">{{ $lastPage }}</a>
-                                                </li>
-                                            @endif
 
-                                            <!-- Next Button -->
-                                            <li class="page-item {{ $pins->hasMorePages() ? '' : 'disabled' }}">
-                                                <a class="page-link" href="{{ $pins->appends(request()->query())->nextPageUrl() }}" aria-label="Next">
-                                                    <span aria-hidden="true">&raquo;</span>
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </nav>
+                                                {{-- Always show last page (if more than 1 page) --}}
+                                                @if($lastPage > 1)
+                                                    <li class="page-item {{ $currentPage == $lastPage ? 'active' : '' }}">
+                                                        <a class="page-link" href="{{ $q->url($lastPage) }}">{{ $lastPage }}</a>
+                                                    </li>
+                                                @endif
+
+                                                {{-- Next --}}
+                                                <li class="page-item {{ $pins->hasMorePages() ? '' : 'disabled' }}">
+                                                    <a class="page-link" href="{{ $q->nextPageUrl() ?? '#' }}" aria-label="Next">&raquo;</a>
+                                                </li>
+
+                                                {{-- Last --}}
+                                                <li class="page-item {{ $currentPage == $lastPage ? 'disabled' : '' }}" title="Last page">
+                                                    <a class="page-link" href="{{ $q->url($lastPage) }}">&raquo;&raquo;</a>
+                                                </li>
+
+                                            </ul>
+                                        </nav>
+
+                                        {{-- Jump to page --}}
+                                        <form method="GET" action="{{ route('pins.index') }}" class="d-inline-flex align-items-center ml-2" id="jumpForm">
+                                            @foreach(request()->except('page') as $key => $val)
+                                                <input type="hidden" name="{{ $key }}" value="{{ $val }}">
+                                            @endforeach
+                                            <label class="mb-0 mr-1 small text-muted">Go to</label>
+                                            <input type="number" name="page" min="1" max="{{ $lastPage }}"
+                                                class="form-control form-control-sm text-center"
+                                                style="width:60px;"
+                                                placeholder="{{ $currentPage }}"
+                                                onchange="if(this.value >= 1 && this.value <= {{ $lastPage }}) this.form.submit()">
+                                        </form>
+                                    </div>
                                 </div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -247,24 +300,19 @@
         </div>
     </div>
 
-    <!-- Print Issued PINs Modal -->
-    <div class="modal fade" id="printModal" tabindex="-1" role="dialog" aria-labelledby="printModalLabel" aria-hidden="true">
+    <!-- Print Modal -->
+    <div class="modal fade" id="printModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title" id="printModalLabel">
-                        <i class="fas fa-print"></i> Print Issued PINs
-                    </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <h5 class="modal-title"><i class="fas fa-print"></i> Print Issued PINs</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <form action="{{ route('pins.print') }}" method="GET" target="_blank">
                     <div class="modal-body">
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle"></i> Select filters to print issued PINs. Leave all blank to print all issued PINs.
                         </div>
-                        
                         <div class="row">
                             <div class="form-group col-md-6">
                                 <label>Section</label>
@@ -303,9 +351,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-info">
-                            <i class="fas fa-print"></i> Generate Print View
-                        </button>
+                        <button type="submit" class="btn btn-info"><i class="fas fa-print"></i> Generate Print View</button>
                     </div>
                 </form>
             </div>
@@ -313,22 +359,16 @@
     </div>
 
     <!-- Pin Details Modal -->
-    <div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title" id="detailsModalLabel">
-                        <i class="fas fa-info-circle"></i> Pin Details
-                    </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <h5 class="modal-title"><i class="fas fa-info-circle"></i> Pin Details</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="modal-body" id="pinDetailsContent">
                     <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="sr-only">Loading...</span>
-                        </div>
+                        <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>
                         <p class="mt-2">Loading pin details...</p>
                     </div>
                 </div>
@@ -339,15 +379,13 @@
         </div>
     </div>
 
-    <!-- Reset Usage Confirmation Modal -->
-    <div class="modal fade" id="resetModal" tabindex="-1" role="dialog" aria-labelledby="resetModalLabel" aria-hidden="true">
+    <!-- Reset Confirmation Modal -->
+    <div class="modal fade" id="resetModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="resetModalLabel">Confirm Reset Pin Usage</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <h5 class="modal-title">Confirm Reset Pin Usage</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="modal-body">
                     Are you sure you want to reset the usage for pin: <strong id="pinCode"></strong>?
@@ -364,161 +402,92 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        $(document).ready(function() {
-            // Reset Modal
-            $('#resetModal').on('show.bs.modal', function(event) {
-                const button = $(event.relatedTarget);
-                const id = button.data('id');
-                const pinCode = button.data('pin-code');
+        $(document).ready(function () {
 
-                $('#pinCode').text(pinCode);
-                $('#resetForm').attr('action', '{{ url("pins/reset") }}/' + id);
+            // Reset Modal
+            $('#resetModal').on('show.bs.modal', function (event) {
+                const button = $(event.relatedTarget);
+                $('#pinCode').text(button.data('pin-code'));
+                $('#resetForm').attr('action', '{{ url("pins/reset") }}/' + button.data('id'));
             });
 
-            // Print Modal - Load classes when section changes
-            $('#print_section').on('change', function() {
+            // Print modal — load classes when section changes
+            $('#print_section').on('change', function () {
                 const sectionId = $(this).val();
-                const classSelect = $('#print_class');
-                
-                classSelect.html('<option value="">Loading...</option>');
-                
+                const $cls = $('#print_class');
+                $cls.html('<option value="">Loading...</option>');
                 if (sectionId) {
-                    $.get('{{ url("api/classes") }}/' + sectionId, function(data) {
-                        classSelect.html('<option value="">All Classes</option>');
-                        data.classes.forEach(function(cls) {
-                            classSelect.append(`<option value="${cls.id}">${cls.name}</option>`);
+                    $.get('{{ url("ajax/classes") }}/' + sectionId, function (data) {
+                        $cls.html('<option value="">All Classes</option>');
+                        data.classes.forEach(function (c) {
+                            $cls.append(`<option value="${c.id}">${c.name}</option>`);
                         });
+                    }).fail(function () {
+                        $cls.html('<option value="">All Classes</option>');
                     });
                 } else {
-                    classSelect.html('<option value="">All Classes</option>');
+                    $cls.html('<option value="">All Classes</option>');
                 }
             });
 
-            // View Details Button
-            $('.view-details-btn').on('click', function() {
+            // View Details
+            $(document).on('click', '.view-details-btn', function () {
                 const pinId = $(this).data('id');
-                
-                // Show modal
                 $('#detailsModal').modal('show');
-                
-                // Reset content to loading state
                 $('#pinDetailsContent').html(`
                     <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="sr-only">Loading...</span>
-                        </div>
+                        <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>
                         <p class="mt-2">Loading pin details...</p>
-                    </div>
-                `);
+                    </div>`);
 
-                // Fetch pin details
-                $.get('{{ url("pins") }}/' + pinId + '/details', function(data) {
+                $.get('{{ url("pins") }}/' + pinId + '/details', function (data) {
                     let html = `
                         <div class="row">
                             <div class="col-md-6">
                                 <h6 class="text-primary"><i class="fas fa-key"></i> Pin Information</h6>
                                 <table class="table table-sm table-bordered">
-                                    <tr>
-                                        <th width="40%">Pin Code:</th>
-                                        <td><strong class="text-info">${data.pin_code}</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <th>Section:</th>
-                                        <td>${data.section}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Session:</th>
-                                        <td>${data.session}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Term:</th>
-                                        <td>${data.term}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Usage Count:</th>
-                                        <td><span class="badge badge-secondary">${data.usage_count} / 5</span></td>
-                                    </tr>
-                                    <tr>
-                                        <th>Status:</th>
-                                        <td>
-                                            ${data.is_used 
-                                                ? '<span class="badge badge-success">Used</span>' 
-                                                : '<span class="badge badge-primary">Unused</span>'}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>Created By:</th>
-                                        <td>${data.created_by}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Created At:</th>
-                                        <td>${data.created_at}</td>
-                                    </tr>
+                                    <tr><th width="40%">Pin Code:</th><td><strong class="text-info">${data.pin_code}</strong></td></tr>
+                                    <tr><th>Section:</th><td>${data.section ?? '—'}</td></tr>
+                                    <tr><th>Session:</th><td>${data.session ?? '—'}</td></tr>
+                                    <tr><th>Term:</th><td>${data.term ?? '—'}</td></tr>
+                                    <tr><th>Usage Count:</th><td><span class="badge badge-secondary">${data.usage_count} / 5</span></td></tr>
+                                    <tr><th>Status:</th><td>${data.is_used ? '<span class="badge badge-success">Used</span>' : '<span class="badge badge-primary">Unused</span>'}</td></tr>
+                                    <tr><th>Created By:</th><td>${data.created_by ?? '—'}</td></tr>
+                                    <tr><th>Created At:</th><td>${data.created_at}</td></tr>
                                 </table>
                             </div>
                             <div class="col-md-6">
-                                <h6 class="text-primary"><i class="fas fa-user-graduate"></i> Issued Information</h6>
-                    `;
+                                <h6 class="text-primary"><i class="fas fa-user-graduate"></i> Issued Information</h6>`;
 
                     if (data.is_issued && data.issued_to) {
                         html += `
-                            <div class="alert alert-info">
-                                <i class="fas fa-check-circle"></i> This PIN has been issued
-                            </div>
+                            <div class="alert alert-info"><i class="fas fa-check-circle"></i> This PIN has been issued</div>
                             <table class="table table-sm table-bordered">
-                                <tr>
-                                    <th width="40%">Student Name:</th>
-                                    <td><strong>${data.issued_to.student_name}</strong></td>
-                                </tr>
-                                <tr>
-                                    <th>Admission No:</th>
-                                    <td>${data.issued_to.admission_no || 'N/A'}</td>
-                                </tr>
-                                <tr>
-                                    <th>Email:</th>
-                                    <td>${data.issued_to.email || 'N/A'}</td>
-                                </tr>
-                                <tr>
-                                    <th>Class:</th>
-                                    <td>${data.issued_to.class}</td>
-                                </tr>
-                                <tr>
-                                    <th>Issued By:</th>
-                                    <td>${data.issued_to.issued_by}</td>
-                                </tr>
-                                <tr>
-                                    <th>Issued At:</th>
-                                    <td>${data.issued_to.issued_at}</td>
-                                </tr>
-                            </table>
-                        `;
+                                <tr><th width="40%">Student Name:</th><td><strong>${data.issued_to.student_name}</strong></td></tr>
+                                <tr><th>Admission No:</th><td>${data.issued_to.admission_no || 'N/A'}</td></tr>
+                                <tr><th>Email:</th><td>${data.issued_to.email || 'N/A'}</td></tr>
+                                <tr><th>Class:</th><td>${data.issued_to.class}</td></tr>
+                                <tr><th>Issued By:</th><td>${data.issued_to.issued_by}</td></tr>
+                                <tr><th>Issued At:</th><td>${data.issued_to.issued_at}</td></tr>
+                            </table>`;
                     } else {
                         html += `
                             <div class="alert alert-warning">
                                 <i class="fas fa-exclamation-triangle"></i> This PIN has not been issued to any student yet.
                             </div>
-                            <p class="text-muted">
-                                This PIN is available for issuance. Go to the "Issue PINs" page to assign it to a student.
-                            </p>
-                        `;
+                            <p class="text-muted">Go to the "Issue PINs" page to assign it to a student.</p>`;
                     }
 
-                    html += `
-                            </div>
-                        </div>
-                    `;
-
+                    html += `</div></div>`;
                     $('#pinDetailsContent').html(html);
-                }).fail(function() {
+
+                }).fail(function () {
                     $('#pinDetailsContent').html(`
                         <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-circle"></i> 
-                            Error loading pin details. Please try again.
-                        </div>
-                    `);
+                            <i class="fas fa-exclamation-circle"></i> Error loading pin details. Please try again.
+                        </div>`);
                 });
             });
         });

@@ -16,17 +16,14 @@ class ExamQuestionController extends Controller
 {
     /**
      * Check if a teacher is assigned to a specific class
-     * (directly via class_user or indirectly via course_user)
      */
     private function isTeacherAssignedToClass($userId, $classId)
     {
-        // Direct assignment through class_user table
         $direct = DB::table('class_user')
             ->where('user_id', $userId)
             ->where('school_class_id', $classId)
             ->exists();
 
-        // Indirect assignment through course_user (specific class or general)
         $viaCourse = DB::table('course_user')
             ->where('user_id', $userId)
             ->where(function ($query) use ($classId) {
@@ -44,18 +41,15 @@ class ExamQuestionController extends Controller
     private function getAllowedSections($userId, $userType)
     {
         if (in_array($userType, [1, 2])) {
-            // Admins see all sections
             return Section::orderBy('section_name')->get();
         }
 
-        // Get section IDs from direct class assignments
         $sectionsFromClasses = DB::table('class_user')
             ->join('school_classes', 'class_user.school_class_id', '=', 'school_classes.id')
             ->where('class_user.user_id', $userId)
             ->pluck('school_classes.section_id')
             ->unique();
 
-        // Get section IDs from course assignments (where class_id is not null)
         $sectionsFromCourses = DB::table('course_user')
             ->join('school_classes', 'course_user.class_id', '=', 'school_classes.id')
             ->where('course_user.user_id', $userId)
@@ -71,7 +65,7 @@ class ExamQuestionController extends Controller
     }
 
     /**
-     * Get all classes assigned to a teacher (direct or via courses)
+     * Get all classes assigned to a teacher
      */
     private function getTeacherClasses($userId)
     {
@@ -92,8 +86,7 @@ class ExamQuestionController extends Controller
     }
 
     /**
-     * Get all subjects (courses) assigned to a teacher
-     * Optionally filtered by section and/or class
+     * Get all subjects assigned to a teacher, optionally filtered by section/class
      */
     private function getTeacherSubjects($userId, $sectionId = null, $classId = null)
     {
@@ -118,41 +111,31 @@ class ExamQuestionController extends Controller
     }
 
     /**
-     * Display a listing of exams (teacher's own or all for admins)
+     * Display a listing of exams
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
-
+        $user  = Auth::user();
         $query = ExamQuestion::with(['section', 'session', 'term', 'schoolClass', 'subject', 'creator']);
 
         if (!in_array($user->user_type, [1, 2])) {
             $query->where('created_by', $user->id);
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        if ($request->filled('subject_id')) {
-            $query->where('subject_id', $request->subject_id);
-        }
-        if ($request->filled('class_id')) {
-            $query->where('class_id', $request->class_id);
-        }
-        if ($request->filled('term_id')) {
-            $query->where('term_id', $request->term_id);
-        }
+        if ($request->filled('status'))     { $query->where('status',     $request->status); }
+        if ($request->filled('subject_id')) { $query->where('subject_id', $request->subject_id); }
+        if ($request->filled('class_id'))   { $query->where('class_id',   $request->class_id); }
+        if ($request->filled('term_id'))    { $query->where('term_id',    $request->term_id); }
 
-        $exams = $query->orderByDesc('created_at')->paginate(15);
-
+        $exams    = $query->orderByDesc('created_at')->paginate(15);
         $sections = $this->getAllowedSections($user->id, $user->user_type);
 
         if (in_array($user->user_type, [1, 2])) {
             $subjects = Course::orderBy('course_name')->get();
-            $classes = SchoolClass::orderBy('name')->get();
+            $classes  = SchoolClass::orderBy('name')->get();
         } else {
             $subjects = $this->getTeacherSubjects($user->id);
-            $classes = $this->getTeacherClasses($user->id);
+            $classes  = $this->getTeacherClasses($user->id);
         }
 
         $terms = Term::orderByDesc('created_at')->get();
@@ -165,51 +148,54 @@ class ExamQuestionController extends Controller
      */
     public function create()
     {
-        $user = Auth::user();
+        $user     = Auth::user();
         $sections = $this->getAllowedSections($user->id, $user->user_type);
 
+        // School-wide sessions — not section-scoped
+        $sessions       = Session::orderByDesc('name')->get();
+        $currentSession = $sessions->firstWhere('is_current', true);
+        $terms          = $currentSession
+            ? Term::where('session_id', $currentSession->id)->get()
+            : collect();
+
         $examTypes = [
-            'Mid-Term Exam',
-            'End of Term Exam',
-            'Mock Exam',
-            'Practice Test',
-            'Quiz',
-            'Assessment',
-            'Other'
+            'Mid-Term Exam', 'End of Term Exam', 'Mock Exam',
+            'Practice Test', 'Quiz', 'Assessment', 'Other',
         ];
 
-        return view('exam_questions.create', compact('sections', 'examTypes'));
+        return view('exam_questions.create', compact(
+            'sections', 'sessions', 'terms', 'currentSession', 'examTypes'
+        ));
     }
 
     /**
-     * Store a newly created exam in storage
+     * Store a newly created exam
      */
     public function store(Request $request)
     {
         $user = Auth::user();
 
         $validated = $request->validate([
-            'section_id' => 'required|exists:sections,id',
-            'session_id' => 'required|exists:school_sessions,id',
-            'term_id' => 'required|exists:terms,id',
-            'class_id' => 'required|exists:school_classes,id',
-            'subject_id' => 'required|exists:courses,id',
-            'exam_title' => 'required|string|max:255',
-            'exam_type' => 'required|string',
-            'exam_date' => 'nullable|date',
-            'duration_minutes' => 'nullable|integer|min:1',
-            'total_marks' => 'required|integer|min:1',
-            'instructions' => 'nullable|string',
-            'sections' => 'required|array|min:1',
-            'status' => 'required|in:draft,published',
-            'school_name' => 'nullable|string|max:255',
-            'school_address' => 'nullable|string|max:500',
+            'section_id'          => 'required|exists:sections,id',
+            'session_id'          => 'required|exists:school_sessions,id',
+            'term_id'             => 'required|exists:terms,id',
+            'class_id'            => 'required|exists:school_classes,id',
+            'subject_id'          => 'required|exists:courses,id',
+            'exam_title'          => 'required|string|max:255',
+            'exam_type'           => 'required|string',
+            'exam_date'           => 'nullable|date',
+            'duration_minutes'    => 'nullable|integer|min:1',
+            'total_marks'         => 'required|integer|min:1',
+            'instructions'        => 'nullable|string',
+            'sections'            => 'required|array|min:1',
+            'status'              => 'required|in:draft,published',
+            'school_name'         => 'nullable|string|max:255',
+            'school_address'      => 'nullable|string|max:500',
             'show_marking_scheme' => 'boolean',
-            'marking_scheme' => 'nullable|string',
-            'notes' => 'nullable|string',
+            'marking_scheme'      => 'nullable|string',
+            'notes'               => 'nullable|string',
         ]);
 
-        // Security check for non-admin users
         if (!in_array($user->user_type, [1, 2])) {
             if (!$this->isTeacherAssignedToClass($user->id, $validated['class_id'])) {
                 abort(403, 'You are not authorized to create exams for this class.');
@@ -225,7 +211,7 @@ class ExamQuestionController extends Controller
             }
         }
 
-        $validated['created_by'] = $user->id;
+        $validated['created_by']          = $user->id;
         $validated['show_marking_scheme'] = $request->has('show_marking_scheme');
 
         $exam = ExamQuestion::create($validated);
@@ -256,69 +242,67 @@ class ExamQuestionController extends Controller
     public function edit($id)
     {
         $exam = ExamQuestion::findOrFail($id);
-
         $user = Auth::user();
+
         if (!in_array($user->user_type, [1, 2]) && $exam->created_by !== $user->id) {
             abort(403, 'Unauthorized access');
         }
 
         $sections = $this->getAllowedSections($user->id, $user->user_type);
-        $sessions = Session::where('section_id', $exam->section_id)->orderByDesc('name')->get();
-        $terms = Term::where('session_id', $exam->session_id)->orderBy('name')->get();
+
+        // School-wide sessions — not section-scoped
+        $sessions = Session::orderByDesc('name')->get();
+        $terms    = Term::where('session_id', $exam->session_id)->orderBy('name')->get();
 
         if (in_array($user->user_type, [1, 2])) {
-            $classes = SchoolClass::where('section_id', $exam->section_id)->orderBy('name')->get();
+            $classes  = SchoolClass::where('section_id', $exam->section_id)->orderBy('name')->get();
             $subjects = Course::where('section_id', $exam->section_id)->orderBy('course_name')->get();
         } else {
-            $classes = $this->getTeacherClasses($user->id)
-                ->where('section_id', $exam->section_id);
+            $classes  = $this->getTeacherClasses($user->id)->where('section_id', $exam->section_id);
             $subjects = $this->getTeacherSubjects($user->id, $exam->section_id);
         }
 
         $examTypes = [
-            'Mid-Term Exam',
-            'End of Term Exam',
-            'Mock Exam',
-            'Practice Test',
-            'Quiz',
-            'Assessment',
-            'Other'
+            'Mid-Term Exam', 'End of Term Exam', 'Mock Exam',
+            'Practice Test', 'Quiz', 'Assessment', 'Other',
         ];
 
-        return view('exam_questions.edit', compact('exam', 'sections', 'sessions', 'terms', 'classes', 'subjects', 'examTypes'));
+        return view('exam_questions.edit', compact(
+            'exam', 'sections', 'sessions', 'terms', 'classes', 'subjects', 'examTypes'
+        ));
     }
 
     /**
-     * Update the specified exam in storage
+     * Update the specified exam
      */
     public function update(Request $request, $id)
     {
         $exam = ExamQuestion::findOrFail($id);
-
         $user = Auth::user();
+
         if (!in_array($user->user_type, [1, 2]) && $exam->created_by !== $user->id) {
             abort(403, 'Unauthorized access');
         }
 
         $validated = $request->validate([
-            'section_id' => 'required|exists:sections,id',
-            'session_id' => 'required|exists:school_sessions,id',
-            'term_id' => 'required|exists:terms,id',
-            'class_id' => 'required|exists:school_classes,id',
-            'subject_id' => 'required|exists:courses,id',
-            'exam_title' => 'required|string|max:255',
-            'exam_type' => 'required|string',
-            'exam_date' => 'nullable|date',
-            'duration_minutes' => 'nullable|integer|min:1',
-            'total_marks' => 'required|integer|min:1',
-            'instructions' => 'nullable|string',
-            'sections' => 'required|array|min:1',
-            'status' => 'required|in:draft,published,archived',
-            'school_name' => 'nullable|string|max:255',
-            'school_address' => 'nullable|string|max:500',
+            'section_id'          => 'required|exists:sections,id',
+            'session_id'          => 'required|exists:school_sessions,id',
+            'term_id'             => 'required|exists:terms,id',
+            'class_id'            => 'required|exists:school_classes,id',
+            'subject_id'          => 'required|exists:courses,id',
+            'exam_title'          => 'required|string|max:255',
+            'exam_type'           => 'required|string',
+            'exam_date'           => 'nullable|date',
+            'duration_minutes'    => 'nullable|integer|min:1',
+            'total_marks'         => 'required|integer|min:1',
+            'instructions'        => 'nullable|string',
+            'sections'            => 'required|array|min:1',
+            'status'              => 'required|in:draft,published,archived',
+            'school_name'         => 'nullable|string|max:255',
+            'school_address'      => 'nullable|string|max:500',
             'show_marking_scheme' => 'boolean',
-            'marking_scheme' => 'nullable|string',
-            'notes' => 'nullable|string',
+            'marking_scheme'      => 'nullable|string',
+            'notes'               => 'nullable|string',
         ]);
 
         if (!in_array($user->user_type, [1, 2])) {
@@ -336,13 +320,13 @@ class ExamQuestionController extends Controller
     }
 
     /**
-     * Remove the specified exam from storage
+     * Remove the specified exam
      */
     public function destroy($id)
     {
         $exam = ExamQuestion::findOrFail($id);
-
         $user = Auth::user();
+
         if (!in_array($user->user_type, [1, 2]) && $exam->created_by !== $user->id) {
             abort(403, 'Unauthorized access');
         }
@@ -375,16 +359,16 @@ class ExamQuestionController extends Controller
     public function duplicate($id)
     {
         $exam = ExamQuestion::findOrFail($id);
-
         $user = Auth::user();
+
         if (!in_array($user->user_type, [1, 2]) && $exam->created_by !== $user->id) {
             abort(403, 'Unauthorized access');
         }
 
-        $newExam = $exam->replicate();
-        $newExam->exam_title = $exam->exam_title . ' (Copy)';
-        $newExam->status = 'draft';
-        $newExam->created_by = $user->id;
+        $newExam              = $exam->replicate();
+        $newExam->exam_title  = $exam->exam_title . ' (Copy)';
+        $newExam->status      = 'draft';
+        $newExam->created_by  = $user->id;
         $newExam->save();
 
         return redirect()->route('exam_questions.edit', $newExam->id)
@@ -403,50 +387,42 @@ class ExamQuestionController extends Controller
 
         $query = ExamQuestion::with(['section', 'session', 'term', 'schoolClass', 'subject', 'creator']);
 
-        if ($request->filled('section_id')) {
-            $query->where('section_id', $request->section_id);
-        }
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+        if ($request->filled('section_id')) { $query->where('section_id', $request->section_id); }
+        if ($request->filled('status'))     { $query->where('status',     $request->status); }
 
-        $exams = $query->orderByDesc('created_at')->paginate(20);
-
+        $exams    = $query->orderByDesc('created_at')->paginate(20);
         $sections = Section::orderBy('section_name')->get();
 
         return view('exam_questions.all_exams', compact('exams', 'sections'));
     }
 
+    // ── AJAX endpoints ────────────────────────────────────────────────────────
+
     /**
-     * AJAX: Get sessions for a section + return current session ID
+     * AJAX: Get all school-wide sessions.
+     * $sectionId param kept for route compatibility but ignored.
      */
     public function getSessions($sectionId)
     {
-        $sessions = Session::where('section_id', $sectionId)
-            ->orderByDesc('name')
-            ->get();
-
+        $sessions       = Session::orderByDesc('name')->get();
         $currentSession = $sessions->firstWhere('is_current', true);
 
         return response()->json([
-            'sessions' => $sessions,
+            'sessions'           => $sessions,
             'current_session_id' => $currentSession?->id ?? null,
         ]);
     }
 
     /**
-     * AJAX: Get terms for a session + return current term ID
+     * AJAX: Get terms for a session
      */
     public function getTerms($sessionId)
     {
-        $terms = Term::where('session_id', $sessionId)
-            ->orderBy('name')
-            ->get();
-
+        $terms       = Term::where('session_id', $sessionId)->orderBy('name')->get();
         $currentTerm = $terms->firstWhere('is_current', true);
 
         return response()->json([
-            'terms' => $terms,
+            'terms'           => $terms,
             'current_term_id' => $currentTerm?->id ?? null,
         ]);
     }
@@ -456,8 +432,7 @@ class ExamQuestionController extends Controller
      */
     public function getClasses($sectionId)
     {
-        $user = Auth::user();
-
+        $user  = Auth::user();
         $query = SchoolClass::where('section_id', $sectionId);
 
         if (!in_array($user->user_type, [1, 2])) {
@@ -476,27 +451,34 @@ class ExamQuestionController extends Controller
             });
         }
 
-        $classes = $query->orderBy('name')->get();
-
-        return response()->json(['classes' => $classes]);
+        return response()->json(['classes' => $query->orderBy('name')->get()]);
     }
 
     /**
-     * AJAX: Get subjects (courses) for a teacher in a section and optional class
+     * AJAX: Get subjects for a section/class.
+     * Admin roles (1,2,7,8,9,10): all subjects linked to the class via class_course table.
+     * Teachers: only their assigned subjects via course_user.
      */
     public function getSubjects($sectionId, $classId = null)
     {
         $user = Auth::user();
 
-        if (in_array($user->user_type, [1, 2])) {
+        if (in_array($user->user_type, [1, 2, 7, 8, 9, 10])) {
             $query = Course::where('section_id', $sectionId);
+
+            // Filter by class using the class_course pivot table
             if ($classId) {
-                $query->where(function ($q) use ($classId) {
-                    $q->where('class_id', $classId)->orWhereNull('class_id');
+                $query->whereExists(function ($sub) use ($classId) {
+                    $sub->select(DB::raw(1))
+                        ->from('class_course')
+                        ->whereColumn('class_course.course_id', 'courses.id')
+                        ->where('class_course.school_class_id', $classId);
                 });
             }
+
             $subjects = $query->orderBy('course_name')->get();
         } else {
+            // Teachers: only their assigned subjects
             $subjects = $this->getTeacherSubjects($user->id, $sectionId, $classId);
         }
 

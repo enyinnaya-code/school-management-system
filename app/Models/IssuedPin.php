@@ -24,6 +24,7 @@ class IssuedPin extends Model
         return $this->belongsTo(Pin::class);
     }
 
+    
     public function student()
     {
         return $this->belongsTo(User::class, 'student_id');

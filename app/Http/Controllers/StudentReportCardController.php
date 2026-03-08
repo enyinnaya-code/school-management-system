@@ -15,6 +15,7 @@ use App\Models\Result;
 use App\Models\StudentRemark;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use App\Services\ResultSheetService;
 
 class StudentReportCardController extends Controller
 {
@@ -22,10 +23,8 @@ class StudentReportCardController extends Controller
     {
         $student = Auth::user();
 
-        // Get sessions where the student has an issued PIN
-        $sessions = Session::whereHas('issuedPins', function ($q) use ($student) {
-            $q->where('student_id', $student->id);
-        })->orderByDesc('name')->get();
+        // Show all sessions so student can select — pin validation happens on submit
+        $sessions = Session::orderByDesc('name')->get();
 
         return view('students.report_cards.index', compact('sessions', 'student'));
     }
@@ -75,9 +74,29 @@ class StudentReportCardController extends Controller
             'verified_report_access' => [
                 'session_id' => $request->session_id,
                 'term_id'    => $request->term_id,
-                'expires_at' => now()->addHours(2), // optional timeout
+                'expires_at' => now()->addHours(2),
             ]
         ]);
+
+        // ── Detect if this student's class uses a custom result sheet ──────────
+        $class = SchoolClass::find($student->class_id);
+
+        $usesResultSheet = false;
+        if ($class) {
+            $usesResultSheet = DB::table('result_sheet_templates')
+                ->where('term_id', $request->term_id)
+                ->where('is_active', 1)
+                ->get()
+                ->contains(function ($t) use ($class) {
+                    $classes = json_decode($t->applicable_classes ?? '[]', true);
+                    return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+                });
+        }
+
+        if ($usesResultSheet) {
+            return redirect()->route('students.reportcards.sheet')
+                ->with('success', 'PIN verified successfully! You can now view your report card.');
+        }
 
         return redirect()->route('students.reportcards.show')
             ->with('success', 'PIN verified successfully! You can now view your report card.');
@@ -87,8 +106,7 @@ class StudentReportCardController extends Controller
     public function showReport()
     {
         $student = Auth::user();
-
-        $access = session('verified_report_access');
+        $access  = session('verified_report_access');
 
         // Security checks
         if (
@@ -119,7 +137,139 @@ class StudentReportCardController extends Controller
         $term    = Term::findOrFail($termId);
         $class   = SchoolClass::findOrFail($student->class_id);
 
-        // === SAME RESULT CALCULATION LOGIC AS BEFORE ===
+        // ── Check if the student's class uses a custom result sheet template ──
+        $sheetTemplate = DB::table('result_sheet_templates')
+            ->where('term_id', $term->id)
+            ->where('is_active', 1)
+            ->get()
+            ->first(function ($t) use ($class) {
+                $classes = json_decode($t->applicable_classes ?? '[]', true);
+                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            });
+
+        if ($sheetTemplate) {
+            // ── Custom result sheet flow ──────────────────────────────────────
+            return $this->showResultSheet($student, $class, $session, $term, $sheetTemplate);
+        }
+
+        // ── Standard numeric result card flow (unchanged) ────────────────────
+        return $this->showStandardReport($student, $class, $session, $term);
+    }
+
+
+    /**
+     * Entry point for the result-sheet route (students.reportcards.sheet).
+     * Performs the same access-guard as showReport(), then renders the sheet view.
+     */
+    public function showSheet()
+    {
+        $student = Auth::user();
+        $access  = session('verified_report_access');
+
+        if (
+            !$access ||
+            !isset($access['session_id'], $access['term_id']) ||
+            ($access['expires_at'] ?? null) < now()
+        ) {
+            return redirect()->route('students.reportcards.index')
+                ->with('error', 'Unauthorized access. Please verify your PIN again.');
+        }
+
+        $sessionId = $access['session_id'];
+        $termId    = $access['term_id'];
+
+        $hasValidPin = IssuedPin::where('student_id', $student->id)
+            ->where('session_id', $sessionId)
+            ->where('term_id', $termId)
+            ->exists();
+
+        if (!$hasValidPin) {
+            session()->forget('verified_report_access');
+            return redirect()->route('students.reportcards.index')
+                ->with('error', 'Access denied. Invalid session or term.');
+        }
+
+        $session = Session::findOrFail($sessionId);
+        $term    = Term::findOrFail($termId);
+        $class   = SchoolClass::findOrFail($student->class_id);
+
+        $sheetTemplate = DB::table('result_sheet_templates')
+            ->where('term_id', $term->id)
+            ->where('is_active', 1)
+            ->get()
+            ->first(function ($t) use ($class) {
+                $classes = json_decode($t->applicable_classes ?? '[]', true);
+                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            });
+
+        // Safety fallback: if template somehow gone, drop to standard view
+        if (!$sheetTemplate) {
+            return redirect()->route('students.reportcards.show');
+        }
+
+        return $this->showResultSheet($student, $class, $session, $term, $sheetTemplate);
+    }
+
+
+    /**
+     * Render the custom skill/result sheet for the student.
+     */
+    private function showResultSheet($student, $class, $session, $term, $sheetTemplate)
+    {
+        $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
+        $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
+
+        $service  = new ResultSheetService();
+        $subjects = $service->loadTemplateStructure($sheetTemplate->id);
+
+        // Collect all item IDs across subjects, subcategories
+        $allItemIds = collect($subjects)->flatMap(function ($subject) {
+            $ids = collect($subject->items)->pluck('id');
+            foreach ($subject->subcategories as $sub) {
+                $ids = $ids->merge(collect($sub->items)->pluck('id'));
+            }
+            return $ids;
+        });
+
+        // Fetch this student's ratings for this session + term
+        $ratings = DB::table('result_sheet_ratings')
+            ->where('student_id', $student->id)
+            ->where('session_id', $session->id)
+            ->where('term_id', $term->id)
+            ->whereIn('item_id', $allItemIds)
+            ->get(['item_id', 'rating_value'])
+            ->mapWithKeys(fn($row) => [(int) $row->item_id => trim($row->rating_value)])
+            ->toArray();
+
+        // Fetch footer data (remark, reopening date, etc.)
+        $footerData = DB::table('result_sheet_footer_data')
+            ->where('student_id', $student->id)
+            ->where('session_id', $session->id)
+            ->where('term_id', $term->id)
+            ->where('template_id', $sheetTemplate->id)
+            ->first();
+
+        $section = \App\Models\Section::find($class->section_id);
+
+        return view('students.report_cards.result_sheet_view', [
+            'student'        => $student,
+            'class'          => $class,
+            'section'        => $section,
+            'currentSession' => $session,
+            'currentTerm'    => $term,
+            'sheetTemplate'  => $sheetTemplate,
+            'subjects'       => $subjects,
+            'ratings'        => $ratings,
+            'footerData'     => $footerData,
+        ]);
+    }
+
+
+    /**
+     * Standard numeric report card (original logic extracted into its own method).
+     */
+    private function showStandardReport($student, $class, $session, $term)
+    {
         $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
@@ -163,8 +313,8 @@ class StudentReportCardController extends Controller
             ->orderByDesc('total_score')
             ->get();
 
-        $studentPosition = $studentsScores->search(fn($item) => $item->student_id == $student->id);
-        $studentPosition = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
+        $studentPosition   = $studentsScores->search(fn($item) => $item->student_id == $student->id);
+        $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
         $classTeacher = User::where('is_form_teacher', true)
@@ -228,20 +378,20 @@ class StudentReportCardController extends Controller
     private function defaultRatings($type)
     {
         return $type === 'affective' ? [
-            'punctuality' => null,
-            'politeness' => null,
-            'neatness' => null,
-            'honesty' => null,
+            'punctuality'      => null,
+            'politeness'       => null,
+            'neatness'         => null,
+            'honesty'          => null,
             'leadership_skill' => null,
-            'cooperation' => null,
-            'attentiveness' => null,
-            'perseverance' => null,
+            'cooperation'      => null,
+            'attentiveness'    => null,
+            'perseverance'     => null,
             'attitude_to_work' => null,
         ] : [
-            'handwriting' => null,
-            'verbal_fluency' => null,
-            'sports' => null,
-            'handling_tools' => null,
+            'handwriting'      => null,
+            'verbal_fluency'   => null,
+            'sports'           => null,
+            'handling_tools'   => null,
             'drawing_painting' => null,
         ];
     }

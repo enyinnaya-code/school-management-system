@@ -300,7 +300,7 @@ class StudentController extends Controller
             'section' => $validated['section_id'],
             'class_id' => $validated['class_id'],
             'user_type' => 4,
-            'password' => bcrypt('student123'),
+            'password' => bcrypt('12345'),
         ]);
 
         return redirect()->route('students.create')->with('success', 'Student added successfully.');

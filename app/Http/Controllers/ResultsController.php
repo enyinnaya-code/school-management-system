@@ -17,6 +17,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ClassResultsExport;
 use App\Models\StudentRemark;
 use App\Exports\MasterListExport;
+use App\Services\ResultSheetService;
+use Illuminate\Support\Facades\Log;
 
 
 class ResultsController extends Controller
@@ -115,9 +117,9 @@ class ResultsController extends Controller
     public function studentResultUpload($studentId)
     {
         $student = User::where('user_type', 4)->findOrFail($studentId);
-        $class = SchoolClass::findOrFail($student->class_id);
+        $class   = SchoolClass::findOrFail($student->class_id);
         $section = Section::find($class->section_id);
-        $user = Auth::user();
+        $user    = Auth::user();
 
         // Security check for non-admin users
         if (!in_array($user->user_type, [1, 2])) {
@@ -127,13 +129,74 @@ class ResultsController extends Controller
         }
 
         $currentSession = Session::where('is_current', true)->first();
-        $currentTerm = $currentSession?->terms()->where('is_current', true)->first();
+        $currentTerm    = $currentSession?->terms()->where('is_current', true)->first();
 
         if (!$currentSession || !$currentTerm) {
-            return redirect()->back()->with('error', 'No current academic session or term is set. Please ask the admin to set a current session/term.');
+            return redirect()->back()->with('error', 'No current academic session or term is set.');
         }
 
-        $subjectsQuery = Course::orderBy('course_name');
+        // ── Check if this class has an active custom result sheet for the current term ──
+        $sheetTemplate = DB::table('result_sheet_templates')
+            ->where('term_id', $currentTerm->id)
+            ->where('is_active', 1)
+            ->get()
+            ->first(function ($t) use ($class) {
+                $classes = json_decode($t->applicable_classes ?? '[]', true);
+                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            });
+
+
+
+        // Inside studentResultUpload
+        if ($sheetTemplate) {
+            $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
+            $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
+
+            $service  = new ResultSheetService();
+            $subjects = $service->loadTemplateStructure($sheetTemplate->id);
+
+            $allItemIds = collect($subjects)->flatMap(function ($subject) {
+                $ids = collect($subject->items)->pluck('id');
+                foreach ($subject->subcategories as $sub) {
+                    $ids = $ids->merge(collect($sub->items)->pluck('id'));
+                }
+                return $ids;
+            });
+
+            $existingRatings = DB::table('result_sheet_ratings')
+                ->where('student_id', $studentId)
+                ->where('session_id', $currentSession->id)
+                ->where('term_id', $currentTerm->id)
+                ->whereIn('item_id', $allItemIds)
+                ->pluck('rating_value', 'item_id');
+
+            // After loading $existingRatings in studentResultUpload, add:
+            $footerData = DB::table('result_sheet_footer_data')
+                ->where('student_id', $student->id)
+                ->where('session_id', $currentSession->id)
+                ->where('term_id', $currentTerm->id)
+                ->where('template_id', $sheetTemplate->id)
+                ->first();
+
+         
+
+            return view('student_result_sheet', compact(
+                'student',
+                'class',
+                'section',
+                'sheetTemplate',
+                'subjects',
+                'existingRatings',
+                'currentSession',
+                'currentTerm',
+                'footerData'
+            ));
+        }
+
+        // ── Fallback: standard numeric result upload ──
+        $subjectsQuery = Course::whereHas('schoolClasses', function ($q) use ($class) {
+            $q->where('school_classes.id', $class->id);
+        })->orderBy('course_name');
 
         if (!in_array($user->user_type, [1, 2])) {
             $subjectsQuery->whereExists(function ($query) use ($user) {
@@ -144,8 +207,7 @@ class ResultsController extends Controller
             });
         }
 
-        $subjects = $subjectsQuery->get(['id', 'course_name']);
-
+        $subjects        = $subjectsQuery->get(['id', 'course_name']);
         $existingResults = Result::where('student_id', $studentId)
             ->where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
@@ -161,6 +223,58 @@ class ResultsController extends Controller
             'currentSession',
             'currentTerm'
         ));
+    }
+
+
+    public function saveStudentSheetRatings(Request $request, $studentId, $templateId)
+    {
+        $request->validate([
+            'session_id'     => 'required|exists:school_sessions,id',
+            'term_id'        => 'required|exists:terms,id',
+            'ratings'        => 'nullable|array',
+            'remark'         => 'nullable|string|max:500',
+            'reopening_date' => 'nullable|string|max:100',
+        ]);
+
+        DB::transaction(function () use ($request, $templateId, $studentId) {
+
+            // Save checkbox ratings
+            foreach ($request->input('ratings', []) as $itemId => $value) {
+                DB::table('result_sheet_ratings')->updateOrInsert(
+                    [
+                        'item_id'    => $itemId,
+                        'student_id' => $studentId,
+                        'session_id' => $request->session_id,
+                        'term_id'    => $request->term_id,
+                    ],
+                    [
+                        'template_id'  => $templateId,
+                        'rating_value' => $value ?: null,
+                        'rated_by'     => Auth::id(),
+                        'updated_at'   => now(),
+                        'created_at'   => now(),
+                    ]
+                );
+            }
+
+            // Save footer fields
+            DB::table('result_sheet_footer_data')->updateOrInsert(
+                [
+                    'student_id'  => $studentId,
+                    'session_id'  => $request->session_id,
+                    'term_id'     => $request->term_id,
+                    'template_id' => $templateId,
+                ],
+                [
+                    'remark'         => $request->input('remark'),
+                    'reopening_date' => $request->input('reopening_date'),
+                    'updated_at'     => now(),
+                    'created_at'     => now(),
+                ]
+            );
+        });
+
+        return back()->with('success', 'Ratings saved successfully.');
     }
 
     public function saveStudentResults(Request $request, $studentId)
@@ -442,28 +556,29 @@ class ResultsController extends Controller
 
     public function selectClassForPrint(Request $request)
     {
-
         // On POST, redirect to GET with all params in the URL
-    if ($request->isMethod('post')) {
-        $request->validate([
-            'section_id' => 'required|exists:sections,id',
-            'class_id'   => 'required|exists:school_classes,id',
-        ]);
+        if ($request->isMethod('post')) {
+            $request->validate([
+                'section_id' => 'required|exists:sections,id',
+                'class_id'   => 'required|exists:school_classes,id',
+            ]);
 
-        return redirect()->route('results.selectClassForPrint', $request->only([
-            'section_id', 'class_id', 'session_id', 'term_id'
-        ]));
-    }
+            return redirect()->route('results.selectClassForPrint', $request->only([
+                'section_id',
+                'class_id',
+                'session_id',
+                'term_id'
+            ]));
+        }
 
-    // Guard: if params are missing on GET, go back to selection screen
-    if (!$request->input('section_id') || !$request->input('class_id')) {
-        return redirect()->route('results.print');
-    }
+        // Guard: if params are missing on GET, go back to selection screen
+        if (!$request->input('section_id') || !$request->input('class_id')) {
+            return redirect()->route('results.print');
+        }
 
-
-        $class = SchoolClass::findOrFail($request->class_id);
+        $class   = SchoolClass::findOrFail($request->class_id);
         $section = Section::find($class->section_id);
-        $user = Auth::user();
+        $user    = Auth::user();
 
         // Security check for non-admin users
         if (!in_array($user->user_type, [1, 2])) {
@@ -478,24 +593,46 @@ class ResultsController extends Controller
             }
         }
 
+        // ── Detect if this class uses a custom skill sheet template ──────────
+        $usesResultSheet = false;
+        $sheetTemplate   = null;
+
+        // Check against ALL active templates (not term-scoped)
+        // because the print list page shows students regardless of term
+        $allActiveTemplates = DB::table('result_sheet_templates')
+            ->where('is_active', 1)
+            ->get();
+
+        foreach ($allActiveTemplates as $t) {
+            $classes = json_decode($t->applicable_classes ?? '[]', true);
+            if (in_array($class->id, $classes) || in_array((string) $class->id, $classes)) {
+                $usesResultSheet = true;
+                $sheetTemplate   = $t;
+                break;
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         // Fetch all sessions
         $sessions = Session::orderByDesc('name')->get();
 
         // Get selected session or default to current
         $selectedSessionId = $request->input('session_id');
         if (!$selectedSessionId) {
-            $currentSession = Session::where('is_current', true)->first();
+            $currentSession    = Session::where('is_current', true)->first();
             $selectedSessionId = $currentSession?->id;
         }
         $selectedSession = Session::find($selectedSessionId);
 
         // Get terms for selected session
-        $terms = $selectedSession ? $selectedSession->terms()->orderBy('name')->get() : collect();
+        $terms = $selectedSession
+            ? $selectedSession->terms()->orderBy('name')->get()
+            : collect();
 
         // Get selected term or default to current
         $selectedTermId = $request->input('term_id');
         if (!$selectedTermId && $selectedSession) {
-            $currentTerm = $terms->where('is_current', true)->first();
+            $currentTerm    = $terms->where('is_current', true)->first();
             $selectedTermId = $currentTerm?->id ?? $terms->first()?->id;
         }
         $selectedTerm = Term::find($selectedTermId);
@@ -503,7 +640,21 @@ class ResultsController extends Controller
         // Fetch students
         $students = User::where('user_type', 4)
             ->where('class_id', $request->class_id)
-            ->select('id', 'name', 'email', 'admission_no', 'dob', 'phone', 'guardian_name', 'guardian_phone', 'guardian_email', 'guardian_address', 'address', 'class_id', 'gender')
+            ->select(
+                'id',
+                'name',
+                'email',
+                'admission_no',
+                'dob',
+                'phone',
+                'guardian_name',
+                'guardian_phone',
+                'guardian_email',
+                'guardian_address',
+                'address',
+                'class_id',
+                'gender'
+            )
             ->paginate(10);
 
         return view('print_class_result', compact(
@@ -513,6 +664,99 @@ class ResultsController extends Controller
             'sessions',
             'selectedSession',
             'terms',
+            'selectedTerm',
+            'usesResultSheet',   // ← tells the view which mode to use
+            'sheetTemplate'      // ← available if needed in the view
+        ));
+    }
+
+
+    public function printStudentSheet(Request $request, $studentId)
+    {
+        $student = User::where('user_type', 4)->findOrFail($studentId);
+        $class   = SchoolClass::findOrFail($student->class_id);
+        $section = Section::find($class->section_id);
+
+        // Respect session/term passed from the filter
+        $currentSession = $request->input('session_id')
+            ? Session::findOrFail($request->input('session_id'))
+            : Session::where('is_current', true)->firstOrFail();
+
+        $selectedTerm = $request->input('term_id')
+            ? Term::findOrFail($request->input('term_id'))
+            : $currentSession->terms()->where('is_current', true)->first()
+            ?? $currentSession->terms()->orderBy('name')->first();
+
+        abort_if(!$selectedTerm, 404, 'No term found.');
+
+        // Find active template for this class
+        $sheetTemplate = DB::table('result_sheet_templates')
+            ->where('is_active', 1)
+            ->get()
+            ->first(function ($t) use ($class) {
+                $classes = json_decode($t->applicable_classes ?? '[]', true);
+                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            });
+
+        abort_if(!$sheetTemplate, 404, 'No active skill sheet template for this class.');
+
+        $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
+        $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
+
+        $service  = new ResultSheetService();
+        $subjects = $service->loadTemplateStructure($sheetTemplate->id);
+
+        // Collect all item IDs
+        $allItemIds = collect($subjects)->flatMap(function ($subject) {
+            $ids = collect($subject->items)->pluck('id');
+            foreach ($subject->subcategories as $sub) {
+                $ids = $ids->merge(collect($sub->items)->pluck('id'));
+            }
+            return $ids;
+        });
+
+        // Fetch ratings for THIS student, THIS session, THIS term only
+        // In printStudentSheet — fix the ratings fetch
+        $ratings = DB::table('result_sheet_ratings')
+            ->where('student_id', $studentId)
+            ->where('session_id', $currentSession->id)
+            ->where('term_id', $selectedTerm->id)
+            ->whereIn('item_id', $allItemIds)
+            ->get(['item_id', 'rating_value'])
+            ->mapWithKeys(function ($row) {
+                // Cast item_id to int so $ratings[$item->id] always matches
+                return [(int) $row->item_id => trim($row->rating_value)];
+            })
+            ->toArray();
+
+
+        $footerData = DB::table('result_sheet_footer_data')
+            ->where('student_id', $studentId)
+            ->where('session_id', $currentSession->id)
+            ->where('term_id', $selectedTerm->id)
+            ->where('template_id', $sheetTemplate->id)
+            ->first();
+
+        return view('result_sheet_student_print', compact(
+            'student',
+            'class',
+            'section',
+            'sheetTemplate',
+            'subjects',
+            'ratings',
+            'currentSession',
+            'selectedTerm',
+            'footerData'   // ← add this
+        ));
+
+        return view('result_sheet_student_print', compact(
+            'student',
+            'class',
+            'section',
+            'sheetTemplate',
+            'subjects',
+            'ratings',
+            'currentSession',
             'selectedTerm'
         ));
     }

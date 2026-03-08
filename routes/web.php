@@ -37,6 +37,7 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\StudentReportCardController;
 use App\Http\Controllers\ParentReportCardController;
 use App\Http\Controllers\CounsellorController;
+use App\Http\Controllers\ResultSheetController;
 
 
 
@@ -375,17 +376,20 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/students/promote/preview-multiple', [StudentController::class, 'getPromotionPreviewMultiple'])->name('students.promote.preview.multiple');
     Route::post('/students/promote/process-enhanced', [StudentController::class, 'processPromotionEnhanced'])->name('students.promote.process.enhanced');
 
-      // NEW: Enhanced promotion processing with tracking
+    // NEW: Enhanced promotion processing with tracking
     Route::post('/students/promote/process', [StudentController::class, 'processPromotionEnhanced'])->name('students.promote.process');
-    
+
     // NEW: Promotion history and tracking routes
     Route::get('/students/promotion/history', [StudentController::class, 'promotionHistory'])->name('students.promotion.history');
     Route::get('/students/promotion/{id}/details', [StudentController::class, 'viewPromotionDetails'])->name('students.promotion.details');
     Route::post('/students/promotion/{id}/rollback', [StudentController::class, 'rollbackPromotion'])->name('students.promotion.rollback');
-    
+
 
     Route::get('/student/{studentId}/results/upload', [ResultsController::class, 'studentResultUpload'])->name('student.results.upload');
     Route::post('/student/{studentId}/results/save', [ResultsController::class, 'saveStudentResults'])->name('student.results.save');
+
+    Route::post('/student/{studentId}/result-sheet/{templateId}/save', [ResultsController::class, 'saveStudentSheetRatings'])
+        ->name('student.result_sheet.save');
 
 
     // Results Print routes
@@ -395,6 +399,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/results/print/student/{student}', [ResultsController::class, 'printStudent'])->name('results.printStudent');
     // Master List Route
     Route::get('/results/master-list/{classId}', [ResultsController::class, 'masterList'])->name('results.masterList');
+
+    Route::get('/student/{studentId}/skill-sheet/print', [ResultsController::class, 'printStudentSheet'])
+        ->name('results.printStudentSheet');
 
     Route::get('/results/master-list/{class}/export', [ResultsController::class, 'exportMasterList'])
         ->name('results.exportMasterList');
@@ -472,6 +479,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/other-expense/create', [OtherExpenseController::class, 'create'])->name('other.expense.create');
     Route::post('/other-expense', [OtherExpenseController::class, 'store'])->name('other.expense.store');
 
+    Route::get('/other-expense/terms/{sessionId}', [OtherExpenseController::class, 'getTerms']);
+
     // Manage Other Expenses (List/Index)
     Route::get('/other-expense', [OtherExpenseController::class, 'index'])->name('other.expense.manage');
 
@@ -517,8 +526,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/other-expense/{otherExpense}', [OtherExpenseController::class, 'show'])->name('other.expense.show');
 
     // Add this in the authenticated routes group
-        Route::get('/finance/analysis', [FinanceReportController::class, 'analysis'])->name('finance.analysis');
-        Route::get('/finance/analysis/export', [FinanceReportController::class, 'exportAnalysis'])->name('finance.analysis.export');
+    Route::get('/finance/analysis', [FinanceReportController::class, 'analysis'])->name('finance.analysis');
+    Route::get('/finance/analysis/export', [FinanceReportController::class, 'exportAnalysis'])->name('finance.analysis.export');
 
 
     Route::post('/payments/select', [BursarController::class, 'selectStudentForPayment'])->name('bursar.selectStudentForPayment');
@@ -682,6 +691,27 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/hostels/allocate', [HostelController::class, 'allocate'])->name('hostels.allocate');
     Route::post('/hostels/allocate/store', [HostelController::class, 'allocateStore'])->name('hostels.allocate.store');
 
+
+
+
+    // ── Custom Result Sheets ──────────────────────────────────
+    Route::get('/result-sheets', [ResultSheetController::class, 'index'])->name('result_sheets.index');
+    Route::get('/result-sheets/create', [ResultSheetController::class, 'create'])->name('result_sheets.create');
+    Route::post('/result-sheets', [ResultSheetController::class, 'store'])->name('result_sheets.store');
+    Route::get('/result-sheets/{id}/edit', [ResultSheetController::class, 'edit'])->name('result_sheets.edit');
+    Route::put('/result-sheets/{id}', [ResultSheetController::class, 'update'])->name('result_sheets.update');
+    Route::delete('/result-sheets/{id}', [ResultSheetController::class, 'destroy'])->name('result_sheets.destroy');
+    Route::patch('/result-sheets/{id}/toggle-active', [ResultSheetController::class, 'toggleActive'])->name('result_sheets.toggle_active');
+    Route::get('/result-sheets/{templateId}/view', [ResultSheetController::class, 'viewSheet'])->name('result_sheets.view');
+    Route::get('/result-sheets/{templateId}/subjects', [ResultSheetController::class, 'subjectsCreate'])->name('result_sheets.subjects.create');
+    Route::post('/result-sheets/{templateId}/subjects', [ResultSheetController::class, 'subjectsStore'])->name('result_sheets.subjects.store');
+    Route::get('/result-sheets/{templateId}/rate', [ResultSheetController::class, 'rateStudents'])->name('result_sheets.rate');
+    Route::post('/result-sheets/{templateId}/rate', [ResultSheetController::class, 'saveRatings'])->name('result_sheets.rate.save');
+    Route::get('/result-sheets/{templateId}/print/{studentId}', [ResultSheetController::class, 'printSheet'])->name('result_sheets.print');
+    Route::get('/api/terms-by-section', [ResultSheetController::class, 'getTermsBySection'])->name('api.result_sheets.terms');
+    Route::get('/api/subjects-by-classes', [ResultSheetController::class, 'getSubjectsByClasses'])->name('api.result_sheets.subjects');
+
+
     // View Students & Deallocate
     Route::get('/hostels/{id}/students', [HostelController::class, 'students'])->name('hostels.students');
     Route::post('/hostels/deallocate/{studentId}', [HostelController::class, 'deallocate'])->name('hostels.deallocate');
@@ -699,6 +729,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/students/report-cards/verify-pin', [StudentReportCardController::class, 'verifyPin'])
         ->name('students.reportcards.verify');
+
+    Route::get('/student/report-cards/sheet', [StudentReportCardController::class, 'showSheet'])
+        ->name('students.reportcards.sheet');
 
     Route::get('/students/report-cards/view', [StudentReportCardController::class, 'viewReport'])
         ->name('students.reportcards.view');

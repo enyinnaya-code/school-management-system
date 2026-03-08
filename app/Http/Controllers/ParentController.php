@@ -223,7 +223,9 @@ class ParentController extends Controller
 
 
     /**
-     * View Fee Prospectus for a specific ward (student)
+     * View Fee Prospectus for a specific ward (student).
+     * Sessions are global (not section-scoped); section_id is only used
+     * to look up the correct fee prospectus record.
      */
     public function wardFeeProspectus($studentId)
     {
@@ -232,7 +234,7 @@ class ParentController extends Controller
         // Ensure the student belongs to this parent and load class + section
         $student = $parent->students()
             ->where('users.id', $studentId)
-            ->with(['schoolClass.section'])  // Eager load class and its section
+            ->with(['schoolClass.section'])
             ->firstOrFail();
 
         // Safety check: student must have a class
@@ -240,15 +242,14 @@ class ParentController extends Controller
             return redirect()->back()->with('error', 'This student is not assigned to any class/section.');
         }
 
-        $sectionId = $student->schoolClass->section_id;  // ← Reliable source
+        // section_id is only used below for the prospectus lookup — NOT for session scoping
+        $sectionId = $student->schoolClass->section_id;
 
-        // Get the current session for this SECTION
-        $currentSession = Session::where('section_id', $sectionId)
-            ->where('is_current', true)
-            ->first();
+        // Sessions are school-wide; fetch the single global current session
+        $currentSession = Session::where('is_current', true)->first();
 
         if (!$currentSession) {
-            return redirect()->back()->with('error', 'No current academic session is set for ' . $student->schoolClass->section->section_name . '.');
+            return redirect()->back()->with('error', 'No current academic session has been set.');
         }
 
         // Get the current term for this session
@@ -262,7 +263,7 @@ class ParentController extends Controller
 
         $currentTerm->load('session');
 
-        // Fetch the fee prospectus using class_id and section_id
+        // Fetch the fee prospectus scoped to this student's class and section
         $prospectus = FeeProspectus::where('section_id', $sectionId)
             ->where('class_id', $student->class_id)
             ->where('term_id', $currentTerm->id)
@@ -277,8 +278,6 @@ class ParentController extends Controller
             );
         }
 
-        // **FIX: Add the missing $sections variable**
-        // Fetch all sections (if needed for the view)
         $sections = Section::all();
 
         return view('parents.wards.ward_fee_prospectus', compact('student', 'prospectus', 'currentTerm', 'sections'));

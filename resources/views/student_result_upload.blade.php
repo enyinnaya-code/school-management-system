@@ -1,145 +1,201 @@
 @include('includes.head')
-
 <body>
-    <div class="loader"></div>
-    <div id="app">
-        <div class="main-wrapper main-wrapper-1">
-            <div class="navbar-bg"></div>
-            @include('includes.right_top_nav')
-            @include('includes.side_nav')
+<div class="loader"></div>
+<div id="app">
+    <div class="main-wrapper main-wrapper-1">
+        <div class="navbar-bg"></div>
+        @include('includes.right_top_nav')
+        @include('includes.side_nav')
 
-            <!-- Main Content -->
-            <div class="main-content pt-5 mt-5">
-                <section class="section mb-5 pb-1 px-0">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h4>Upload Results for {{ $student->name }} ({{ $class->name ?? '' }} - {{ $section->section_name ?? '' }})</h4>
-                                @if(isset($currentSession) && isset($currentTerm))
-                                    <p class="mb-0"><strong>Academic Session:</strong> {{ $currentSession->name }} | <strong>Term:</strong> {{ $currentTerm->name }}</p>
-                                @else
-                                    <p class="mb-0 text-danger">No current academic session or term is set.</p>
-                                @endif
+        <div class="main-content pt-5 mt-5">
+            <section class="section mb-5 pb-1 px-0">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <h4 class="mb-1">
+                                    <i class="fas fa-clipboard-check mr-2"></i>
+                                    Skill Sheet — {{ $student->name }}
+                                </h4>
+                                <p class="mb-0 text-muted">
+                                    {{ $class->name }} &bull; {{ $section->section_name ?? '' }} &bull;
+                                    <strong>{{ $currentSession->name }}</strong> &mdash;
+                                    <strong>{{ $currentTerm->name }}</strong>
+                                </p>
+                                <p class="mb-0 text-muted small">Template: <em>{{ $template->name }}</em></p>
                             </div>
+                            <a href="javascript:history.back()" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                        </div>
 
-                            <div class="card-body">
-                               
-                                <form method="POST" action="{{ route('student.results.save', $student->id) }}">
-                                    @csrf
+                        <div class="card-body">
+                            @if(session('success'))
+                                <div class="alert alert-success">{{ session('success') }}</div>
+                            @endif
+                            @if($errors->any())
+                                <div class="alert alert-danger">
+                                    <ul class="mb-0">
+                                        @foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach
+                                    </ul>
+                                </div>
+                            @endif
 
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>Subject</th>
-                                                    <th>First CA<br><small>(e.g., /10)</small></th>
-                                                    <th>Second CA<br><small>(e.g., /10)</small></th>
-                                                    <th>Mid Term Test<br><small>(e.g., /20)</small></th>
-                                                    <th>Examination<br><small>(e.g., /60)</small></th>
-                                                    <th>Total<br><small>/100</small></th>
-                                                    <th>Grade</th>
-                                                    <th>Comment</th>
+                            <form method="POST"
+                                  action="{{ route('student.result_sheet.save', ['templateId' => $template->id, 'studentId' => $student->id]) }}">
+                                @csrf
+
+                                {{-- Pass session/term as hidden fields --}}
+                                <input type="hidden" name="session_id" value="{{ $currentSession->id }}">
+                                <input type="hidden" name="term_id"    value="{{ $currentTerm->id }}">
+
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm align-middle" id="sheetTable">
+                                        <thead class="thead-dark">
+                                            <tr>
+                                                <th style="min-width:280px">Skill / Competency</th>
+                                                @foreach($template->rating_columns as $col)
+                                                    <th class="text-center" style="min-width:80px">{{ $col }}</th>
+                                                @endforeach
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($subjects as $subject)
+                                                {{-- Subject heading row --}}
+                                                <tr class="table-warning">
+                                                    <td colspan="{{ count($template->rating_columns) + 1 }}"
+                                                        class="font-weight-bold py-1">
+                                                        <i class="fas fa-book-open mr-1"></i>
+                                                        ({{ $subject->subject_number }}) {{ $subject->subject_name }}
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse($subjects as $subject)
-                                                    @php
-                                                        $result = $existingResults->get($subject->id);
-                                                    @endphp
-                                                    <tr>
-                                                        <td>{{ $subject->course_name }}</td>
-                                                        <td>
-                                                            <input type="number" name="results[{{ $subject->id }}][first_ca]" 
-                                                                   value="{{ $result->first_ca ?? 0 }}" 
-                                                                   class="form-control score-input" step="0.01" min="0" required>
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" name="results[{{ $subject->id }}][second_ca]" 
-                                                                   value="{{ $result->second_ca ?? 0 }}" 
-                                                                   class="form-control score-input" step="0.01" min="0" required>
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" name="results[{{ $subject->id }}][mid_term_test]" 
-                                                                   value="{{ $result->mid_term_test ?? 0 }}" 
-                                                                   class="form-control score-input" step="0.01" min="0" required>
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" name="results[{{ $subject->id }}][examination]" 
-                                                                   value="{{ $result->examination ?? 0 }}" 
-                                                                   class="form-control score-input" step="0.01" min="0" required>
-                                                        </td>
-                                                        <td class="text-center total-score">
-                                                            {{ $result ? number_format($result->total, 2) : '0.00' }}
-                                                        </td>
-                                                        <td class="text-center student-grade">
-                                                            {{ $result->grade ?? '-' }}
-                                                        </td>
-                                                        <td>
-                                                            <textarea name="results[{{ $subject->id }}][comment]" 
-                                                                      class="form-control" rows="2">{{ $result->comment ?? '' }}</textarea>
-                                                        </td>
-                                                    </tr>
-                                                @empty
-                                                    <tr>
-                                                        <td colspan="8" class="text-center text-danger">
-                                                            @if(Auth::user()->user_type == 1 || Auth::user()->user_type == 2)
-                                                                No subjects available in the system.
-                                                            @else
-                                                                No subjects assigned to you for this class. Contact admin.
-                                                            @endif
-                                                        </td>
-                                                    </tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-                                    </div>
 
-                                    <div class="text-center mt-4">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-save"></i> Save All Results
-                                        </button>
-                                        
-                                    </div>
-                                </form>
-                            </div>
+                                                @foreach($subject->subcategories as $sub)
+                                                    {{-- Subcategory heading row --}}
+                                                    <tr class="table-light">
+                                                        <td colspan="{{ count($template->rating_columns) + 1 }}"
+                                                            class="pl-3 font-italic py-1 text-info">
+                                                            {{ $sub->label }} {{ $sub->name }}
+                                                        </td>
+                                                    </tr>
+
+                                                    @foreach($sub->items as $item)
+                                                        <tr class="item-row">
+                                                            <td class="pl-4" style="font-size:.88rem">
+                                                                &mdash; {{ $item->item_text }}
+                                                            </td>
+                                                            @foreach($template->rating_columns as $colIdx => $col)
+                                                                <td class="text-center">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        class="rating-checkbox"
+                                                                        name="ratings[{{ $item->id }}]"
+                                                                        value="{{ $col }}"
+                                                                        data-item="{{ $item->id }}"
+                                                                        {{ ($existingRatings[$item->id] ?? null) === $col ? 'checked' : '' }}>
+                                                                </td>
+                                                            @endforeach
+                                                        </tr>
+                                                    @endforeach
+                                                @endforeach
+
+                                                {{-- Direct items (no subcategory) --}}
+                                                @foreach($subject->items as $item)
+                                                    <tr class="item-row">
+                                                        <td class="pl-3" style="font-size:.88rem">
+                                                            &mdash; {{ $item->item_text }}
+                                                        </td>
+                                                        @foreach($template->rating_columns as $col)
+                                                            <td class="text-center">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    class="rating-checkbox"
+                                                                    name="ratings[{{ $item->id }}]"
+                                                                    value="{{ $col }}"
+                                                                    data-item="{{ $item->id }}"
+                                                                    {{ ($existingRatings[$item->id] ?? null) === $col ? 'checked' : '' }}>
+                                                            </td>
+                                                        @endforeach
+                                                    </tr>
+                                                @endforeach
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {{-- Footer fields --}}
+                                @php $ff = $template->footer_fields ?? []; @endphp
+                                <div class="row mt-4">
+                                    @if($ff['footer_remark'] ?? false)
+                                        <div class="col-md-6 mb-3">
+                                            <label class="font-weight-bold">Remark</label>
+                                            <input type="text" name="footer_remark"
+                                                   class="form-control"
+                                                   value="{{ old('footer_remark') }}">
+                                        </div>
+                                    @endif
+                                    @if($ff['footer_class_teacher'] ?? false)
+                                        <div class="col-md-6 mb-3">
+                                            <label class="font-weight-bold">Class Teacher's Signature</label>
+                                            <input type="text" name="footer_class_teacher"
+                                                   class="form-control"
+                                                   value="{{ old('footer_class_teacher') }}">
+                                        </div>
+                                    @endif
+                                    @if($ff['footer_headmistress'] ?? false)
+                                        <div class="col-md-6 mb-3">
+                                            <label class="font-weight-bold">Headmistress' Signature</label>
+                                            <input type="text" name="footer_headmistress"
+                                                   class="form-control"
+                                                   value="{{ old('footer_headmistress') }}">
+                                        </div>
+                                    @endif
+                                    @if($ff['footer_reopening'] ?? false)
+                                        <div class="col-md-6 mb-3">
+                                            <label class="font-weight-bold">Re-Opening Date</label>
+                                            <input type="text" name="footer_reopening"
+                                                   class="form-control"
+                                                   value="{{ old('footer_reopening') }}">
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save"></i> Save Ratings
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
-                </section>
-            </div>
+                </div>
+            </section>
         </div>
     </div>
+</div>
 
-    @include('includes.edit_footer')
+@include('includes.edit_footer')
 
-    <script>
-        function getGrade(total) {
-            if (total >= 70) return 'A';
-            if (total >= 60) return 'B';
-            if (total >= 50) return 'C';
-            if (total >= 45) return 'D';
-            if (total >= 40) return 'E';
-            return 'F';
-        }
+<style>
+#sheetTable td, #sheetTable th { vertical-align: middle; }
+.item-row:hover { background: #f0f7ff; }
+.rating-checkbox { width: 18px; height: 18px; cursor: pointer; }
+</style>
 
-        function updateRow(row) {
-            let sum = 0;
-            row.find('.score-input').each(function() {
-                sum += parseFloat($(this).val()) || 0;
-            });
-            row.find('.total-score').text(sum.toFixed(2));
-            row.find('.student-grade').text(getGrade(sum));
-        }
-
-        $(document).ready(function() {
-            // Initial calculation on page load
-            $('tbody tr').each(function() {
-                updateRow($(this));
-            });
-
-            // Live update on input change
-            $(document).on('input', '.score-input', function() {
-                updateRow($(this).closest('tr'));
-            });
+<script>
+// Enforce: only ONE checkbox checked per item row
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.rating-checkbox').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            if (this.checked) {
+                // Uncheck all other checkboxes for the same item
+                const itemId = this.dataset.item;
+                document.querySelectorAll(`.rating-checkbox[data-item="${itemId}"]`).forEach(function (other) {
+                    if (other !== cb) other.checked = false;
+                });
+            }
         });
-    </script>
+    });
+});
+</script>
 </body>

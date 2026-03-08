@@ -13,21 +13,18 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf; // Assuming barryvdh/laravel-dompdf is installed
 
 class MiscFeePaymentController extends Controller
 {
     /**
-     * Display a listing of the resource (Manage Misc Fee Payments).
+     * Display a listing of misc fee payments.
      */
     public function index(Request $request)
     {
-        // Build the query
         $query = MiscFeePayment::with(['miscFeeType', 'student', 'paidBy'])
             ->orderBy('payment_date', 'desc')
             ->orderBy('created_at', 'desc');
 
-        // Apply filters if present
         if ($request->filled('filter_student')) {
             $query->whereHas('student', function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->filter_student . '%')
@@ -51,20 +48,15 @@ class MiscFeePaymentController extends Controller
             $query->where('status', $request->filter_status);
         }
 
-        // Paginate the results
-        $payments = $query->paginate(10);
-
-        // Get filter options
-        $students = User::where('user_type', 4)
-            ->orderBy('name')
-            ->get();
-        $feeTypes = MiscFee::orderBy('name')->get();
+        $payments  = $query->paginate(10);
+        $students  = User::where('user_type', 4)->orderBy('name')->get();
+        $feeTypes  = MiscFee::orderBy('name')->get();
 
         return view('misc_fee_payments_manage', compact('payments', 'students', 'feeTypes'));
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Show the form for creating a new payment.
      */
     public function create()
     {
@@ -75,11 +67,12 @@ class MiscFeePaymentController extends Controller
     }
 
     /**
-     * Fetch sessions for a section via AJAX.
+     * Fetch all school-wide sessions via AJAX.
+     * $section_id param kept for route compatibility but ignored.
      */
     public function getSessions($section_id)
     {
-        $sessions = Session::where('section_id', $section_id)
+        $sessions = Session::orderByDesc('name')
             ->select('id', 'name', 'is_current')
             ->get();
 
@@ -104,7 +97,7 @@ class MiscFeePaymentController extends Controller
      */
     public function getStudents($class_id)
     {
-        $students = User::where('user_type', 4) // Assuming 4 is student user_type
+        $students = User::where('user_type', 4)
             ->where('class_id', $class_id)
             ->select('id', 'name', 'admission_no')
             ->orderBy('name')
@@ -114,22 +107,22 @@ class MiscFeePaymentController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created payment.
      */
     public function store(Request $request)
     {
         $request->validate([
-            'section_id' => 'required|exists:sections,id',
-            'session_id' => 'required|exists:school_sessions,id',
-            'class_id' => 'required|exists:school_classes,id',
-            'student_id' => 'required|exists:users,id',
+            'section_id'       => 'required|exists:sections,id',
+            'session_id'       => 'required|exists:school_sessions,id',
+            'class_id'         => 'required|exists:school_classes,id',
+            'student_id'       => 'required|exists:users,id',
             'misc_fee_type_id' => 'required|exists:misc_fee_types,id',
-            'amount_paid' => 'required|numeric|min:0',
-            'payment_date' => 'required|date',
-            'status' => 'nullable|in:pending,paid,cancelled',
+            'amount_paid'      => 'required|numeric|min:0',
+            'payment_date'     => 'required|date',
+            'status'           => 'nullable|in:pending,paid,cancelled',
         ]);
 
-        // Generate receipt number automatically
+        // Generate unique receipt number
         do {
             $receiptNumber = 'MFP-' . Str::upper(Str::random(8)) . '-' . Carbon::now()->format('Ymd');
         } while (MiscFeePayment::where('receipt_number', $receiptNumber)->exists());
@@ -138,36 +131,35 @@ class MiscFeePaymentController extends Controller
         try {
             $payment = MiscFeePayment::create([
                 'misc_fee_type_id' => $request->misc_fee_type_id,
-                'student_id' => $request->student_id,
-                'amount_paid' => $request->amount_paid,
-                'payment_date' => $request->payment_date,
-                'receipt_number' => $receiptNumber,
-                'status' => $request->status ?? 'paid',
-                'paid_by' => Auth::id(),
+                'student_id'       => $request->student_id,
+                'amount_paid'      => $request->amount_paid,
+                'payment_date'     => $request->payment_date,
+                'receipt_number'   => $receiptNumber,
+                'status'           => $request->status ?? 'paid',
+                'paid_by'          => Auth::id(),
             ]);
 
             DB::commit();
 
-            // For AJAX response: return success with receipt URL
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Miscellaneous fee payment recorded successfully!',
-                    'receipt_url' => route('misc.fee.payments.receipt', $payment->id)
+                    'success'     => true,
+                    'message'     => 'Miscellaneous fee payment recorded successfully!',
+                    'receipt_url' => route('misc.fee.payments.receipt', $payment->id),
                 ]);
             }
 
-            // Fallback for non-AJAX
             return redirect()
                 ->route('misc.fee.payments.manage')
                 ->with('success', 'Miscellaneous fee payment recorded successfully!');
+
         } catch (\Exception $e) {
             DB::rollBack();
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error recording payment: ' . $e->getMessage()
+                    'message' => 'Error recording payment: ' . $e->getMessage(),
                 ], 500);
             }
 
@@ -179,14 +171,29 @@ class MiscFeePaymentController extends Controller
     }
 
     /**
-     * Generate and stream PDF receipt for printing.
+     * Display receipt in browser for direct printing on 80mm Xprinter.
      */
     public function receipt($id)
     {
         $payment = MiscFeePayment::with(['miscFeeType', 'student', 'paidBy'])->findOrFail($id);
 
-        $pdf = Pdf::loadView('misc_fee_payment', compact('payment')); // Assuming a view exists at resources/views/receipts/misc_fee_payment.blade.php
+        $student = $payment->student;
+        $class   = SchoolClass::find($student->class_id);
+        $section = $class ? Section::find($class->section_id) : null;
 
-        return $pdf->stream('misc-fee-receipt-' . $payment->receipt_number . '.pdf');
+        // School-wide current session & term
+        $session     = Session::where('is_current', true)->first();
+        $currentTerm = $session
+            ? \App\Models\Term::where('session_id', $session->id)->where('is_current', true)->first()
+            : null;
+
+        // Total due from the fee type; balance = due - amount already paid
+        $totalDue = $payment->miscFeeType->amount ?? $payment->amount_paid;
+        $balance  = max(0, $totalDue - $payment->amount_paid);
+
+        return view('misc_fee_receipt', compact(
+            'payment', 'student', 'class', 'section',
+            'session', 'currentTerm', 'totalDue', 'balance'
+        ));
     }
 }
