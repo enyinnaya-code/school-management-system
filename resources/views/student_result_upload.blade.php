@@ -22,7 +22,7 @@
                                     <strong>{{ $currentSession->name }}</strong> &mdash;
                                     <strong>{{ $currentTerm->name }}</strong>
                                 </p>
-                                <p class="mb-0 text-muted small">Template: <em>{{ $template->name }}</em></p>
+                                <p class="mb-0 text-muted small">Template: <em>{{ $sheetTemplate->name }}</em></p>
                             </div>
                             <a href="javascript:history.back()" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Back
@@ -42,7 +42,7 @@
                             @endif
 
                             <form method="POST"
-                                  action="{{ route('student.result_sheet.save', ['templateId' => $template->id, 'studentId' => $student->id]) }}">
+                                  action="{{ route('student.result_sheet.save', ['templateId' => $sheetTemplate->id, 'studentId' => $student->id]) }}">
                                 @csrf
 
                                 {{-- Pass session/term as hidden fields --}}
@@ -54,7 +54,7 @@
                                         <thead class="thead-dark">
                                             <tr>
                                                 <th style="min-width:280px">Skill / Competency</th>
-                                                @foreach($template->rating_columns as $col)
+                                                @foreach($sheetTemplate->rating_columns as $col)
                                                     <th class="text-center" style="min-width:80px">{{ $col }}</th>
                                                 @endforeach
                                             </tr>
@@ -63,7 +63,7 @@
                                             @foreach($subjects as $subject)
                                                 {{-- Subject heading row --}}
                                                 <tr class="table-warning">
-                                                    <td colspan="{{ count($template->rating_columns) + 1 }}"
+                                                    <td colspan="{{ count($sheetTemplate->rating_columns) + 1 }}"
                                                         class="font-weight-bold py-1">
                                                         <i class="fas fa-book-open mr-1"></i>
                                                         ({{ $subject->subject_number }}) {{ $subject->subject_name }}
@@ -73,7 +73,7 @@
                                                 @foreach($subject->subcategories as $sub)
                                                     {{-- Subcategory heading row --}}
                                                     <tr class="table-light">
-                                                        <td colspan="{{ count($template->rating_columns) + 1 }}"
+                                                        <td colspan="{{ count($sheetTemplate->rating_columns) + 1 }}"
                                                             class="pl-3 font-italic py-1 text-info">
                                                             {{ $sub->label }} {{ $sub->name }}
                                                         </td>
@@ -84,7 +84,7 @@
                                                             <td class="pl-4" style="font-size:.88rem">
                                                                 &mdash; {{ $item->item_text }}
                                                             </td>
-                                                            @foreach($template->rating_columns as $colIdx => $col)
+                                                            @foreach($sheetTemplate->rating_columns as $colIdx => $col)
                                                                 <td class="text-center">
                                                                     <input
                                                                         type="checkbox"
@@ -105,7 +105,7 @@
                                                         <td class="pl-3" style="font-size:.88rem">
                                                             &mdash; {{ $item->item_text }}
                                                         </td>
-                                                        @foreach($template->rating_columns as $col)
+                                                        @foreach($sheetTemplate->rating_columns as $col)
                                                             <td class="text-center">
                                                                 <input
                                                                     type="checkbox"
@@ -124,7 +124,7 @@
                                 </div>
 
                                 {{-- Footer fields --}}
-                                @php $ff = $template->footer_fields ?? []; @endphp
+                                @php $ff = $sheetTemplate->footer_fields ?? []; @endphp
                                 <div class="row mt-4">
                                     @if($ff['footer_remark'] ?? false)
                                         <div class="col-md-6 mb-3">
@@ -188,7 +188,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.rating-checkbox').forEach(function (cb) {
         cb.addEventListener('change', function () {
             if (this.checked) {
-                // Uncheck all other checkboxes for the same item
                 const itemId = this.dataset.item;
                 document.querySelectorAll(`.rating-checkbox[data-item="${itemId}"]`).forEach(function (other) {
                     if (other !== cb) other.checked = false;
