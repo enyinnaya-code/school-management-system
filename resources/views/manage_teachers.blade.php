@@ -71,12 +71,18 @@
                                             <label>Staff Type</label>
                                             <select class="form-control" name="filter_teacher_type">
                                                 <option value="">All Types</option>
-                                                <option value="3" {{ request('filter_teacher_type')=='3' ? 'selected' : '' }}>Teacher</option>
-                                                <option value="6" {{ request('filter_teacher_type')=='6' ? 'selected' : '' }}>Bursar</option>
-                                                <option value="7" {{ request('filter_teacher_type')=='7' ? 'selected' : '' }}>Principal</option>
-                                                <option value="8" {{ request('filter_teacher_type')=='8' ? 'selected' : '' }}>Vice-Principal</option>
-                                                <option value="9" {{ request('filter_teacher_type')=='9' ? 'selected' : '' }}>Dean of Studies</option>
-                                                <option value="10" {{ request('filter_teacher_type')=='10' ? 'selected' : '' }}>Guidance Counsellor</option>
+                                                <option value="3" {{ request('filter_teacher_type')=='3' ? 'selected'
+                                                    : '' }}>Teacher</option>
+                                                <option value="6" {{ request('filter_teacher_type')=='6' ? 'selected'
+                                                    : '' }}>Bursar</option>
+                                                <option value="7" {{ request('filter_teacher_type')=='7' ? 'selected'
+                                                    : '' }}>Principal</option>
+                                                <option value="8" {{ request('filter_teacher_type')=='8' ? 'selected'
+                                                    : '' }}>Vice-Principal</option>
+                                                <option value="9" {{ request('filter_teacher_type')=='9' ? 'selected'
+                                                    : '' }}>Dean of Studies</option>
+                                                <option value="10" {{ request('filter_teacher_type')=='10' ? 'selected'
+                                                    : '' }}>Guidance Counsellor</option>
                                             </select>
                                         </div>
 
@@ -84,10 +90,12 @@
                                             <label>Form Teacher</label>
                                             <select class="form-control" name="filter_form_teacher">
                                                 <option value="">All Staff</option>
-                                                <option value="1" {{ request('filter_form_teacher')=='1' ? 'selected' : '' }}>
+                                                <option value="1" {{ request('filter_form_teacher')=='1' ? 'selected'
+                                                    : '' }}>
                                                     Form Teachers Only
                                                 </option>
-                                                <option value="0" {{ request('filter_form_teacher')=='0' ? 'selected' : '' }}>
+                                                <option value="0" {{ request('filter_form_teacher')=='0' ? 'selected'
+                                                    : '' }}>
                                                     Not Form Teachers
                                                 </option>
                                             </select>
@@ -97,8 +105,10 @@
                                             <label>Status</label>
                                             <select class="form-control" name="filter_status">
                                                 <option value="">All Statuses</option>
-                                                <option value="1" {{ request('filter_status')=='1' ? 'selected' : '' }}>Active</option>
-                                                <option value="0" {{ request('filter_status')=='0' ? 'selected' : '' }}>Deactivated</option>
+                                                <option value="1" {{ request('filter_status')=='1' ? 'selected' : '' }}>
+                                                    Active</option>
+                                                <option value="0" {{ request('filter_status')=='0' ? 'selected' : '' }}>
+                                                    Deactivated</option>
                                             </select>
                                         </div>
 
@@ -106,7 +116,8 @@
                                             <label>Section(s)</label>
                                             <select class="form-control" name="filter_section_ids[]">
                                                 @foreach($sections as $section)
-                                                <option value="{{ $section->id }}" {{ in_array($section->id, (array)request('filter_section_ids')) ? 'selected' : '' }}>
+                                                <option value="{{ $section->id }}" {{ in_array($section->id,
+                                                    (array)request('filter_section_ids')) ? 'selected' : '' }}>
                                                     {{ $section->section_name }}
                                                 </option>
                                                 @endforeach
@@ -137,7 +148,8 @@
                                     <span class="badge badge-info mr-2">Email: {{ request('filter_email') }}</span>
                                     @endif
 
-                                    @if(request('filter_teacher_type') !== null && request('filter_teacher_type') !== '')
+                                    @if(request('filter_teacher_type') !== null && request('filter_teacher_type') !==
+                                    '')
                                     <span class="badge badge-info mr-2">Type:
                                         @switch(request('filter_teacher_type'))
                                         @case(3) Teacher @break
@@ -150,7 +162,8 @@
                                     </span>
                                     @endif
 
-                                    @if(request('filter_form_teacher') !== null && request('filter_form_teacher') !== '')
+                                    @if(request('filter_form_teacher') !== null && request('filter_form_teacher') !==
+                                    '')
                                     <span class="badge badge-info mr-2">
                                         Form Teacher: {{ request('filter_form_teacher') == '1' ? 'Yes' : 'No' }}
                                     </span>
@@ -170,7 +183,8 @@
 
                                     @if(is_array(request('filter_class_ids')) && count(request('filter_class_ids')))
                                     @foreach($classes->whereIn('id', request('filter_class_ids')) as $class)
-                                    <span class="badge badge-info mr-2">Class: {{ $class->name ?? $class->class_name }}</span>
+                                    <span class="badge badge-info mr-2">Class: {{ $class->name ?? $class->class_name
+                                        }}</span>
                                     @endforeach
                                     @endif
 
@@ -205,8 +219,18 @@
                                         <tbody>
                                             @foreach($teachers as $index => $teacher)
                                             <tr>
-                                                <td>{{ ($teachers->currentPage() - 1) * $teachers->perPage() + $index + 1 }}</td>
-                                                <td>{{ $teacher->name }}</td>
+                                                <td>{{ ($teachers->currentPage() - 1) * $teachers->perPage() + $index +
+                                                    1 }}</td>
+                                                <td>
+                                                    {{ $teacher->name }}
+                                                    @if($teacher->is_form_teacher && $teacher->formClass)
+                                                    <br>
+                                                    <small class="text-success font-weight-bold">
+                                                        <i class="fas fa-chalkboard-teacher"></i>
+                                                        Form Teacher – {{ $teacher->formClass->name }}
+                                                    </small>
+                                                    @endif
+                                                </td>
                                                 <td>{{ $teacher->email }}</td>
                                                 <td>
                                                     @switch($teacher->user_type)
@@ -221,7 +245,8 @@
                                                 </td>
                                                 <td>{{ $teacher->created_at->format('M d, Y') }}</td>
                                                 <td>
-                                                    <span class="badge {{ $teacher->is_active ? 'badge-success' : 'badge-danger' }}">
+                                                    <span
+                                                        class="badge {{ $teacher->is_active ? 'badge-success' : 'badge-danger' }}">
                                                         {{ $teacher->is_active ? 'Active' : 'Deactivated' }}
                                                     </span>
                                                 </td>
@@ -236,13 +261,15 @@
                                                         <i class="fas fa-edit"></i>
                                                     </a>
 
-                                                    <form action="{{ route('teachers.toggleActive', ['id' => Crypt::encrypt($teacher->id)]) }}"
+                                                    <form
+                                                        action="{{ route('teachers.toggleActive', ['id' => Crypt::encrypt($teacher->id)]) }}"
                                                         method="POST" style="display:inline;">
                                                         @csrf @method('PATCH')
                                                         <button type="submit"
                                                             class="btn btn-sm m-1 {{ $teacher->is_active ? 'btn-secondary' : 'btn-success' }}"
                                                             title="{{ $teacher->is_active ? 'Deactivate' : 'Activate' }}">
-                                                            <i class="fas {{ $teacher->is_active ? 'fa-ban' : 'fa-check' }}"></i>
+                                                            <i
+                                                                class="fas {{ $teacher->is_active ? 'fa-ban' : 'fa-check' }}"></i>
                                                         </button>
                                                     </form>
 
@@ -251,11 +278,13 @@
                                                         <i class="fas fa-key"></i>
                                                     </a>
 
-                                                    <form action="{{ route('teachers.destroy', ['id' => Crypt::encrypt($teacher->id)]) }}"
+                                                    <form
+                                                        action="{{ route('teachers.destroy', ['id' => Crypt::encrypt($teacher->id)]) }}"
                                                         method="POST" style="display:inline;"
                                                         onsubmit="return confirm('Are you sure you want to delete this staff?');">
                                                         @csrf @method('DELETE')
-                                                        <button type="submit" class="btn btn-sm m-1 btn-danger" title="Delete">
+                                                        <button type="submit" class="btn btn-sm m-1 btn-danger"
+                                                            title="Delete">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
                                                     </form>
@@ -436,4 +465,5 @@
         ];
     </script>
 </body>
+
 </html>
