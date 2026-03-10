@@ -17,7 +17,7 @@
         </a>
       </li>
 
-      <!-- ========== SUPER ADMIN & ADMIN (Type 1 & 2) ========== -->
+      <!-- ========== SUPER ADMIN & ADMIN (Type 1, 2, 7, 8, 9) ========== -->
       @if(auth()->user()->user_type == 1 || auth()->user()->user_type == 2 ||
       auth()->user()->user_type == 7 || auth()->user()->user_type == 8 ||
       auth()->user()->user_type == 9)
@@ -42,7 +42,6 @@
           <li class="divider mx-4"></li>
           <li><a class="nav-link" href="{{ route('result_sheets.create') }}">Custom Result Sheets</a></li>
           <li><a class="nav-link" href="{{ route('result_sheets.index') }}">Manage Result Sheets</a></li>
-
         </ul>
       </li>
 
@@ -67,20 +66,6 @@
           <li><a class="nav-link" href="{{ route('timetables.index') }}">Manage Timetables</a></li>
         </ul>
       </li>
-
-
-      {{--
-      <li class="dropdown">
-        <a href="#" class="menu-toggle nav-link has-dropdown">
-          <i data-feather="home"></i><span>Hostels</span>
-        </a>
-        <ul class="dropdown-menu">
-          <li><a class="nav-link" href="{{ route('hostels.add') }}">Add Hostel</a></li>
-          <li><a class="nav-link" href="{{ route('hostels.manage') }}">Manage Hostels</a></li>
-          <li><a class="nav-link" href="{{ route('hostels.allocate') }}">Allocate Hostels</a></li>
-        </ul>
-      </li> --}}
-
 
       @if(auth()->user()->user_type == 1 || auth()->user()->user_type == 2 ||
       auth()->user()->user_type == 7 || auth()->user()->user_type == 8)
@@ -123,14 +108,19 @@
       </li>
 
       @endif
+      {{-- END: USER MANAGEMENT (types 1,2,7,8) --}}
 
+      @endif
+      {{-- END: SCHOOL MANAGEMENT (types 1,2,7,8,9) --}}
 
-
+      <!-- ========== ATTENDANCE - Admins & Form Teachers ========== -->
       @if(auth()->user()->user_type == 1 || auth()->user()->user_type == 2 ||
-      auth()->user()->user_type == 7 || auth()->user()->user_type == 8)
+      auth()->user()->user_type == 7 || auth()->user()->user_type == 8 ||
+      (auth()->user()->user_type == 3 && auth()->user()->is_form_teacher))
       <li class="menu-header">ATTENDANCE</li>
 
-      <!-- Staff Attendance -->
+      <!-- Staff Attendance - Admins only -->
+      @if(in_array(auth()->user()->user_type, [1, 2, 7, 8]))
       <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
           <i data-feather="clipboard"></i><span>Staff Attendance</span>
@@ -140,6 +130,7 @@
           <li><a class="nav-link" href="{{ route('attendance.teachers.index') }}">View Attendance</a></li>
         </ul>
       </li>
+      @endif
 
       <!-- Student Attendance -->
       <li class="dropdown">
@@ -147,14 +138,17 @@
           <i data-feather="check-square"></i><span>Student Attendance</span>
         </a>
         <ul class="dropdown-menu">
+         @if(in_array(auth()->user()->user_type, [1, 2, 7, 8]) || (auth()->user()->user_type == 3 && auth()->user()->is_form_teacher))
           <li><a class="nav-link" href="{{ route('attendance.students.mark') }}">Mark Attendance</a></li>
+          @endif
           <li><a class="nav-link" href="{{ route('attendance.students.index') }}">View Attendance</a></li>
         </ul>
       </li>
 
       @endif
-      @endif
+      {{-- END: ATTENDANCE --}}
 
+      <!-- ========== FINANCE (Types 1, 2, 6) ========== -->
       @if(auth()->user()->user_type == 1 || auth()->user()->user_type == 2 ||
       auth()->user()->user_type == 6)
       <li class="menu-header">FINANCE</li>
@@ -168,8 +162,8 @@
           <li><a class="nav-link" href="{{ route('payment.create') }}">New Payment</a></li>
           <li><a class="nav-link" href="{{ route('payment.manage') }}">Manage Payments</a></li>
           <li class="divider mx-4"></li>
-          <li><a class="nav-link" href="{{route('fee.prospectus.create')}}">Create Fee Prospectus</a></li>
-          <li><a class="nav-link" href="{{route('fee.prospectus.manage')}}">Manage Fee Prospectus</a></li>
+          <li><a class="nav-link" href="{{ route('fee.prospectus.create') }}">Create Fee Prospectus</a></li>
+          <li><a class="nav-link" href="{{ route('fee.prospectus.manage') }}">Manage Fee Prospectus</a></li>
         </ul>
       </li>
 
@@ -186,20 +180,6 @@
           <li><a class="nav-link" href="{{ route('misc.fee.payments.manage') }}">Manage Misc Fee Payments</a></li>
         </ul>
       </li>
-
-      <!-- Payroll -->
-      {{-- <li class="dropdown">
-        <a href="#" class="menu-toggle nav-link has-dropdown">
-          <i data-feather="dollar-sign"></i><span>Payroll</span>
-        </a>
-        <ul class="dropdown-menu">
-          <li><a class="nav-link" href="{{ route('finance.payroll.create') }}">Payroll Capture</a></li>
-          <li><a class="nav-link" href="{{ route('finance.payroll.index') }}">Manage Payroll Capture</a></li>
-          <li><a class="nav-link" href="{{ route('finance.payroll.process') }}">Process Salary</a></li>
-          <li><a class="nav-link" href="{{ route('finance.payroll.processed-salaries') }}">View Processed Salaries</a>
-          </li>
-        </ul>
-      </li> --}}
 
       <!-- Other Expenses -->
       <li class="dropdown">
@@ -224,14 +204,13 @@
       </li>
 
       @endif
+      {{-- END: FINANCE --}}
 
-
-
+      <!-- ========== COMMUNICATION - All Users ========== -->
       <li class="menu-header">COMMUNICATION</li>
 
       @if(auth()->user()->user_type == 1 || auth()->user()->user_type == 2 ||
       auth()->user()->user_type == 7 || auth()->user()->user_type == 8)
-
       <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
           <i data-feather="message-circle"></i><span>Announcements</span>
@@ -243,19 +222,13 @@
       </li>
       @endif
 
-
-
-
-
       <li class="dropdown">
         <a href="{{ route('events.calendar') }}" class="nav-link">
           <i data-feather="calendar"></i><span>School Calendar</span>
         </a>
       </li>
 
-      <!-- ========== TEACHERS (Type 3) - Student Management ========== -->
-      @if(in_array(Auth::user()->user_type, [1, 2, 3, 7, 8, 9, 10]))
-
+      <!-- ========== MY TEACHING - Admin, Teachers, Counsellors (Type 1,2,3,7,8,9,10) ========== -->
       @if(in_array(Auth::user()->user_type, [1, 2, 3, 7, 8, 9, 10]))
       <li class="menu-header">MY TEACHING</li>
 
@@ -274,7 +247,6 @@
         </a>
       </li>
 
-      {{-- Admin-only: View all teachers' schedules --}}
       @if(in_array(Auth::user()->user_type, [1, 2]))
       <li class="dropdown">
         <a href="{{ route('admin.teaching-schedules') }}" class="nav-link">
@@ -282,9 +254,8 @@
         </a>
       </li>
       @endif
-      @endif
 
-      <!-- ========== ACADEMICS & ASSESSMENT - Admin & Teachers (Type 1, 2, 3) ========== -->
+      <!-- ========== ACADEMICS & ASSESSMENT ========== -->
       <li class="menu-header">ACADEMICS & ASSESSMENT</li>
 
       <!-- Exam Questions -->
@@ -308,24 +279,19 @@
         </a>
         <ul class="dropdown-menu">
           <li><a class="nav-link" href="{{ route('results.upload') }}">Upload Results</a></li>
-          @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 &&
-          Auth::user()->is_form_teacher))
+          @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 && Auth::user()->is_form_teacher))
           <li><a class="nav-link" href="{{ route('results.print') }}">Print Results</a></li>
-          <li><a class="nav-link" href="{{ route('students.promote') }}">
-              Promote Students
-            </a></li>
-          <li><a class="nav-link" href="{{ route('students.promotion.history') }}">
-              Promotion History
-            </a></li>
+          <li><a class="nav-link" href="{{ route('students.promote') }}">Promote Students</a></li>
+          <li><a class="nav-link" href="{{ route('students.promotion.history') }}">Promotion History</a></li>
           @endif
         </ul>
       </li>
 
       @endif
+      {{-- END: MY TEACHING (types 1,2,3,7,8,9,10) --}}
 
-      <!-- ========== E-CLASSROOM - Admin, Teachers & Students (Type 1, 2, 3, 4) ========== -->
+      <!-- ========== E-LEARNING (Types 1,2,3,4,7,8,9,10) ========== -->
       @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10]))
-
       <li class="menu-header">E-LEARNING</li>
 
       <li class="dropdown">
@@ -333,17 +299,14 @@
           <i data-feather="video"></i><span>E-Classroom</span>
         </a>
       </li>
-
       @endif
+      {{-- END: E-LEARNING --}}
 
-      <!-- ========== CBT SECTION - Multiple User Types (1, 2, 3, 4) ========== -->
-      @if(Auth::user()->user_type == 1 || Auth::user()->user_type == 2 || in_array(Auth::user()->user_type, [1, 2, 3,
-      4, 7, 8, 9, 10]))
-
+      <!-- ========== COMPUTER-BASED TESTING ========== -->
+      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10]))
       <li class="menu-header">COMPUTER-BASED TESTING</li>
 
-      @if(Auth::user()->user_type == 1 || Auth::user()->user_type == 2 || Auth::user()->user_type == 7 ||
-      Auth::user()->user_type == 8 || Auth::user()->user_type == 9)
+      @if(in_array(Auth::user()->user_type, [1, 2, 7, 8, 9]))
       <!-- CBT Dashboard - Admin Only -->
       <li class="dropdown">
         <a href="{{ route('dashboard') }}" class="nav-link">
@@ -401,12 +364,10 @@
       @endif
 
       @endif
+      {{-- END: CBT --}}
 
-      <!-- ========== LIBRARY - All Users (1, 2, 3, 4, 5) + Librarians ========== -->
-      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9 , 10]) || (Auth::user()->user_type == 3 &&
-      Auth::user()->is_librarian
-      == 1))
-
+      <!-- ========== LIBRARY (Types 1,2,3,4,7,8,9,10 + Librarians) ========== -->
+      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10]) || (Auth::user()->user_type == 3 && Auth::user()->is_librarian == 1))
       <li class="menu-header">LIBRARY</li>
 
       <!-- Physical Library -->
@@ -415,8 +376,7 @@
           <i data-feather="book"></i><span>Physical Library</span>
         </a>
         <ul class="dropdown-menu">
-          @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 && Auth::user()->is_librarian
-          == 1))
+          @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 && Auth::user()->is_librarian == 1))
           <li><a class="nav-link" href="{{ route('physical_library.add_book') }}">Add Books</a></li>
           <li><a class="nav-link" href="{{ route('physical_library.manage_books') }}">Manage Books</a></li>
           <li><a class="nav-link" href="{{ route('physical_library.borrowing_returns') }}">Borrowing & Returns</a></li>
@@ -428,9 +388,7 @@
 
           <li><a class="nav-link" href="{{ route('physical_library.request_borrow') }}">Borrow a Book</a></li>
 
-          @if(!in_array(Auth::user()->user_type, [1,2, 9]) && !(Auth::user()->user_type == 3 &&
-          Auth::user()->is_librarian
-          == 1))
+          @if(!in_array(Auth::user()->user_type, [1, 2, 9]) && !(Auth::user()->user_type == 3 && Auth::user()->is_librarian == 1))
           <li><a class="nav-link" href="{{ route('physical_library.my_borrows') }}">My Borrowed Books</a></li>
           @endif
         </ul>
@@ -444,9 +402,7 @@
         <ul class="dropdown-menu">
           <li><a class="nav-link" href="{{ route('e_library.view_resources') }}">Browse Resources</a></li>
 
-          @if(in_array(Auth::user()->user_type, [1, 2, 9]) || (Auth::user()->user_type == 3 &&
-          Auth::user()->is_librarian
-          == 1))
+          @if(in_array(Auth::user()->user_type, [1, 2, 9]) || (Auth::user()->user_type == 3 && Auth::user()->is_librarian == 1))
           <li class="divider mx-4"></li>
           <li><a class="nav-link" href="{{ route('e_library.add_resource') }}">Add Resources</a></li>
           <li><a class="nav-link" href="{{ route('e_library.manage_resources') }}">Manage Resources</a></li>
@@ -455,10 +411,10 @@
       </li>
 
       @endif
+      {{-- END: LIBRARY --}}
 
-      <!-- ========== COUNSELLING MODULE - Guidance Counsellor (Type 10) ========== -->
+      <!-- ========== COUNSELLING (Types 1, 2, 10) ========== -->
       @if(Auth::user()->user_type == 10 || in_array(Auth::user()->user_type, [1, 2]))
-
       <li class="menu-header">COUNSELLING</li>
 
       <li class="dropdown">
@@ -470,23 +426,13 @@
           <li><a class="nav-link" href="{{ route('counsellor.index') }}">My Counselling Sessions</a></li>
         </ul>
       </li>
-
       @endif
+      {{-- END: COUNSELLING --}}
 
-
-      <!-- ========== MY PROFILE - Admin, Teachers, Students (Type 1, 2, 3, 4) ========== -->
+      <!-- ========== STUDENT PORTAL (Type 4) ========== -->
       @if(in_array(Auth::user()->user_type, [1, 2, 3, 4]))
 
-      {{-- <li class="menu-header">MY PROFILE</li>
-
-      <li class="dropdown">
-        <a href="{{ route('students.profile', Auth::id()) }}" class="nav-link">
-          <i data-feather="user"></i><span>My Profile</span>
-        </a>
-      </li> --}}
-
-      @if(in_array(Auth::user()->user_type, [4]))
-      <!-- FOR STUDENTS ONLY -->
+      @if(Auth::user()->user_type == 4)
       <li class="dropdown">
         <a href="{{ route('students.timetable') }}" class="nav-link">
           <i data-feather="calendar"></i><span>My Timetable</span>
@@ -498,15 +444,10 @@
           <i data-feather="award"></i><span>Report Cards</span>
         </a>
         <ul class="dropdown-menu">
-          <li>
-            <a class="nav-link" href="{{ route('students.reportcards.index') }}">
-              View Report Cards
-            </a>
-          </li>
+          <li><a class="nav-link" href="{{ route('students.reportcards.index') }}">View Report Cards</a></li>
         </ul>
       </li>
 
-      <!-- NEW: My Issued PINs -->
       <li class="dropdown">
         <a href="{{ route('students.issuedpins') }}" class="nav-link">
           <i data-feather="key"></i><span>My Issued PINs</span>
@@ -514,12 +455,11 @@
       </li>
       @endif
 
-
       @endif
+      {{-- END: STUDENT PORTAL --}}
 
-      <!-- ========== PARENT PORTAL - Admin & Parents (Type 1, 2, 5) ========== -->
+      <!-- ========== PARENT PORTAL (Types 1, 2, 5) ========== -->
       @if(in_array(Auth::user()->user_type, [1, 2, 5]))
-
       <li class="menu-header">PARENT PORTAL</li>
 
       <li class="dropdown">
@@ -527,6 +467,7 @@
           <i data-feather="users"></i><span>My Wards</span>
         </a>
       </li>
+
       <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
           <i data-feather="credit-card"></i><span>Fees & Payments</span>
@@ -546,7 +487,6 @@
         </ul>
       </li>
 
-
       <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
           <i data-feather="award"></i><span>Wards Report Cards</span>
@@ -564,27 +504,24 @@
 
       <li class="dropdown">
         <a href="{{ route('parents.transaction.history') }}" class="nav-link">
-          <i data-feather="file-text"></i>
-          <span>Transaction History</span>
+          <i data-feather="file-text"></i><span>Transaction History</span>
         </a>
       </li>
 
       @endif
+      {{-- END: PARENT PORTAL --}}
 
-      <!-- ========== SYSTEM ADMINISTRATION - Super Admin Only (Type 1) ========== -->
+      <!-- ========== SYSTEM ADMINISTRATION (Types 1, 2, 9) ========== -->
       @if(in_array(Auth::user()->user_type, [1, 2, 9]))
-
       <li class="menu-header">SYSTEM ADMINISTRATION</li>
 
-
-      @if(in_array(Auth::user()->user_type, [1]))
+      @if(Auth::user()->user_type == 1)
       <li class="dropdown">
         <a href="{{ route('pins.create') }}" class="nav-link">
           <i data-feather="key"></i><span>Generate PINs</span>
         </a>
       </li>
       @endif
-
 
       <li class="dropdown">
         <a href="{{ route('pins.index') }}" class="nav-link">
@@ -599,6 +536,7 @@
       </li>
 
       @endif
+      {{-- END: SYSTEM ADMINISTRATION --}}
 
     </ul>
   </aside>

@@ -28,16 +28,19 @@
                                 @csrf
 
                                 <!-- Filter Collapse Panel -->
-                                <div class="collapse show" id="filterCollapse"> {{-- 'show' to expand by default --}}
+                                <div class="collapse show" id="filterCollapse">
                                     <div class="card-body pb-0">
                                         <div class="row">
+
                                             <!-- Session Selection -->
                                             <div class="form-group col-md-2">
                                                 <label class="col-form-label">Session</label>
                                                 <select class="form-control" id="session_select" name="session_id" required>
                                                     <option value="">Select a session...</option>
                                                     @foreach($sessions ?? [] as $session)
-                                                        <option value="{{ $session->id }}" {{ ($currentSession && $session->id == $currentSession->id) ? 'selected' : '' }}>{{ $session->name }}</option>
+                                                        <option value="{{ $session->id }}" {{ ($currentSession && $session->id == $currentSession->id) ? 'selected' : '' }}>
+                                                            {{ $session->name }}
+                                                        </option>
                                                     @endforeach
                                                 </select>
                                                 @error('session_id')
@@ -71,12 +74,19 @@
                                             <!-- Section Selection -->
                                             <div class="form-group col-md-2">
                                                 <label class="col-form-label">Select Section</label>
-                                                <select class="form-control" id="section" name="section_id" required>
+                                                <select class="form-control" id="section" name="{{ $isFormTeacher ? '_section_id_ignored' : 'section_id' }}"
+                                                    {{ $isFormTeacher ? 'disabled' : '' }} required>
                                                     <option value="">Select a section...</option>
                                                     @foreach($sections as $section)
-                                                        <option value="{{ $section->id }}">{{ $section->section_name }}</option>
+                                                        <option value="{{ $section->id }}" {{ $isFormTeacher ? 'selected' : '' }}>
+                                                            {{ $section->section_name }}
+                                                        </option>
                                                     @endforeach
                                                 </select>
+                                                {{-- Hidden input so disabled field value still submits --}}
+                                                @if($isFormTeacher)
+                                                    <input type="hidden" name="section_id" value="{{ $sections->first()->id }}">
+                                                @endif
                                                 @error('section_id')
                                                     <span class="text-danger">{{ $message }}</span>
                                                 @enderror
@@ -85,13 +95,25 @@
                                             <!-- Class Selection -->
                                             <div class="form-group col-md-2">
                                                 <label class="col-form-label">Select Class</label>
-                                                <select class="form-control" id="class" name="class_id" disabled required>
-                                                    <option value="">Select a class...</option>
-                                                </select>
+                                                @if($isFormTeacher)
+                                                    @php $formClass = \App\Models\SchoolClass::find($user->form_class_id); @endphp
+                                                    <select class="form-control" id="class" name="_class_id_ignored" disabled required>
+                                                        <option value="">Select a class...</option>
+                                                        @if($formClass)
+                                                            <option value="{{ $formClass->id }}" selected>{{ $formClass->name }}</option>
+                                                        @endif
+                                                    </select>
+                                                    <input type="hidden" name="class_id" value="{{ $user->form_class_id }}">
+                                                @else
+                                                    <select class="form-control" id="class" name="class_id" disabled required>
+                                                        <option value="">Select a class...</option>
+                                                    </select>
+                                                @endif
                                                 @error('class_id')
                                                     <span class="text-danger">{{ $message }}</span>
                                                 @enderror
                                             </div>
+
                                         </div>
                                     </div>
                                 </div>
@@ -132,12 +154,14 @@
 
     <script>
         $(document).ready(function() {
-            // Initial load of terms for current session
+
+            var isFormTeacher = {{ $isFormTeacher ? 'true' : 'false' }};
+
+            // ── TERMS ────────────────────────────────────────────────
             if ($('#session_select').val()) {
                 loadTerms($('#session_select').val());
             }
 
-            // When session changes, fetch terms
             $('#session_select').change(function() {
                 var sessionId = $(this).val();
                 if (sessionId) {
@@ -145,8 +169,9 @@
                 } else {
                     $('#term_select').empty().append('<option value="">Select a term...</option>').prop('disabled', true);
                 }
-                // Reset other fields
-                $('#section').val('').change();
+                if (!isFormTeacher) {
+                    $('#section').val('').trigger('change');
+                }
                 $('#studentsTable').hide();
                 $('#submitBtn').prop('disabled', true);
             });
@@ -155,19 +180,21 @@
                 $.ajax({
                     url: '{{ route("attendance.students.terms") }}',
                     type: 'GET',
-                    data: {
-                        session_id: sessionId
-                    },
+                    data: { session_id: sessionId },
                     success: function(data) {
                         $('#term_select').empty().append('<option value="">Select a term...</option>');
                         $.each(data, function(index, term) {
                             $('#term_select').append('<option value="' + term.id + '">' + term.name + '</option>');
                         });
-                        // Set current term if exists
                         @if($currentTerm)
                             $('#term_select').val({{ $currentTerm->id }});
                         @endif
                         $('#term_select').prop('disabled', false);
+
+                        // For form teachers: once terms are loaded, trigger student fetch
+                        if (isFormTeacher) {
+                            fetchStudents();
+                        }
                     },
                     error: function() {
                         alert('Error fetching terms. Please try again.');
@@ -175,22 +202,21 @@
                 });
             }
 
-            // When section changes, fetch classes
+            // ── SECTION → CLASSES (admins only) ──────────────────────
             $('#section').change(function() {
+                if (isFormTeacher) return; // form teachers don't use this flow
+
                 var sectionId = $(this).val();
                 if (sectionId) {
                     $.ajax({
                         url: '{{ route("attendance.students.classes") }}',
                         type: 'GET',
-                        data: {
-                            section_id: sectionId
-                        },
+                        data: { section_id: sectionId },
                         success: function(data) {
                             $('#class').empty().append('<option value="">Select a class...</option>');
                             $('#studentsTable').hide();
                             $('#submitBtn').prop('disabled', true);
                             $('#class').prop('disabled', false);
-
                             $.each(data, function(index, classItem) {
                                 $('#class').append('<option value="' + classItem.id + '">' + classItem.name + '</option>');
                             });
@@ -206,12 +232,19 @@
                 }
             });
 
-            // When class changes, fetch students and populate table
+            // ── CLASS CHANGE → FETCH STUDENTS (admins only) ──────────
             $('#class').change(function() {
-                var classId = $(this).val();
-                var sessionId = $('#session_select').val();
-                var termId = $('#term_select').val();
+                if (isFormTeacher) return; // form teachers use fetchStudents() directly
+                fetchStudents();
+            });
+
+            // ── SHARED STUDENT FETCH FUNCTION ─────────────────────────
+            function fetchStudents() {
+                var classId       = isFormTeacher ? {{ $isFormTeacher ? $user->form_class_id : 'null' }} : $('#class').val();
+                var sessionId     = $('#session_select').val();
+                var termId        = $('#term_select').val();
                 var attendanceDate = $('input[name="attendance_date"]').val();
+
                 if (classId && termId && sessionId && attendanceDate) {
                     $.ajax({
                         url: '{{ route("attendance.students.get") }}',
@@ -226,22 +259,21 @@
                             var tbody = $('#studentsBody');
                             tbody.empty();
                             if (data.length === 0) {
-                                tbody.append(
-                                    '<tr><td colspan="2" class="text-center text-muted">All students have attendance marked for this date.</td></tr>'
-                                );
+                                tbody.append('<tr><td colspan="2" class="text-center text-muted">All students have attendance marked for this date.</td></tr>');
                                 $('#submitBtn').prop('disabled', true);
                             } else {
                                 $.each(data, function(index, student) {
                                     tbody.append(
                                         '<tr>' +
-                                        '<td>' + student.name + '<input type="hidden" name="attendances[' + index + '][student_id]" value="' + student.id + '"></td>' +
+                                        '<td>' + student.name +
+                                            '<input type="hidden" name="attendances[' + index + '][student_id]" value="' + student.id + '">' +
+                                        '</td>' +
                                         '<td>' +
-                                        '<select class="form-control" name="attendances[' + index + '][status]" required>' +
-                                        '<option value="">Select status...</option>' +
-                                        '<option value="Present">Present</option>' +
-                                        '<option value="Absent">Absent</option>' +
-                                       
-                                        '</select>' +
+                                            '<select class="form-control" name="attendances[' + index + '][status]" required>' +
+                                                '<option value="">Select status...</option>' +
+                                                '<option value="Present">Present</option>' +
+                                                '<option value="Absent">Absent</option>' +
+                                            '</select>' +
                                         '</td>' +
                                         '</tr>'
                                     );
@@ -258,14 +290,17 @@
                     $('#studentsTable').hide();
                     $('#submitBtn').prop('disabled', true);
                 }
-            });
+            }
 
-            // Listen for changes in term or date to refresh students if class is already selected
+            // ── REFRESH ON TERM / DATE CHANGE ─────────────────────────
             $('#term_select, input[name="attendance_date"]').change(function() {
-                if ($('#class').val()) {
-                    $('#class').change(); // Trigger refetch
+                if (isFormTeacher) {
+                    fetchStudents();
+                } else if ($('#class').val()) {
+                    fetchStudents();
                 }
             });
+
         });
     </script>
 </body>

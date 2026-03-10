@@ -16,14 +16,30 @@ class StudentAttendanceController extends Controller
 {
     public function create()
     {
-        $sections       = Section::select('id', 'section_name')->get();
-        $sessions       = Session::orderByDesc('name')->get(); // school-wide
+        $user           = Auth::user();
         $currentSession = Session::where('is_current', true)->first();
         $currentTerm    = $currentSession
             ? Term::where('session_id', $currentSession->id)->where('is_current', true)->first()
             : null;
+        $sessions       = Session::orderByDesc('name')->get();
 
-        return view('students_attendance', compact('sections', 'sessions', 'currentSession', 'currentTerm'));
+        $isFormTeacher  = $user->user_type == 3 && $user->is_form_teacher && $user->form_class_id;
+
+        if ($isFormTeacher) {
+            $formClass = SchoolClass::find($user->form_class_id);
+            $sections  = Section::where('id', $formClass->section_id)->get();
+        } else {
+            $sections  = Section::select('id', 'section_name')->get();
+        }
+
+        return view('students_attendance', compact(
+            'sections',
+            'sessions',
+            'currentSession',
+            'currentTerm',
+            'isFormTeacher',
+            'user'
+        ));
     }
 
     /**
@@ -127,6 +143,7 @@ class StudentAttendanceController extends Controller
 
     public function index(Request $request)
     {
+        $user      = Auth::user();
         $sectionId = $request->get('section_id');
         $classId   = $request->get('class_id');
         $sessionId = $request->get('session_id');
@@ -155,6 +172,15 @@ class StudentAttendanceController extends Controller
         if (!$termId && $terms->isNotEmpty()) {
             $currentTerm = $terms->firstWhere('is_current', true);
             $termId      = $currentTerm?->id ?? $terms->first()->id;
+        }
+
+        // ── Form Teacher: lock them to their form class ──
+        $isFormTeacher = $user->user_type == 3 && $user->is_form_teacher && $user->form_class_id;
+
+        if ($isFormTeacher) {
+            $formClass = SchoolClass::find($user->form_class_id);
+            $classId   = $classId ?: $user->form_class_id;
+            $sectionId = $sectionId ?: $formClass?->section_id;
         }
 
         // Classes for selected section
@@ -192,6 +218,11 @@ class StudentAttendanceController extends Controller
         $attendances = collect();
 
         if ($classId && $sessionId && $termId) {
+            // Security: form teachers can only view their own form class
+            if ($isFormTeacher && $classId != $user->form_class_id) {
+                abort(403, 'You can only view attendance for your form class.');
+            }
+
             $students = User::where('class_id', $classId)
                 ->where('user_type', 4)
                 ->get();
@@ -209,12 +240,26 @@ class StudentAttendanceController extends Controller
         }
 
         return view('students_attendance_index', compact(
-            'sections', 'sessions', 'classes', 'terms',
-            'currentSession', 'currentTerm',
-            'sectionId', 'classId', 'sessionId', 'termId',
-            'period', 'startDate', 'endDate',
-            'students', 'attendances',
-            'displayStart', 'displayEnd', 'prevWeekStart', 'nextWeekStart'
+            'sections',
+            'sessions',
+            'classes',
+            'terms',
+            'currentSession',
+            'currentTerm',
+            'sectionId',
+            'classId',
+            'sessionId',
+            'termId',
+            'period',
+            'startDate',
+            'endDate',
+            'students',
+            'attendances',
+            'displayStart',
+            'displayEnd',
+            'prevWeekStart',
+            'nextWeekStart',
+            'isFormTeacher'  // ← pass this so the view can hide the section/class selectors
         ));
     }
 
