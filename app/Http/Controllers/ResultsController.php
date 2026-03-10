@@ -106,7 +106,7 @@ class ResultsController extends Controller
             }
         }
 
-        $students = User::where('user_type', 3)
+        $students = User::where('user_type', 4)
             ->where('class_id', $request->class_id)
             ->select('id', 'name', 'email', 'admission_no', 'dob', 'phone', 'guardian_name', 'guardian_phone', 'guardian_email', 'guardian_address', 'address', 'class_id', 'gender')
             ->paginate(10);
