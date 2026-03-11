@@ -114,114 +114,114 @@ class ResultsController extends Controller
         return view('upload_result', compact('students', 'class', 'sections'));
     }
 
-   public function studentResultUpload($studentId)
-{
-    $student = User::where('user_type', 4)->findOrFail($studentId);
-    $class   = SchoolClass::findOrFail($student->class_id);
-    $section = Section::find($class->section_id);
-    $user    = Auth::user();
+    public function studentResultUpload($studentId)
+    {
+        $student = User::where('user_type', 4)->findOrFail($studentId);
+        $class   = SchoolClass::findOrFail($student->class_id);
+        $section = Section::find($class->section_id);
+        $user    = Auth::user();
 
-    // Security check for non-admin users
-    if (!in_array($user->user_type, [1, 2])) {
-        if (!$this->isTeacherAssignedToClass($user->id, $class->id)) {
-            abort(403, 'You are not assigned to this class.');
-        }
-    }
-
-    $currentSession = Session::where('is_current', true)->first();
-    $currentTerm    = $currentSession?->terms()->where('is_current', true)->first();
-
-    if (!$currentSession || !$currentTerm) {
-        return redirect()->back()->with('error', 'No current academic session or term is set.');
-    }
-
-    // ── Check if this class has an active custom result sheet for the current term ──
-    $sheetTemplate = DB::table('result_sheet_templates')
-        ->where('term_id', $currentTerm->id)
-        ->where('is_active', 1)
-        ->get()
-        ->first(function ($t) use ($class) {
-            $classes = json_decode($t->applicable_classes ?? '[]', true);
-            return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-        });
-
-    // Inside studentResultUpload
-    if ($sheetTemplate) {
-        $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
-        $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
-
-        $service  = new ResultSheetService();
-        $subjects = $service->loadTemplateStructure($sheetTemplate->id);
-
-        $allItemIds = collect($subjects)->flatMap(function ($subject) {
-            $ids = collect($subject->items)->pluck('id');
-            foreach ($subject->subcategories as $sub) {
-                $ids = $ids->merge(collect($sub->items)->pluck('id'));
+        // Security check for non-admin users
+        if (!in_array($user->user_type, [1, 2])) {
+            if (!$this->isTeacherAssignedToClass($user->id, $class->id)) {
+                abort(403, 'You are not assigned to this class.');
             }
-            return $ids;
-        });
+        }
 
-        $existingRatings = DB::table('result_sheet_ratings')
-            ->where('student_id', $studentId)
+        $currentSession = Session::where('is_current', true)->first();
+        $currentTerm    = $currentSession?->terms()->where('is_current', true)->first();
+
+        if (!$currentSession || !$currentTerm) {
+            return redirect()->back()->with('error', 'No current academic session or term is set.');
+        }
+
+        // ── Check if this class has an active custom result sheet for the current term ──
+        $sheetTemplate = DB::table('result_sheet_templates')
+            ->where('term_id', $currentTerm->id)
+            ->where('is_active', 1)
+            ->get()
+            ->first(function ($t) use ($class) {
+                $classes = json_decode($t->applicable_classes ?? '[]', true);
+                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            });
+
+        // Inside studentResultUpload
+        if ($sheetTemplate) {
+            $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
+            $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
+
+            $service  = new ResultSheetService();
+            $subjects = $service->loadTemplateStructure($sheetTemplate->id);
+
+            $allItemIds = collect($subjects)->flatMap(function ($subject) {
+                $ids = collect($subject->items)->pluck('id');
+                foreach ($subject->subcategories as $sub) {
+                    $ids = $ids->merge(collect($sub->items)->pluck('id'));
+                }
+                return $ids;
+            });
+
+            $existingRatings = DB::table('result_sheet_ratings')
+                ->where('student_id', $studentId)
+                ->where('session_id', $currentSession->id)
+                ->where('term_id', $currentTerm->id)
+                ->whereIn('item_id', $allItemIds)
+                ->pluck('rating_value', 'item_id');
+
+            $footerData = DB::table('result_sheet_footer_data')
+                ->where('student_id', $student->id)
+                ->where('session_id', $currentSession->id)
+                ->where('term_id', $currentTerm->id)
+                ->where('template_id', $sheetTemplate->id)
+                ->first();
+
+            return view('student_result_sheet', compact(
+                'student',
+                'class',
+                'section',
+                'sheetTemplate',
+                'subjects',
+                'existingRatings',
+                'currentSession',
+                'currentTerm',
+                'footerData'
+            ));
+        }
+
+        // ── Fallback: standard numeric result upload ──
+        $subjectsQuery = Course::whereHas('schoolClasses', function ($q) use ($class) {
+            $q->where('school_classes.id', $class->id);
+        })->orderBy('course_name');
+
+        if (!in_array($user->user_type, [1, 2])) {
+            $subjectsQuery->whereExists(function ($query) use ($user) {
+                $query->select(DB::raw(1))
+                    ->from('course_user')
+                    ->whereColumn('course_user.course_id', 'courses.id')
+                    ->where('course_user.user_id', $user->id);
+            });
+        }
+
+        $subjects        = $subjectsQuery->get(['id', 'course_name']);
+        $existingResults = Result::where('student_id', $studentId)
             ->where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
-            ->whereIn('item_id', $allItemIds)
-            ->pluck('rating_value', 'item_id');
+            ->get()
+            ->keyBy('course_id');
 
-        $footerData = DB::table('result_sheet_footer_data')
-            ->where('student_id', $student->id)
-            ->where('session_id', $currentSession->id)
-            ->where('term_id', $currentTerm->id)
-            ->where('template_id', $sheetTemplate->id)
-            ->first();
+        $sheetTemplate = null; // ← FIX: pass null so the blade doesn't throw undefined variable
 
-        return view('student_result_sheet', compact(
+        return view('student_result_upload', compact(
             'student',
             'class',
             'section',
-            'sheetTemplate',
             'subjects',
-            'existingRatings',
+            'existingResults',
             'currentSession',
             'currentTerm',
-            'footerData'
+            'sheetTemplate'  // ← FIX: include in compact
         ));
     }
-
-    // ── Fallback: standard numeric result upload ──
-    $subjectsQuery = Course::whereHas('schoolClasses', function ($q) use ($class) {
-        $q->where('school_classes.id', $class->id);
-    })->orderBy('course_name');
-
-    if (!in_array($user->user_type, [1, 2])) {
-        $subjectsQuery->whereExists(function ($query) use ($user) {
-            $query->select(DB::raw(1))
-                ->from('course_user')
-                ->whereColumn('course_user.course_id', 'courses.id')
-                ->where('course_user.user_id', $user->id);
-        });
-    }
-
-    $subjects        = $subjectsQuery->get(['id', 'course_name']);
-    $existingResults = Result::where('student_id', $studentId)
-        ->where('session_id', $currentSession->id)
-        ->where('term_id', $currentTerm->id)
-        ->get()
-        ->keyBy('course_id');
-
-    $sheetTemplate = null; // ← FIX: pass null so the blade doesn't throw undefined variable
-
-    return view('student_result_upload', compact(
-        'student',
-        'class',
-        'section',
-        'subjects',
-        'existingResults',
-        'currentSession',
-        'currentTerm',
-        'sheetTemplate'  // ← FIX: include in compact
-    ));
-}
 
 
     public function saveStudentSheetRatings(Request $request, $studentId, $templateId)
@@ -278,8 +278,8 @@ class ResultsController extends Controller
     public function saveStudentResults(Request $request, $studentId)
     {
         $student = User::where('user_type', 4)->findOrFail($studentId);
-        $class = SchoolClass::findOrFail($student->class_id);
-        $user = Auth::user();
+        $class   = SchoolClass::findOrFail($student->class_id);
+        $user    = Auth::user();
 
         // Security check for non-admin users
         if (!in_array($user->user_type, [1, 2])) {
@@ -289,43 +289,53 @@ class ResultsController extends Controller
         }
 
         $currentSession = Session::where('is_current', true)->first();
-        $currentTerm = $currentSession?->terms()->where('is_current', true)->first();
+        $currentTerm    = $currentSession?->terms()->where('is_current', true)->first();
 
         if (!$currentSession || !$currentTerm) {
             return redirect()->back()->with('error', 'Cannot save results: No current academic session or term is set.');
         }
 
         $request->validate([
-            'results' => 'required|array',
-            'results.*.first_ca' => 'required|numeric|min:0',
-            'results.*.second_ca' => 'required|numeric|min:0',
-            'results.*.mid_term_test' => 'required|numeric|min:0',
-            'results.*.examination' => 'required|numeric|min:0',
-            'results.*.comment' => 'nullable|string|max:500',
+            'results'                    => 'nullable|array',
+            'results.*.first_ca'         => 'nullable|numeric|min:0|max:10',
+            'results.*.second_ca'        => 'nullable|numeric|min:0|max:10',
+            'results.*.mid_term_test'    => 'nullable|numeric|min:0|max:20',
+            'results.*.examination'      => 'nullable|numeric|min:0|max:60',
+            'results.*.comment'          => 'nullable|string|max:500',
         ]);
 
-        foreach ($request->results as $course_id => $data) {
-            $total = $data['first_ca'] + $data['second_ca'] + $data['mid_term_test'] + $data['examination'];
+        foreach ($request->input('results', []) as $course_id => $data) {
+
+            $firstCa    = isset($data['first_ca'])      && $data['first_ca']      !== '' ? (float) $data['first_ca']      : null;
+            $secondCa   = isset($data['second_ca'])     && $data['second_ca']     !== '' ? (float) $data['second_ca']     : null;
+            $midTerm    = isset($data['mid_term_test'])  && $data['mid_term_test']  !== '' ? (float) $data['mid_term_test']  : null;
+            $exam       = isset($data['examination'])   && $data['examination']   !== '' ? (float) $data['examination']   : null;
+
+            // Skip entirely if all score columns are null (nothing entered for this subject)
+            if (is_null($firstCa) && is_null($secondCa) && is_null($midTerm) && is_null($exam)) {
+                continue;
+            }
+
+            // Calculate total using 0 for any null component so partial entry still works
+            $total = ($firstCa ?? 0) + ($secondCa ?? 0) + ($midTerm ?? 0) + ($exam ?? 0);
             $grade = $this->calculateGrade($total);
 
             Result::updateOrCreate(
                 [
                     'student_id' => $studentId,
-                    'course_id' => $course_id,
+                    'course_id'  => $course_id,
                     'session_id' => $currentSession->id,
-                    'term_id' => $currentTerm->id,
+                    'term_id'    => $currentTerm->id,
                 ],
                 [
-                    'first_ca' => $data['first_ca'],
-                    'second_ca' => $data['second_ca'],
-                    'mid_term_test' => $data['mid_term_test'],
-                    'examination' => $data['examination'],
-                    'total' => $total,
-                    'grade' => $grade,
-                    'comment' => $data['comment'] ?? null,
-                    'uploaded_by' => Auth::id(),
-                    'session_id' => $currentSession->id,
-                    'term_id' => $currentTerm->id,
+                    'first_ca'      => $firstCa,
+                    'second_ca'     => $secondCa,
+                    'mid_term_test' => $midTerm,
+                    'examination'   => $exam,
+                    'total'         => $total,
+                    'grade'         => $grade,
+                    'comment'       => $data['comment'] ?? null,
+                    'uploaded_by'   => Auth::id(),
                 ]
             );
         }

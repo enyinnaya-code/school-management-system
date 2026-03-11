@@ -23,7 +23,6 @@
                                     <strong>{{ $currentTerm->name }}</strong>
                                 </p>
                             </div>
-                           
                         </div>
 
                         <div class="card-body">
@@ -47,7 +46,7 @@
 
                                 <div class="table-responsive">
                                     <table class="table table-bordered align-middle" id="resultsTable">
-                                        <thead class="">
+                                        <thead>
                                             <tr>
                                                 <th style="min-width:200px">Subject</th>
                                                 <th class="text-center" style="min-width:80px">1st CA</th>
@@ -58,6 +57,17 @@
                                                 <th class="text-center" style="min-width:60px">Grade</th>
                                                 <th style="min-width:160px">Comment</th>
                                             </tr>
+                                            {{-- Marks Obtainable Row --}}
+                                            <tr class="table-secondary text-center small font-weight-bold">
+                                                <td class="text-left text-muted" style="font-size:0.78rem;">Marks Obtainable</td>
+                                                <td><span class="badge badge-secondary">10</span></td>
+                                                <td><span class="badge badge-secondary">10</span></td>
+                                                <td><span class="badge badge-secondary">20</span></td>
+                                                <td><span class="badge badge-secondary">60</span></td>
+                                                <td><span class="badge badge-dark">100</span></td>
+                                                <td>—</td>
+                                                <td>—</td>
+                                            </tr>
                                         </thead>
                                         <tbody>
                                             @foreach($subjects as $subject)
@@ -65,38 +75,46 @@
                                                 <tr class="item-row">
                                                     <td class="font-weight-bold">{{ $subject->course_name }}</td>
                                                     <td class="text-center">
-                                                        <input type="number" step="0.01" min="0" max="100"
+                                                        <input type="number" step="0.01" min="0" max="10"
                                                                name="results[{{ $subject->id }}][first_ca]"
-                                                               class="form-control form-control-sm"
+                                                               class="form-control form-control-sm score-input"
+                                                               data-max="10"
                                                                value="{{ old('results.'.$subject->id.'.first_ca', $existing?->first_ca ?? '') }}"
+                                                               placeholder="0–10"
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center">
-                                                        <input type="number" step="0.01" min="0" max="100"
+                                                        <input type="number" step="0.01" min="0" max="10"
                                                                name="results[{{ $subject->id }}][second_ca]"
-                                                               class="form-control form-control-sm"
+                                                               class="form-control form-control-sm score-input"
+                                                               data-max="10"
                                                                value="{{ old('results.'.$subject->id.'.second_ca', $existing?->second_ca ?? '') }}"
+                                                               placeholder="0–10"
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center">
-                                                        <input type="number" step="0.01" min="0" max="100"
+                                                        <input type="number" step="0.01" min="0" max="20"
                                                                name="results[{{ $subject->id }}][mid_term_test]"
-                                                               class="form-control form-control-sm"
+                                                               class="form-control form-control-sm score-input"
+                                                               data-max="20"
                                                                value="{{ old('results.'.$subject->id.'.mid_term_test', $existing?->mid_term_test ?? '') }}"
+                                                               placeholder="0–20"
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center">
-                                                        <input type="number" step="0.01" min="0" max="100"
+                                                        <input type="number" step="0.01" min="0" max="60"
                                                                name="results[{{ $subject->id }}][examination]"
-                                                               class="form-control form-control-sm"
+                                                               class="form-control form-control-sm score-input"
+                                                               data-max="60"
                                                                value="{{ old('results.'.$subject->id.'.examination', $existing?->examination ?? '') }}"
+                                                               placeholder="0–60"
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center font-weight-bold">
-                                                        {{ $existing?->total ?? '—' }}
+                                                        <span class="live-total">{{ $existing?->total ?? '—' }}</span>
                                                     </td>
                                                     <td class="text-center font-weight-bold">
-                                                        {{ $existing?->grade ?? '—' }}
+                                                        <span class="live-grade">{{ $existing?->grade ?? '—' }}</span>
                                                     </td>
                                                     <td>
                                                         <input type="text"
@@ -130,5 +148,77 @@
 <style>
 #resultsTable td, #resultsTable th { vertical-align: middle; }
 .item-row:hover { background: #f0f7ff; }
+.score-input.is-invalid { border-color: #dc3545; }
+.live-total { font-size: 1rem; }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    function calculateGrade(total) {
+        if (total === null || total === '') return '—';
+        if (total >= 70) return 'A';
+        if (total >= 60) return 'B';
+        if (total >= 50) return 'C';
+        if (total >= 45) return 'D';
+        if (total >= 40) return 'E';
+        return 'F';
+    }
+
+    function recalculateRow(row) {
+        const inputs = row.querySelectorAll('.score-input');
+        let total = null;
+        let allEmpty = true;
+
+        inputs.forEach(function (input) {
+            const val = input.value.trim();
+            if (val !== '') {
+                allEmpty = false;
+                const num = parseFloat(val);
+                const max = parseFloat(input.dataset.max);
+
+                // Clamp value to its max
+                if (num > max) {
+                    input.value = max;
+                }
+
+                total = (total === null ? 0 : total) + parseFloat(input.value);
+            }
+
+            // Inline validation highlight
+            if (val !== '') {
+                const num2 = parseFloat(val);
+                const max2 = parseFloat(input.dataset.max);
+                input.classList.toggle('is-invalid', num2 > max2 || num2 < 0);
+            } else {
+                input.classList.remove('is-invalid');
+            }
+        });
+
+        const totalSpan = row.querySelector('.live-total');
+        const gradeSpan = row.querySelector('.live-grade');
+
+        if (allEmpty) {
+            totalSpan.textContent = '—';
+            gradeSpan.textContent = '—';
+        } else {
+            const rounded = Math.round(total * 100) / 100;
+            totalSpan.textContent = rounded;
+            gradeSpan.textContent = calculateGrade(rounded);
+        }
+    }
+
+    // Attach listeners to all score inputs
+    document.querySelectorAll('#resultsTable .item-row').forEach(function (row) {
+        // Recalculate on page load for pre-filled rows
+        recalculateRow(row);
+
+        row.querySelectorAll('.score-input').forEach(function (input) {
+            input.addEventListener('input', function () {
+                recalculateRow(row);
+            });
+        });
+    });
+});
+</script>
 </body>
