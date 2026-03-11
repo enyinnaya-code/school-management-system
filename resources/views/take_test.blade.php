@@ -130,311 +130,200 @@
 
     <script src="{{ asset('js/jquery.min.js') }}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.0/js/bootstrap.min.js"></script>
-    <script>
-        // Make the timer draggable
-        const timer = document.getElementById('timer');
-        let isDragging = false;
-        let offsetX, offsetY;
+   <script>
+    // ─── Draggable Timer ───────────────────────────────────────────────────────
+    const timer = document.getElementById('timer');
+    let isDragging = false, offsetX, offsetY;
 
-        timer.addEventListener('mousedown', function(e) {
-            isDragging = true;
-            offsetX = e.clientX - timer.getBoundingClientRect().left;
-            offsetY = e.clientY - timer.getBoundingClientRect().top;
-            timer.style.cursor = 'grabbing';
-        });
-
-        document.addEventListener('mousemove', function(e) {
-            if (isDragging) {
-                timer.style.left = (e.clientX - offsetX) + 'px';
-                timer.style.top = (e.clientY - offsetY) + 'px';
-                timer.style.right = 'auto';
-            }
-        });
-
-        document.addEventListener('mouseup', function() {
-            if (isDragging) {
-                isDragging = false;
-                timer.style.cursor = 'move';
-            }
-        });
-
-        // Timer functionality with actual start time
-        const duration = {{ $test->duration }}; // Duration in minutes
-        const examStartTime = new Date('{{ $examStartTime }}');
-        const testId = {{ $test->id }};
-        const formElement = document.getElementById('test-form');
-        const warningThreshold = 10 * 60; // 10 minutes in seconds
-
-        // Flags to track test state
-        let isSubmitting = false;
-        let isLegitimateNavigation = false;
-        let navigationAttempted = false;
-
-        // Calculate elapsed time since exam started
-        function getElapsedTime() {
-            const now = new Date();
-            const elapsedMs = now.getTime() - examStartTime.getTime();
-            return Math.floor(elapsedMs / 1000); // Convert to seconds
+    timer.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        offsetX = e.clientX - timer.getBoundingClientRect().left;
+        offsetY = e.clientY - timer.getBoundingClientRect().top;
+        timer.style.cursor = 'grabbing';
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (isDragging) {
+            timer.style.left  = (e.clientX - offsetX) + 'px';
+            timer.style.top   = (e.clientY - offsetY) + 'px';
+            timer.style.right = 'auto';
         }
+    });
+    document.addEventListener('mouseup', function() {
+        if (isDragging) { isDragging = false; timer.style.cursor = 'move'; }
+    });
 
-        // Calculate remaining time
-        function getRemainingTime() {
-            const totalDurationSeconds = duration * 60;
-            const elapsedSeconds = getElapsedTime();
-            return Math.max(0, totalDurationSeconds - elapsedSeconds);
+    // ─── Core State ────────────────────────────────────────────────────────────
+    const duration        = {{ $test->duration }};
+    const examStartTime   = new Date('{{ $examStartTime }}');
+    const formElement     = document.getElementById('test-form');
+    const warningThreshold = 10 * 60; // 10 minutes in seconds
+
+    let isSubmitting              = false;
+    let isLegitimateNavigation    = false;
+
+    // ─── Time Helpers ──────────────────────────────────────────────────────────
+    function getElapsedTime() {
+        return Math.floor((new Date().getTime() - examStartTime.getTime()) / 1000);
+    }
+
+    function getRemainingTime() {
+        return Math.max(0, (duration * 60) - getElapsedTime());
+    }
+
+    function formatTime(seconds) {
+        return String(Math.floor(seconds / 60)).padStart(2, '0')
+             + ':' + String(seconds % 60).padStart(2, '0');
+    }
+
+    // ─── Submit Helper ─────────────────────────────────────────────────────────
+    function submitFormWithExhaustedTime() {
+        if (isSubmitting) return;
+        isSubmitting           = true;
+        isLegitimateNavigation = true;
+
+        document.getElementById('exhausted_time').value = Math.floor(getElapsedTime());
+        formElement.submit();
+    }
+
+    // ─── Countdown Timer ───────────────────────────────────────────────────────
+    let timeLeft = getRemainingTime();
+    document.getElementById('time-left').textContent = formatTime(timeLeft);
+    if (timeLeft <= warningThreshold) timer.style.color = 'red';
+
+    const timerInterval = setInterval(function () {
+        timeLeft = getRemainingTime();
+        document.getElementById('time-left').textContent = formatTime(timeLeft);
+
+        if (timeLeft <= warningThreshold) timer.style.color = 'red';
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            submitFormWithExhaustedTime(); // ← auto-submit when time runs out
         }
+    }, 1000);
 
-        // Function to format the time in mm:ss
-        function formatTime(seconds) {
-            let minutes = Math.floor(seconds / 60);
-            let secondsRemaining = seconds % 60;
-            return minutes.toString().padStart(2, '0') + ":" + secondsRemaining.toString().padStart(2, '0');
+    // ─── Back / Forward Button Prevention ─────────────────────────────────────
+    // Push many states so the student can't easily go back
+    for (let i = 0; i < 20; i++) {
+        history.pushState(null, null, window.location.href);
+    }
+
+    window.addEventListener('popstate', function (e) {
+        if (isSubmitting || isLegitimateNavigation) return;
+
+        // Push state again to cancel the navigation
+        history.pushState(null, null, window.location.href);
+
+        // Auto-submit immediately — no choice given
+        submitFormWithExhaustedTime();
+    });
+
+    // ─── Tab Switch / Window Minimize ──────────────────────────────────────────
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden && !isSubmitting && !isLegitimateNavigation) {
+            submitFormWithExhaustedTime(); // ← submit when tab is left
         }
+    });
 
-        // Function to submit the form with exhausted time
-        function submitFormWithExhaustedTime() {
-            // Prevent multiple submissions
-            if (isSubmitting) return;
-            isSubmitting = true;
-            isLegitimateNavigation = true;
-            
-            const exhaustedTime = Math.floor(getElapsedTime()); // Ensure it's an integer
-            document.getElementById('exhausted_time').value = exhaustedTime;
-            formElement.submit();
-        }
+    // ─── Page Unload (closing tab, typing new URL, clicking external link) ─────
+    window.addEventListener('beforeunload', function (e) {
+        if (isLegitimateNavigation || isSubmitting) return;
 
-        // Initialize timer display
-        let timeLeft = getRemainingTime();
-        document.getElementById("time-left").textContent = formatTime(timeLeft);
+        // Trigger background submit before the page closes
+        // Note: fetch with keepalive is used here because form.submit()
+        // may not fire in time during beforeunload
+        const exhaustedTime = Math.floor(getElapsedTime());
 
-        // Update timer color based on initial time
-        if (timeLeft <= warningThreshold) {
-            timer.style.color = 'red';
-        }
+        const formData = new FormData(formElement);
+        formData.set('exhausted_time', exhaustedTime);
 
-        // Update the timer every second
-        let timerInterval = setInterval(function() {
-            timeLeft = getRemainingTime();
-            document.getElementById("time-left").textContent = formatTime(timeLeft);
+        navigator.sendBeacon(
+            formElement.action,
+            formData
+        );
 
-            // Change color to red when 10 minutes or less remain
-            if (timeLeft <= warningThreshold) {
-                timer.style.color = 'red';
+        // Also show the browser's native "are you sure?" dialog as a fallback
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    // ─── Disable Dev Tools & Right-Click ───────────────────────────────────────
+    document.addEventListener('contextmenu', e => e.preventDefault());
+
+    document.addEventListener('keydown', function (e) {
+        if (e.keyCode === 123) { e.preventDefault(); return false; }                          // F12
+        if (e.ctrlKey && e.shiftKey && e.keyCode === 73) { e.preventDefault(); return false; } // Ctrl+Shift+I
+        if (e.ctrlKey && e.keyCode === 85) { e.preventDefault(); return false; }              // Ctrl+U
+        if (e.ctrlKey && e.shiftKey && e.keyCode === 67) { e.preventDefault(); return false; } // Ctrl+Shift+C
+        if (e.altKey && e.keyCode === 115) { e.preventDefault(); return false; }              // Alt+F4
+    });
+
+    // ─── Mark Form Submit as Legitimate ───────────────────────────────────────
+    formElement.addEventListener('submit', function () {
+        isLegitimateNavigation = true;
+    });
+
+    // ─── Background Answer Save ────────────────────────────────────────────────
+    document.querySelectorAll('.answer-option').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            const questionId = this.dataset.questionId;
+            const testId     = this.dataset.testId;
+            const answer     = this.value;
+
+            const questionElement = this.closest('.question');
+
+            if (!questionElement.querySelector('.save-indicator')) {
+                const indicator = document.createElement('div');
+                indicator.className  = 'save-indicator';
+                indicator.style.cssText = 'position:absolute;right:10px;display:inline-block;width:10px;height:10px;border-radius:50%;background-color:#ccc;transition:background-color 0.5s;';
+                questionElement.style.position = 'relative';
+                questionElement.appendChild(indicator);
             }
 
-            if (timeLeft <= 0) {
-                clearInterval(timerInterval);
-                // Automatically submit without any alert
-                submitFormWithExhaustedTime();
-            }
-        }, 1000);
+            const indicator = questionElement.querySelector('.save-indicator');
+            indicator.style.backgroundColor = '#ffcc00';
 
-        // Enhanced back button prevention
-        function preventBackNavigation() {
-            // Push multiple states to make it harder to go back
-            for (let i = 0; i < 10; i++) {
-                history.pushState(null, null, window.location.href);
-            }
-        }
-
-        // Initialize back button prevention
-        preventBackNavigation();
-
-        // Handle popstate events (back/forward button)
-        window.addEventListener('popstate', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            if (isSubmitting || isLegitimateNavigation) {
-                return;
-            }
-
-            // Prevent the navigation and push state again
-            history.pushState(null, null, window.location.href);
-            
-            // Show warning modal
-            navigationAttempted = true;
-            $('#navigationWarningModal').modal('show');
+            fetch("{{ route('tests.saveAnswer') }}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ test_id: testId, question_id: questionId, answer: answer })
+            })
+            .then(r => r.json())
+            .then(data => {
+                indicator.style.backgroundColor = data.status === 'saved' ? '#4CAF50' : '#f44336';
+                setTimeout(() => indicator.style.backgroundColor = 'transparent', 2000);
+            })
+            .catch(() => indicator.style.backgroundColor = '#f44336');
         });
+    });
 
-        // Enhanced beforeunload event
-        window.addEventListener('beforeunload', function(e) {
-            // Don't show warning for legitimate navigation
-            if (isLegitimateNavigation || isSubmitting) {
-                return;
-            }
-            
-            // Standard beforeunload message
-            const message = 'If you leave this page, your test will be automatically submitted. Are you sure you want to continue?';
-            e.preventDefault();
-            e.returnValue = message;
-            return message;
-        });
+    // ─── Manual Submit Button ──────────────────────────────────────────────────
+    document.getElementById('submit-btn').addEventListener('click', function () {
+        const totalQuestions      = document.querySelectorAll('.question').length;
+        const answeredQuestions   = document.querySelectorAll('input[type="radio"]:checked').length;
+        const unansweredQuestions = totalQuestions - answeredQuestions;
 
-        // Handle page visibility change (tab switching, minimizing, etc.)
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden && !isSubmitting && !isLegitimateNavigation) {
-                // Log tab switching attempt (you can send this to server if needed)
-                console.log('User attempted to switch tabs or minimize window');
-            }
-        });
+        document.getElementById('submission-summary').innerHTML = `
+            <div class="alert alert-info">
+                <strong>Submission Summary:</strong><br>
+                Total Questions: ${totalQuestions}<br>
+                Answered: ${answeredQuestions}<br>
+                Unanswered: ${unansweredQuestions}
+            </div>
+            ${unansweredQuestions > 0
+                ? `<div class="alert alert-warning"><strong>Warning:</strong> You have ${unansweredQuestions} unanswered question(s).</div>`
+                : ''}
+        `;
 
-        // Disable right-click context menu to prevent "Open in new tab" etc.
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-        });
+        $('#confirmationModal').modal('show');
+    });
 
-        // Disable F12, Ctrl+Shift+I, Ctrl+U, etc.
-        document.addEventListener('keydown', function(e) {
-            // F12 - Developer Tools
-            if (e.keyCode === 123) {
-                e.preventDefault();
-                return false;
-            }
-            
-            // Ctrl+Shift+I - Developer Tools
-            if (e.ctrlKey && e.shiftKey && e.keyCode === 73) {
-                e.preventDefault();
-                return false;
-            }
-            
-            // Ctrl+U - View Source
-            if (e.ctrlKey && e.keyCode === 85) {
-                e.preventDefault();
-                return false;
-            }
-            
-            // Ctrl+Shift+C - Element Inspector
-            if (e.ctrlKey && e.shiftKey && e.keyCode === 67) {
-                e.preventDefault();
-                return false;
-            }
-            
-            // Alt+F4 - Close Window
-            if (e.altKey && e.keyCode === 115) {
-                e.preventDefault();
-                return false;
-            }
-        });
-
-        // Navigation warning modal handlers
-        document.getElementById('stay-on-page').addEventListener('click', function() {
-            $('#navigationWarningModal').modal('hide');
-            navigationAttempted = false;
-            // Push state again to maintain navigation prevention
-            preventBackNavigation();
-        });
-
-        document.getElementById('leave-and-submit').addEventListener('click', function() {
-            $('#navigationWarningModal').modal('hide');
-            submitFormWithExhaustedTime();
-        });
-
-        // Mark form submission as legitimate
-        if (formElement) {
-            formElement.addEventListener('submit', function() {
-                isLegitimateNavigation = true;
-            });
-        }
-
-        // Background answer submission functionality
-        document.querySelectorAll('.answer-option').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                const questionId = this.dataset.questionId;
-                const testId = this.dataset.testId;
-                const answer = this.value;
-
-                const questionElement = this.closest('.question');
-
-                if (!questionElement.querySelector('.save-indicator')) {
-                    const indicator = document.createElement('div');
-                    indicator.className = 'save-indicator';
-                    indicator.style.cssText = 'position: absolute; right: 10px; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #ccc; transition: background-color 0.5s;';
-                    questionElement.style.position = 'relative';
-                    questionElement.appendChild(indicator);
-                }
-
-                const indicator = questionElement.querySelector('.save-indicator');
-                indicator.style.backgroundColor = '#ffcc00';
-
-                fetch("{{ route('tests.saveAnswer') }}", {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            test_id: testId,
-                            question_id: questionId,
-                            answer: answer
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'saved') {
-                            console.log(`Answer for question ${questionId} saved.`);
-                            indicator.style.backgroundColor = '#4CAF50';
-                            setTimeout(() => {
-                                indicator.style.backgroundColor = 'transparent';
-                            }, 2000);
-                        } else {
-                            indicator.style.backgroundColor = '#f44336';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error saving answer:', error);
-                        indicator.style.backgroundColor = '#f44336';
-                    });
-            });
-        });
-
-        // Confirmation modal functionality
-        document.getElementById('submit-btn').addEventListener('click', function() {
-            // Generate submission summary
-            const totalQuestions = document.querySelectorAll('.question').length;
-            const answeredQuestions = document.querySelectorAll('input[type="radio"]:checked').length;
-            const unansweredQuestions = totalQuestions - answeredQuestions;
-            
-            const summaryHtml = `
-                <div class="alert alert-info">
-                    <strong>Submission Summary:</strong><br>
-                    Total Questions: ${totalQuestions}<br>
-                    Answered: ${answeredQuestions}<br>
-                    Unanswered: ${unansweredQuestions}
-                </div>
-                ${unansweredQuestions > 0 ? '<div class="alert alert-warning"><strong>Warning:</strong> You have ' + unansweredQuestions + ' unanswered question(s).</div>' : ''}
-            `;
-            
-            document.getElementById('submission-summary').innerHTML = summaryHtml;
-            
-            // Show the modal
-            $('#confirmationModal').modal('show');
-        });
-
-        // Confirm submission
-        document.getElementById('confirm-submit').addEventListener('click', function() {
-            $('#confirmationModal').modal('hide');
-            submitFormWithExhaustedTime();
-        });
-
-        // Additional protection: Monitor for URL changes
-        let currentUrl = window.location.href;
-        setInterval(function() {
-            if (window.location.href !== currentUrl && !isLegitimateNavigation && !isSubmitting) {
-                currentUrl = window.location.href;
-                submitFormWithExhaustedTime();
-            }
-        }, 1000);
-
-        // Prevent modal from being closed by clicking outside or pressing ESC
-        $('#navigationWarningModal').on('hide.bs.modal', function(e) {
-            if (!e.target.classList.contains('btn')) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        });
-        
-    </script>
+    document.getElementById('confirm-submit').addEventListener('click', function () {
+        $('#confirmationModal').modal('hide');
+        submitFormWithExhaustedTime();
+    });
+</script>
 </body>
