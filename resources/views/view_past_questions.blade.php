@@ -9,6 +9,41 @@
         font-style: italic;
         margin-bottom: 20px;
     }
+
+    .option-item {
+        padding: 6px 10px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+    }
+
+    .option-correct {
+        background-color: #d4edda;
+        border-left: 4px solid #28a745;
+    }
+
+    .option-wrong {
+        background-color: #f8d7da;
+        border-left: 4px solid #dc3545;
+    }
+
+    .question-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+    }
+
+    .question-card.correct-question {
+        border-left: 5px solid #28a745;
+    }
+
+    .question-card.wrong-question {
+        border-left: 5px solid #dc3545;
+    }
+
+    .question-card.not-answered {
+        border-left: 5px solid #ffc107;
+    }
 </style>
 
 <body>
@@ -32,66 +67,117 @@
 
                             <div class="card-body">
                                 <div class="question-paper">
-                                    @php
-                                    $questionNumber = 1;
-                                    @endphp
+                                    @php $questionNumber = 1; @endphp
 
                                     @foreach($test->questions as $question)
-                                    @if($question->not_question == 1)
-                                    <div class="instruction">
-                                        {!! $question->question !!}
-                                    </div>
-                                    @else
-                                    @php
-                                    $studentAnswer = $studentAnswers[$question->id] ?? null;
-                                    $isCorrect = $studentAnswer === $question->answer;
-                                    $mark = $question->mark ?? 1;
-                                    @endphp
 
-                                    <div class="question">
-                                        <h5>
-                                            <strong>Q{{ $questionNumber }}:</strong> {!! $question->question !!}
-                                            <span class="ml-2 text-dark" style="font-size: 14px;">[{{ $mark }} Mark{{ $mark > 1 ? 's' : '' }}]</span>
+                                        @if($question->not_question == 1)
+                                            <div class="instruction">
+                                                {!! $question->question !!}
+                                            </div>
 
-                                            @if($studentAnswer !== null)
-                                            @if($isCorrect)
-                                            <span class="text-success ml-2"><i class="fas fa-check-circle"></i> Correct</span>
-                                            @else
-                                            <span class="text-danger ml-2"><i class="fas fa-times-circle"></i> Incorrect</span>
-                                            @endif
-                                            @endif
-                                        </h5>
+                                        @else
+                                            @php
+                                                $studentAnswer = $studentAnswers[$question->id] ?? null;
+                                                $correctAnswer = strtoupper($question->answer);
+                                                $isCorrect     = $studentAnswer !== null && strtoupper($studentAnswer) === $correctAnswer;
+                                                $notAnswered   = $studentAnswer === null;
+                                                $mark          = $question->mark ?? 1;
+                                            @endphp
 
-                                        <div class="options">
-                                            <strong>Options:</strong>
-                                            <ul class="list-unstyled">
-                                                @foreach(json_decode($question->options, true) as $key => $option)
-                                                <li>
-                                                    <strong>{{ $key }}:</strong> {!! nl2br(e($option)) !!}
-                                                    @if($studentAnswer === $key)
-                                                    @if($isCorrect)
-                                                    <span class="text-success ml-2"><i class="fas fa-check"></i></span>
+                                            <div class="question-card {{ $notAnswered ? 'not-answered' : ($isCorrect ? 'correct-question' : 'wrong-question') }}">
+
+                                                {{-- Question Header --}}
+                                                <h5 class="mb-3">
+                                                    <strong>Q{{ $questionNumber }}:</strong> {!! $question->question !!}
+                                                    <span class="ml-2 text-dark" style="font-size: 13px;">
+                                                        [{{ $mark }} Mark{{ $mark > 1 ? 's' : '' }}]
+                                                    </span>
+
+                                                    @if($notAnswered)
+                                                        <span class="badge badge-warning ml-2">
+                                                            <i class="fas fa-minus-circle"></i> Not Answered
+                                                        </span>
+                                                    @elseif($isCorrect)
+                                                        <span class="badge badge-success ml-2">
+                                                            <i class="fas fa-check-circle"></i> Correct
+                                                        </span>
                                                     @else
-                                                    <span class="text-danger ml-2"><i class="fas fa-times"></i></span>
+                                                        <span class="badge badge-danger ml-2">
+                                                            <i class="fas fa-times-circle"></i> Wrong
+                                                        </span>
                                                     @endif
+                                                </h5>
+
+                                                {{-- Options --}}
+                                                <div class="options mb-3">
+                                                    <strong>Options:</strong>
+                                                    <ul class="list-unstyled mt-2">
+                                                        @foreach(json_decode($question->options, true) as $key => $option)
+                                                            @php
+                                                                $isThisCorrect  = strtoupper($key) === $correctAnswer;
+                                                                $isStudentPick  = $studentAnswer !== null && strtoupper($studentAnswer) === strtoupper($key);
+                                                            @endphp
+                                                            <li class="option-item
+                                                                {{ $isThisCorrect ? 'option-correct' : '' }}
+                                                                {{ $isStudentPick && !$isThisCorrect ? 'option-wrong' : '' }}">
+
+                                                                <strong>{{ $key }}:</strong> {!! nl2br(e($option)) !!}
+
+                                                                @if($isThisCorrect)
+                                                                    <span class="text-success ml-2 font-weight-bold">
+                                                                        <i class="fas fa-check"></i> Correct Answer
+                                                                    </span>
+                                                                @endif
+
+                                                                @if($isStudentPick && !$isThisCorrect)
+                                                                    <span class="text-danger ml-2 font-weight-bold">
+                                                                        <i class="fas fa-times"></i> Your Answer
+                                                                    </span>
+                                                                @endif
+
+                                                                @if($isStudentPick && $isThisCorrect)
+                                                                    <span class="text-success ml-2 font-weight-bold">
+                                                                        <i class="fas fa-check-double"></i> Your Answer (Correct)
+                                                                    </span>
+                                                                @endif
+
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                </div>
+
+                                                {{-- Summary line --}}
+                                                <div class="mt-2" style="font-size: 13px;">
+                                                    @if($notAnswered)
+                                                        <span class="text-warning">
+                                                            <i class="fas fa-exclamation-triangle"></i>
+                                                            You did not answer this question.
+                                                            Correct answer was: <strong>{{ $correctAnswer }}</strong>
+                                                        </span>
+                                                    @elseif($isCorrect)
+                                                        <span class="text-success">
+                                                            <i class="fas fa-check-circle"></i>
+                                                            You answered <strong>{{ strtoupper($studentAnswer) }}</strong> — correct! +{{ $mark }} mark{{ $mark > 1 ? 's' : '' }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-danger">
+                                                            <i class="fas fa-times-circle"></i>
+                                                            You answered <strong>{{ strtoupper($studentAnswer) }}</strong>
+                                                            but the correct answer was <strong>{{ $correctAnswer }}</strong>
+                                                        </span>
                                                     @endif
-                                                </li>
-                                                @endforeach
-                                            </ul>
-                                        </div>
+                                                </div>
 
-                                        <div class="correct-option">
-                                            <strong>Correct Answer:</strong> {!! nl2br(e($question->answer)) !!}
-                                        </div>
-                                        <hr class="my-4">
-                                    </div>
+                                            </div>{{-- end question-card --}}
 
-                                    @php $questionNumber++; @endphp
-                                    @endif
+                                            @php $questionNumber++; @endphp
+                                        @endif
+
                                     @endforeach
 
                                     @if($test->questions->isEmpty())
-                                    <p class="text-center">No questions available for this test.</p>
+                                        <p class="text-center">No questions available for this test.</p>
                                     @endif
                                 </div>
 
@@ -107,3 +193,4 @@
     </div>
 
     @include('includes.edit_footer')
+</body>
