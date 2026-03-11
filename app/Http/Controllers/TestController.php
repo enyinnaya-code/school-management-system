@@ -883,20 +883,21 @@ class TestController extends Controller
 
 
 
-    public function saveSchedule(Request $request, $id)
-    {
-        $validated = $request->validate([
-            'scheduled_date' => 'required|date',
-        ]);
+   public function saveSchedule(Request $request, $id)
+{
+    $validated = $request->validate([
+        'scheduled_date' => 'required|date',
+    ]);
 
-        $test = Test::findOrFail($id);
-        $test->scheduled_date = $validated['scheduled_date'];
-        $test->scheduled_by = Auth::id();
+    $test = Test::findOrFail($id);
+    $test->scheduled_date = Carbon::parse($validated['scheduled_date'], 'Africa/Lagos')
+                                  ->setTimezone('Africa/Lagos');
+    $test->scheduled_by = Auth::id();
 
-        $test->save();
+    $test->save();
 
-        return redirect()->route('tests.schedule')->with('success', 'Test scheduled successfully!');
-    }
+    return redirect()->route('tests.schedule')->with('success', 'Test scheduled successfully!');
+}
 
 
 
