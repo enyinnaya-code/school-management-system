@@ -492,14 +492,39 @@ class TestController extends Controller
             ->where('test_id', $test->id)
             ->first();
 
+        // ── GUARD 1: Already submitted ─────────────────────────────────────────
+        if ($existingExam && $existingExam->is_submited == 1) {
+            return redirect()->route('tests.start')
+                ->with('error', 'You have already submitted this test and cannot retake it.');
+        }
+
+        // ── GUARD 2: Test not yet started / not scheduled for today ───────────
+        if (!$test->is_approved) {
+            return redirect()->route('tests.start')
+                ->with('error', 'This test is not available.');
+        }
+
+        // ── GUARD 3: Student's class is not assigned to this test ─────────────
+        $isClassAssigned = $test->classes()->where('school_classes.id', $user->class_id)->exists();
+        if (!$isClassAssigned && !in_array($user->user_type, [1, 2])) {
+            return redirect()->route('tests.start')
+                ->with('error', 'You are not eligible to take this test.');
+        }
+
         if (!$existingExam) {
             DB::table('students_exams')->insert([
-                'user_id' => $user->id,
-                'class_id' => $user->class_id,
-                'test_id' => $test->id,
-                'start_time' => Carbon::now(),
-                'duration' => $test->duration,
+                'user_id'    => $user->id,
+                'class_id'   => $user->class_id,
+                'test_id'    => $test->id,
+                'start_time' => Carbon::now('Africa/Lagos'),
+                'duration'   => $test->duration,
             ]);
+
+            // Re-fetch so we have the start_time below
+            $existingExam = DB::table('students_exams')
+                ->where('user_id', $user->id)
+                ->where('test_id', $test->id)
+                ->first();
         }
 
         if (!$test->is_started) {
@@ -511,13 +536,22 @@ class TestController extends Controller
             ->where('test_id', $test->id)
             ->pluck('student_answer', 'question_id');
 
-        // Get all shuffled questions for this specific user and test (no pagination)
         $questions = $this->getShuffledQuestions($test, $user->id);
 
-        // Get the actual start time for this student's exam
-        $examStartTime = $existingExam ? $existingExam->start_time : Carbon::now();
+        $examStartTime = $existingExam->start_time;
 
         return view('take_test', compact('test', 'questions', 'savedAnswers', 'examStartTime'));
+    }
+
+    public function checkSubmitted($testId)
+    {
+        $submitted = DB::table('students_exams')
+            ->where('user_id', Auth::id())
+            ->where('test_id', $testId)
+            ->where('is_submited', 1)
+            ->exists();
+
+        return response()->json(['submitted' => $submitted]);
     }
 
     /**
@@ -883,21 +917,21 @@ class TestController extends Controller
 
 
 
-   public function saveSchedule(Request $request, $id)
-{
-    $validated = $request->validate([
-        'scheduled_date' => 'required|date',
-    ]);
+    public function saveSchedule(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'scheduled_date' => 'required|date',
+        ]);
 
-    $test = Test::findOrFail($id);
-    $test->scheduled_date = Carbon::parse($validated['scheduled_date'], 'Africa/Lagos')
-                                  ->setTimezone('Africa/Lagos');
-    $test->scheduled_by = Auth::id();
+        $test = Test::findOrFail($id);
+        $test->scheduled_date = Carbon::parse($validated['scheduled_date'], 'Africa/Lagos')
+            ->setTimezone('Africa/Lagos');
+        $test->scheduled_by = Auth::id();
 
-    $test->save();
+        $test->save();
 
-    return redirect()->route('tests.schedule')->with('success', 'Test scheduled successfully!');
-}
+        return redirect()->route('tests.schedule')->with('success', 'Test scheduled successfully!');
+    }
 
 
 

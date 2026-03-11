@@ -222,6 +222,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/test/{id}/take', [TestController::class, 'takeTest'])->name('tests.take');
     Route::post('/tests/{id}/force-stop', [TestController::class, 'forceStop'])->name('tests.forceStop');
 
+    Route::get('/tests/{id}/check-submitted', [TestController::class, 'checkSubmitted'])
+        ->name('tests.checkSubmitted')
+        ->middleware('auth');
+
     // Announcement routes
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
     Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
