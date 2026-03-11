@@ -80,7 +80,7 @@
                                                                class="form-control form-control-sm score-input"
                                                                data-max="10"
                                                                value="{{ old('results.'.$subject->id.'.first_ca', $existing?->first_ca ?? '') }}"
-                                                               placeholder=""
+                                                               placeholder="-"
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center">
@@ -89,7 +89,7 @@
                                                                class="form-control form-control-sm score-input"
                                                                data-max="10"
                                                                value="{{ old('results.'.$subject->id.'.second_ca', $existing?->second_ca ?? '') }}"
-                                                               placeholder=""
+                                                               placeholder="-"
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center">
@@ -98,7 +98,7 @@
                                                                class="form-control form-control-sm score-input"
                                                                data-max="20"
                                                                value="{{ old('results.'.$subject->id.'.mid_term_test', $existing?->mid_term_test ?? '') }}"
-                                                               placeholder=""
+                                                               placeholder="-"
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center">
@@ -107,7 +107,7 @@
                                                                class="form-control form-control-sm score-input"
                                                                data-max="60"
                                                                value="{{ old('results.'.$subject->id.'.examination', $existing?->examination ?? '') }}"
-                                                               placeholder=""
+                                                               placeholder="-"
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center font-weight-bold">
@@ -135,6 +135,55 @@
                                     </button>
                                 </div>
                             </form>
+
+                            {{-- ── Grading Key ── --}}
+                            <div class="mt-4">
+                                <h6 class="font-weight-bold text-muted mb-2">
+                                    <i class="fas fa-info-circle mr-1"></i> Grading Key
+                                </h6>
+                                <table class="table table-sm table-bordered grading-key-table" style="max-width: 420px;">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th class="text-center">Grade</th>
+                                            <th class="text-center">Score Range</th>
+                                            <th>Remark</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="text-center"><span class="badge badge-success px-2">A</span></td>
+                                            <td class="text-center">70 – 100</td>
+                                            <td>Excellent</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center"><span class="badge badge-primary px-2">B</span></td>
+                                            <td class="text-center">60 – 69</td>
+                                            <td>Very Good</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center"><span class="badge badge-info px-2">C</span></td>
+                                            <td class="text-center">50 – 59</td>
+                                            <td>Good</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center"><span class="badge badge-warning px-2">D</span></td>
+                                            <td class="text-center">45 – 49</td>
+                                            <td>Pass</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center"><span class="badge badge-secondary px-2">E</span></td>
+                                            <td class="text-center">40 – 44</td>
+                                            <td>Below Average</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center"><span class="badge badge-danger px-2">F</span></td>
+                                            <td class="text-center">0 – 39</td>
+                                            <td>Fail</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -150,6 +199,7 @@
 .item-row:hover { background: #f0f7ff; }
 .score-input.is-invalid { border-color: #dc3545; }
 .live-total { font-size: 1rem; }
+.grading-key-table td, .grading-key-table th { vertical-align: middle; }
 </style>
 
 <script>
@@ -163,6 +213,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (total >= 45) return 'D';
         if (total >= 40) return 'E';
         return 'F';
+    }
+
+    function gradeClass(grade) {
+        const map = { 'A': 'text-success', 'B': 'text-primary', 'C': 'text-info', 'D': 'text-warning', 'E': 'text-secondary', 'F': 'text-danger' };
+        return map[grade] || '';
     }
 
     function recalculateRow(row) {
@@ -198,13 +253,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const totalSpan = row.querySelector('.live-total');
         const gradeSpan = row.querySelector('.live-grade');
 
+        // Clear previous grade colour classes
+        gradeSpan.className = 'live-grade';
+
         if (allEmpty) {
             totalSpan.textContent = '—';
             gradeSpan.textContent = '—';
         } else {
             const rounded = Math.round(total * 100) / 100;
+            const grade   = calculateGrade(rounded);
             totalSpan.textContent = rounded;
-            gradeSpan.textContent = calculateGrade(rounded);
+            gradeSpan.textContent = grade;
+            gradeSpan.classList.add(gradeClass(grade));
         }
     }
 
