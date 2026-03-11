@@ -304,5 +304,5 @@
         </div>
     </div>
 </div>
-@include('includes.new_footer')
+@include('includes.footer')
 </body>
