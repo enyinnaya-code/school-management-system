@@ -304,5 +304,5 @@
         </div>
     </div>
 </div>
-@include('includes.footer')
+@include('includes.edit_footer')
 </body>
