@@ -14,6 +14,7 @@ use App\Models\SchoolClass;
 use App\Models\TestSubmission;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use App\Models\User;
 
 
 
@@ -1025,28 +1026,28 @@ class TestController extends Controller
     }
 
 
-   public function past()
-{
-    $user = Auth::user();
+    public function past()
+    {
+        $user = Auth::user();
 
-    $submittedTestIds = DB::table('students_exams')
-        ->where('user_id', $user->id)
-        ->where('is_submited', 1)
-        ->pluck('test_id');
+        $submittedTestIds = DB::table('students_exams')
+            ->where('user_id', $user->id)
+            ->where('is_submited', 1)
+            ->pluck('test_id');
 
-    $tests = Test::with('classes')   // ← was 'schoolClass'
-        ->whereIn('id', $submittedTestIds)
-        ->orderBy('scheduled_date', 'desc')
-        ->paginate(15);
+        $tests = Test::with('classes')   // ← was 'schoolClass'
+            ->whereIn('id', $submittedTestIds)
+            ->orderBy('scheduled_date', 'desc')
+            ->paginate(15);
 
-    $studentTestData = DB::table('students_exams')
-        ->where('user_id', $user->id)
-        ->whereIn('test_id', $submittedTestIds)
-        ->get()
-        ->keyBy('test_id');
+        $studentTestData = DB::table('students_exams')
+            ->where('user_id', $user->id)
+            ->whereIn('test_id', $submittedTestIds)
+            ->get()
+            ->keyBy('test_id');
 
-    return view('past_test', compact('tests', 'studentTestData'));
-}
+        return view('past_test', compact('tests', 'studentTestData'));
+    }
 
 
     public function viewPast($testId)
@@ -1064,6 +1065,186 @@ class TestController extends Controller
         return view('view_past_questions', compact('test', 'studentAnswers'));
     }
 
+    public function studentsPerformance($testId)
+    {
+        $user = Auth::user();
+        $test = Test::with(['classes.students', 'course', 'questions'])->findOrFail($testId);
+
+        // Only the creator or admins can view this
+        if (!in_array($user->user_type, [1, 2]) && $test->created_by !== $user->id) {
+            abort(403, 'You are not authorized to view this report.');
+        }
+
+        // Get all students assigned to the classes of this test
+        $allStudents = collect();
+        foreach ($test->classes as $class) {
+            $allStudents = $allStudents->merge(
+                $class->students()->select('users.id', 'users.name', 'users.admission_no', 'school_classes.name as class_name')
+                    ->addSelect(DB::raw("'{$class->name}' as class_name"))
+                    ->get()
+            );
+        }
+        $allStudents = $allStudents->unique('id');
+
+        // Get exam records for this test
+        $examRecords = DB::table('students_exams')
+            ->where('test_id', $testId)
+            ->get()
+            ->keyBy('user_id');
+
+        // Total questions count (excluding instructions)
+        $totalQuestions = $test->questions->where('not_question', '!=', 1)->count();
+        $totalMarks     = $test->questions->where('not_question', '!=', 1)->sum('mark');
+
+        // Categorise students
+        $didTest     = collect();
+        $didNotTest  = collect();
+
+        foreach ($allStudents as $student) {
+            $record = $examRecords->get($student->id);
+
+            if ($record && $record->is_submited == 1) {
+                $percentage = $totalMarks > 0
+                    ? round(($record->score / $totalMarks) * 100, 1)
+                    : 0;
+
+                $didTest->push([
+                    'student'          => $student,
+                    'score'            => $record->score,
+                    'total_score'      => $record->test_total_score,
+                    'is_passed'        => $record->is_passed,
+                    'start_time'       => $record->start_time,
+                    'end_time'         => $record->end_time,
+                    'exhausted_time'   => $record->exhausted_time,
+                    'percentage'       => $percentage,
+                ]);
+            } else {
+                $didNotTest->push($student);
+            }
+        }
+
+        // Sort by score descending and assign positions
+        $didTest = $didTest->sortByDesc('score')->values()->map(function ($item, $index) {
+            $item['position'] = $index + 1;
+            return $item;
+        });
+
+        // Summary stats
+        $passCount  = $didTest->where('is_passed', 1)->count();
+        $failCount  = $didTest->where('is_passed', 0)->count();
+        $avgScore   = $didTest->count() > 0 ? round($didTest->avg('score'), 1) : 0;
+        $highScore  = $didTest->count() > 0 ? $didTest->max('score') : 0;
+        $lowScore   = $didTest->count() > 0 ? $didTest->min('score') : 0;
+
+        return view('tests.students_performance', compact(
+            'test',
+            'didTest',
+            'didNotTest',
+            'totalQuestions',
+            'totalMarks',
+            'passCount',
+            'failCount',
+            'avgScore',
+            'highScore',
+            'lowScore'
+        ));
+    }
+
+
+    public function studentIndepthAnalysis($testId, $studentId)
+    {
+        $user    = Auth::user();
+        $test    = Test::with(['questions', 'course'])->findOrFail($testId);
+        $student = User::findOrFail($studentId);
+
+        // Only creator or admins
+        if (!in_array($user->user_type, [1, 2]) && $test->created_by !== $user->id) {
+            abort(403, 'You are not authorized to view this report.');
+        }
+
+        $examRecord = DB::table('students_exams')
+            ->where('user_id', $studentId)
+            ->where('test_id', $testId)
+            ->first();
+
+        if (!$examRecord || $examRecord->is_submited != 1) {
+            return redirect()->route('tests.studentsPerformance', $testId)
+                ->with('error', 'This student has not submitted this test.');
+        }
+
+        // Get student's answers
+        $studentAnswers = DB::table('test_submissions')
+            ->where('user_id', $studentId)
+            ->where('test_id', $testId)
+            ->pluck('student_answer', 'question_id');
+
+        // Build per-question breakdown
+        $questions       = $test->questions->where('not_question', '!=', 1);
+        $totalMarks      = $questions->sum('mark');
+        $correctCount    = 0;
+        $wrongCount      = 0;
+        $unansweredCount = 0;
+        $earnedMarks     = 0;
+
+        $questionBreakdown = $questions->map(function ($question) use ($studentAnswers, &$correctCount, &$wrongCount, &$unansweredCount, &$earnedMarks) {
+            $studentAnswer = $studentAnswers[$question->id] ?? null;
+            $correctAnswer = strtoupper($question->answer);
+            $isAnswered    = $studentAnswer !== null;
+            $isCorrect     = $isAnswered && strtoupper($studentAnswer) === $correctAnswer;
+
+            if (!$isAnswered)      $unansweredCount++;
+            elseif ($isCorrect) {
+                $correctCount++;
+                $earnedMarks += $question->mark;
+            } else                   $wrongCount++;
+
+            return [
+                'question'       => $question,
+                'student_answer' => $studentAnswer,
+                'correct_answer' => $correctAnswer,
+                'is_correct'     => $isCorrect,
+                'is_answered'    => $isAnswered,
+                'mark'           => $question->mark,
+            ];
+        })->values();
+
+        $percentage = $totalMarks > 0 ? round(($earnedMarks / $totalMarks) * 100, 1) : 0;
+
+        // Time spent
+        $timeSpent = null;
+        if ($examRecord->start_time && $examRecord->end_time) {
+            $start     = Carbon::parse($examRecord->start_time);
+            $end       = Carbon::parse($examRecord->end_time);
+            $timeSpent = $start->diff($end)->format('%H:%I:%S');
+        }
+
+        // Class ranking
+        $allExams = DB::table('students_exams')
+            ->where('test_id', $testId)
+            ->where('is_submited', 1)
+            ->orderByDesc('score')
+            ->get();
+
+        $position     = $allExams->search(fn($e) => $e->user_id == $studentId);
+        $position     = $position !== false ? $position + 1 : null;
+        $totalTakers  = $allExams->count();
+
+        return view('tests.student_indepth_analysis', compact(
+            'test',
+            'student',
+            'examRecord',
+            'questionBreakdown',
+            'totalMarks',
+            'earnedMarks',
+            'percentage',
+            'correctCount',
+            'wrongCount',
+            'unansweredCount',
+            'timeSpent',
+            'position',
+            'totalTakers'
+        ));
+    }
 
     public function studentAnalytics()
     {

@@ -16,7 +16,8 @@
                             <div class="card-header">
                                 <h4>Manage Test Questions</h4>
                                 <div class="card-header-action mb-3">
-                                    <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#filterCollapse">
+                                    <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                        data-target="#filterCollapse">
                                         <i class="fas fa-filter"></i> Filter Test Questions
                                     </button>
                                 </div>
@@ -29,89 +30,116 @@
                                         <form method="GET" action="{{ route('questions.index') }}" class="row">
                                             <div class="form-group col-md-3">
                                                 <label>Test Name</label>
-                                                <input type="text" name="filter_test_name" class="form-control" value="{{ request('filter_test_name') }}">
+                                                <input type="text" name="filter_test_name" class="form-control"
+                                                    value="{{ request('filter_test_name') }}">
                                             </div>
                                             <div class="form-group col-md-3">
                                                 <label>Test Type</label>
-                                                <input type="text" name="filter_test_type" class="form-control" value="{{ request('filter_test_type') }}">
+                                                <input type="text" name="filter_test_type" class="form-control"
+                                                    value="{{ request('filter_test_type') }}">
                                             </div>
                                             <div class="form-group col-md-2">
                                                 <label>Duration (min)</label>
-                                                <input type="number" name="filter_duration" class="form-control" value="{{ request('filter_duration') }}">
+                                                <input type="number" name="filter_duration" class="form-control"
+                                                    value="{{ request('filter_duration') }}">
                                             </div>
                                             <div class="form-group col-md-2">
                                                 <label>Section</label>
-                                                <input type="text" name="filter_section" class="form-control" value="{{ request('filter_section') }}">
+                                                <input type="text" name="filter_section" class="form-control"
+                                                    value="{{ request('filter_section') }}">
                                             </div>
                                             <div class="form-group col-md-2">
                                                 <label>Course</label>
-                                                <input type="text" name="filter_course" class="form-control" value="{{ request('filter_course') }}">
+                                                <input type="text" name="filter_course" class="form-control"
+                                                    value="{{ request('filter_course') }}">
                                             </div>
                                             <div class="form-group col-md-3">
                                                 <label>Approval Status</label>
                                                 <select name="filter_approval_status" class="form-control">
                                                     <option value="">-- Select --</option>
-                                                    <option value="not_submitted" {{ request('filter_approval_status') == 'not_submitted' ? 'selected' : '' }}>Not Submitted</option>
-                                                    <option value="action_needed" {{ request('filter_approval_status') == 'action_needed' ? 'selected' : '' }}>Action Needed</option>
-                                                    <option value="not_approved" {{ request('filter_approval_status') == 'not_approved' ? 'selected' : '' }}>Not Approved</option>
-                                                    <option value="approved" {{ request('filter_approval_status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                                                    <option value="not_submitted" {{
+                                                        request('filter_approval_status')=='not_submitted' ? 'selected'
+                                                        : '' }}>Not Submitted</option>
+                                                    <option value="action_needed" {{
+                                                        request('filter_approval_status')=='action_needed' ? 'selected'
+                                                        : '' }}>Action Needed</option>
+                                                    <option value="not_approved" {{
+                                                        request('filter_approval_status')=='not_approved' ? 'selected'
+                                                        : '' }}>Not Approved</option>
+                                                    <option value="approved" {{
+                                                        request('filter_approval_status')=='approved' ? 'selected' : ''
+                                                        }}>Approved</option>
                                                 </select>
                                             </div>
 
                                             <div class="form-group col-md-3">
                                                 <label>Created By</label>
-                                                <input type="text" name="filter_creator" class="form-control" value="{{ request('filter_creator') }}">
+                                                <input type="text" name="filter_creator" class="form-control"
+                                                    value="{{ request('filter_creator') }}">
                                             </div>
                                             <div class="form-group col-md-3">
                                                 <label>Date From</label>
-                                                <input type="date" name="filter_date_from" class="form-control" value="{{ request('filter_date_from') }}">
+                                                <input type="date" name="filter_date_from" class="form-control"
+                                                    value="{{ request('filter_date_from') }}">
                                             </div>
                                             <div class="form-group col-md-3">
                                                 <label>Date To</label>
-                                                <input type="date" name="filter_date_to" class="form-control" value="{{ request('filter_date_to') }}">
+                                                <input type="date" name="filter_date_to" class="form-control"
+                                                    value="{{ request('filter_date_to') }}">
                                             </div>
                                             <div class="form-group col-md-3 d-flex align-items-end">
-                                                <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-search"></i> Apply</button>
-                                                <a href="{{ route('questions.index') }}" class="btn btn-light"><i class="fas fa-sync"></i> Reset</a>
+                                                <button type="submit" class="btn btn-primary mr-2"><i
+                                                        class="fas fa-search"></i> Apply</button>
+                                                <a href="{{ route('questions.index') }}" class="btn btn-light"><i
+                                                        class="fas fa-sync"></i> Reset</a>
                                             </div>
                                         </form>
                                     </div>
                                 </div>
 
                                 @if(
-                                request('filter_test_name') || request('filter_test_type') || request('filter_duration') ||
+                                request('filter_test_name') || request('filter_test_type') || request('filter_duration')
+                                ||
                                 request('filter_section') || request('filter_course') || request('filter_creator') ||
-                                request('filter_date_from') || request('filter_date_to') || request('filter_approval_status')
+                                request('filter_date_from') || request('filter_date_to') ||
+                                request('filter_approval_status')
                                 )
                                 <div class="mb-3">
                                     <h6>Active Filters:</h6>
                                     <div class="active-filters">
                                         @if(request('filter_test_name'))
-                                        <span class="badge badge-info mr-2">Test Name: {{ request('filter_test_name') }}</span>
+                                        <span class="badge badge-info mr-2">Test Name: {{ request('filter_test_name')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_test_type'))
-                                        <span class="badge badge-info mr-2">Test Type: {{ ucfirst(str_replace('_', ' ', request('filter_test_type'))) }}</span>
+                                        <span class="badge badge-info mr-2">Test Type: {{ ucfirst(str_replace('_', ' ',
+                                            request('filter_test_type'))) }}</span>
                                         @endif
 
                                         @if(request('filter_duration'))
-                                        <span class="badge badge-info mr-2">Duration: {{ request('filter_duration') }} min</span>
+                                        <span class="badge badge-info mr-2">Duration: {{ request('filter_duration') }}
+                                            min</span>
                                         @endif
 
                                         @if(request('filter_section'))
-                                        <span class="badge badge-info mr-2">Section: {{ request('filter_section') }}</span>
+                                        <span class="badge badge-info mr-2">Section: {{ request('filter_section')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_course'))
-                                        <span class="badge badge-info mr-2">Course: {{ request('filter_course') }}</span>
+                                        <span class="badge badge-info mr-2">Course: {{ request('filter_course')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_creator'))
-                                        <span class="badge badge-info mr-2">Created By: {{ request('filter_creator') }}</span>
+                                        <span class="badge badge-info mr-2">Created By: {{ request('filter_creator')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_date_from'))
-                                        <span class="badge badge-info mr-2">From: {{ request('filter_date_from') }}</span>
+                                        <span class="badge badge-info mr-2">From: {{ request('filter_date_from')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_date_to'))
@@ -167,17 +195,24 @@
                                                 <td>{{ $test->duration }}</td>
                                                 <td>{{ $test->section->section_name ?? 'N/A' }}</td>
                                                 <td>
-                                                    <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#classesModal{{ $test->id }}" title="View Classes">
-                                                        <i class="fas fa-users"></i> 
-                                                        <span class="badge badge-light">{{ $test->classes->count() }}</span>
+                                                    <button type="button" class="btn btn-info btn-sm"
+                                                        data-toggle="modal" data-target="#classesModal{{ $test->id }}"
+                                                        title="View Classes">
+                                                        <i class="fas fa-users"></i>
+                                                        <span class="badge badge-light">{{ $test->classes->count()
+                                                            }}</span>
                                                     </button>
                                                 </td>
                                                 <td>{{ $test->course->course_name ?? 'N/A' }}</td>
                                                 <td>{{ $test->creator->name ?? 'N/A' }}</td>
                                                 <td>{{ $test->created_at->format('j F Y g:i A') }}</td>
                                                 <td>{{ $test->submittedBy->name ?? 'N/A' }}</td>
-                                                <td>{{ $test->submission_date ? \Carbon\Carbon::parse($test->submission_date)->format('j F Y G:i A') : 'N/A' }}</td>
-                                                <td>{{ $test->approval_date ? \Carbon\Carbon::parse($test->approval_date)->format('j F Y G:i A') : 'N/A' }}</td>
+                                                <td>{{ $test->submission_date ?
+                                                    \Carbon\Carbon::parse($test->submission_date)->format('j F Y G:i A')
+                                                    : 'N/A' }}</td>
+                                                <td>{{ $test->approval_date ?
+                                                    \Carbon\Carbon::parse($test->approval_date)->format('j F Y G:i A') :
+                                                    'N/A' }}</td>
 
                                                 <td>
                                                     @if ($test->is_submitted == 2)
@@ -198,33 +233,41 @@
                                                 <td>
                                                     @if (!$test->is_submitted || !$test->is_approved)
 
-                                                    <a href="{{ route('tests.setQuestions', ['test' => $test->id]) }}" class="btn btn-success btn-sm m-1" title="Set Questions">
+                                                    <a href="{{ route('tests.setQuestions', ['test' => $test->id]) }}"
+                                                        class="btn btn-success btn-sm m-1" title="Set Questions">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
 
-                                                    <a href="{{ route('questions.view', ['test' => $test->id]) }}" class="btn btn-info btn-sm m-1" title="View Questions">
+                                                    <a href="{{ route('questions.view', ['test' => $test->id]) }}"
+                                                        class="btn btn-info btn-sm m-1" title="View Questions">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
 
-                                                    <!-- Submit for Approval Button -->
-                                                    <button class="btn btn-warning btn-sm m-1"
-                                                        data-toggle="modal"
-                                                        data-target="#submitApprovalModal"
-                                                        data-test="{{ $test->id }}"
+                                                    <button class="btn btn-warning btn-sm m-1" data-toggle="modal"
+                                                        data-target="#submitApprovalModal" data-test="{{ $test->id }}"
                                                         data-name="{{ $test->test_name }}"
                                                         data-type="{{ ucfirst(str_replace('_', ' ', $test->test_type)) }}"
                                                         data-duration="{{ $test->duration }}"
-                                                        data-created_at="{{ $test->created_at->format('Y-m-d') }}">
+                                                        data-created_at="{{ $test->created_at->format('Y-m-d') }}"
+                                                        title="Submit for Approval">
                                                         <i class="fas fa-check-circle"></i>
                                                     </button>
 
                                                     @else
 
-                                                    <a href="{{ route('questions.view', ['test' => $test->id]) }}" class="btn btn-info btn-sm m-1" title="View Questions">
+                                                    <a href="{{ route('questions.view', ['test' => $test->id]) }}"
+                                                        class="btn btn-info btn-sm m-1" title="View Questions">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
 
                                                     @endif
+
+                                                    {{-- Performance button — visible always, but only useful after test
+                                                    has been taken --}}
+                                                    <a href="{{ route('tests.studentsPerformance', $test->id) }}"
+                                                        class="btn btn-primary btn-sm m-1" title="Student Performance">
+                                                        <i class="fas fa-chart-bar"></i>
+                                                    </a>
                                                 </td>
                                             </tr>
                                             @endforeach
@@ -248,7 +291,8 @@
     </div>
 
     <!-- Submit for Approval Modal -->
-    <div class="modal fade" id="submitApprovalModal" tabindex="-1" role="dialog" aria-labelledby="submitApprovalModalLabel" aria-hidden="true">
+    <div class="modal fade" id="submitApprovalModal" tabindex="-1" role="dialog"
+        aria-labelledby="submitApprovalModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -286,7 +330,8 @@
 
     <!-- Classes Modals (Outside the table loop) -->
     @foreach($tests as $test)
-    <div class="modal fade" id="classesModal{{ $test->id }}" tabindex="-1" role="dialog" aria-labelledby="classesModalLabel{{ $test->id }}" aria-hidden="true">
+    <div class="modal fade" id="classesModal{{ $test->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="classesModalLabel{{ $test->id }}" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -299,21 +344,22 @@
                 </div>
                 <div class="modal-body">
                     @if($test->classes->count() > 0)
-                        <div class="list-group">
-                            @foreach($test->classes as $class)
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span>
-                                        <i class="fas fa-graduation-cap text-info"></i> 
-                                        {{ $class->name }}
-                                    </span>
-                                    <span class="badge badge-info badge-pill">{{ $class->section->section_name ?? 'N/A' }}</span>
-                                </div>
-                            @endforeach
+                    <div class="list-group">
+                        @foreach($test->classes as $class)
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fas fa-graduation-cap text-info"></i>
+                                {{ $class->name }}
+                            </span>
+                            <span class="badge badge-info badge-pill">{{ $class->section->section_name ?? 'N/A'
+                                }}</span>
                         </div>
+                        @endforeach
+                    </div>
                     @else
-                        <div class="alert alert-warning mb-0">
-                            <i class="fas fa-exclamation-triangle"></i> No classes assigned to this test yet.
-                        </div>
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> No classes assigned to this test yet.
+                    </div>
                     @endif
                 </div>
                 <div class="modal-footer">
@@ -380,4 +426,5 @@
 
     @include('includes.footer')
 </body>
+
 </html>

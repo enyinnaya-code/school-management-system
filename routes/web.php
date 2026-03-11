@@ -226,6 +226,10 @@ Route::middleware(['auth'])->group(function () {
         ->name('tests.checkSubmitted')
         ->middleware('auth');
 
+    // CBT Teacher Analytics
+    Route::get('/tests/{testId}/students-performance', [TestController::class, 'studentsPerformance'])->name('tests.studentsPerformance');
+    Route::get('/tests/{testId}/students-performance/{studentId}', [TestController::class, 'studentIndepthAnalysis'])->name('tests.studentIndepthAnalysis');
+
     // Announcement routes
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
     Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
