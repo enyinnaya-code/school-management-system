@@ -1068,7 +1068,7 @@ class TestController extends Controller
     public function studentsPerformance($testId)
     {
         $user = Auth::user();
-        $test = Test::with(['classes.students', 'course', 'questions'])->findOrFail($testId);
+        $test = Test::with(['classes', 'course', 'questions'])->findOrFail($testId);
 
         // Only the creator or admins can view this
         if (!in_array($user->user_type, [1, 2]) && $test->created_by !== $user->id) {
@@ -1078,12 +1078,18 @@ class TestController extends Controller
         // Get all students assigned to the classes of this test
         $allStudents = collect();
         foreach ($test->classes as $class) {
-            $allStudents = $allStudents->merge(
-                $class->students()->select('users.id', 'users.name', 'users.admission_no', 'school_classes.name as class_name')
-                    ->addSelect(DB::raw("'{$class->name}' as class_name"))
-                    ->get()
-            );
+            $classStudents = User::where('class_id', $class->id)
+                ->where('user_type', 4)
+                ->select('id', 'name', 'admission_no', 'class_id')
+                ->get()
+                ->map(function ($student) use ($class) {
+                    $student->class_name = $class->name;
+                    return $student;
+                });
+
+            $allStudents = $allStudents->merge($classStudents);
         }
+
         $allStudents = $allStudents->unique('id');
 
         // Get exam records for this test
@@ -1092,13 +1098,13 @@ class TestController extends Controller
             ->get()
             ->keyBy('user_id');
 
-        // Total questions count (excluding instructions)
+        // Total marks (excluding instructions)
         $totalQuestions = $test->questions->where('not_question', '!=', 1)->count();
         $totalMarks     = $test->questions->where('not_question', '!=', 1)->sum('mark');
 
         // Categorise students
-        $didTest     = collect();
-        $didNotTest  = collect();
+        $didTest    = collect();
+        $didNotTest = collect();
 
         foreach ($allStudents as $student) {
             $record = $examRecords->get($student->id);
@@ -1109,14 +1115,14 @@ class TestController extends Controller
                     : 0;
 
                 $didTest->push([
-                    'student'          => $student,
-                    'score'            => $record->score,
-                    'total_score'      => $record->test_total_score,
-                    'is_passed'        => $record->is_passed,
-                    'start_time'       => $record->start_time,
-                    'end_time'         => $record->end_time,
-                    'exhausted_time'   => $record->exhausted_time,
-                    'percentage'       => $percentage,
+                    'student'        => $student,
+                    'score'          => $record->score,
+                    'total_score'    => $record->test_total_score,
+                    'is_passed'      => $record->is_passed,
+                    'start_time'     => $record->start_time,
+                    'end_time'       => $record->end_time,
+                    'exhausted_time' => $record->exhausted_time,
+                    'percentage'     => $percentage,
                 ]);
             } else {
                 $didNotTest->push($student);
@@ -1130,11 +1136,11 @@ class TestController extends Controller
         });
 
         // Summary stats
-        $passCount  = $didTest->where('is_passed', 1)->count();
-        $failCount  = $didTest->where('is_passed', 0)->count();
-        $avgScore   = $didTest->count() > 0 ? round($didTest->avg('score'), 1) : 0;
-        $highScore  = $didTest->count() > 0 ? $didTest->max('score') : 0;
-        $lowScore   = $didTest->count() > 0 ? $didTest->min('score') : 0;
+        $passCount = $didTest->where('is_passed', 1)->count();
+        $failCount = $didTest->where('is_passed', 0)->count();
+        $avgScore  = $didTest->count() > 0 ? round($didTest->avg('score'), 1) : 0;
+        $highScore = $didTest->count() > 0 ? $didTest->max('score') : 0;
+        $lowScore  = $didTest->count() > 0 ? $didTest->min('score') : 0;
 
         return view('tests.students_performance', compact(
             'test',
@@ -1186,17 +1192,26 @@ class TestController extends Controller
         $unansweredCount = 0;
         $earnedMarks     = 0;
 
-        $questionBreakdown = $questions->map(function ($question) use ($studentAnswers, &$correctCount, &$wrongCount, &$unansweredCount, &$earnedMarks) {
+        $questionBreakdown = $questions->map(function ($question) use (
+            $studentAnswers,
+            &$correctCount,
+            &$wrongCount,
+            &$unansweredCount,
+            &$earnedMarks
+        ) {
             $studentAnswer = $studentAnswers[$question->id] ?? null;
             $correctAnswer = strtoupper($question->answer);
             $isAnswered    = $studentAnswer !== null;
             $isCorrect     = $isAnswered && strtoupper($studentAnswer) === $correctAnswer;
 
-            if (!$isAnswered)      $unansweredCount++;
-            elseif ($isCorrect) {
+            if (!$isAnswered) {
+                $unansweredCount++;
+            } elseif ($isCorrect) {
                 $correctCount++;
                 $earnedMarks += $question->mark;
-            } else                   $wrongCount++;
+            } else {
+                $wrongCount++;
+            }
 
             return [
                 'question'       => $question,
@@ -1225,9 +1240,9 @@ class TestController extends Controller
             ->orderByDesc('score')
             ->get();
 
-        $position     = $allExams->search(fn($e) => $e->user_id == $studentId);
-        $position     = $position !== false ? $position + 1 : null;
-        $totalTakers  = $allExams->count();
+        $position    = $allExams->search(fn($e) => $e->user_id == $studentId);
+        $position    = $position !== false ? $position + 1 : null;
+        $totalTakers = $allExams->count();
 
         return view('tests.student_indepth_analysis', compact(
             'test',
@@ -1245,7 +1260,6 @@ class TestController extends Controller
             'totalTakers'
         ));
     }
-
     public function studentAnalytics()
     {
         $user = Auth::user();

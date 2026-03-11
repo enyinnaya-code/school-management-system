@@ -4,13 +4,16 @@
     .stat-card { border-radius: 10px; padding: 20px; color: white; text-align: center; }
     .stat-card h2 { font-size: 2rem; font-weight: 700; margin: 0; }
     .stat-card p  { margin: 0; font-size: 13px; opacity: 0.9; }
-    .bg-took    { background: linear-gradient(135deg, #28a745, #20c997); }
-    .bg-missed  { background: linear-gradient(135deg, #dc3545, #e74c3c); }
-    .bg-passed  { background: linear-gradient(135deg, #007bff, #6610f2); }
-    .bg-failed  { background: linear-gradient(135deg, #fd7e14, #ffc107); }
-    .bg-avg     { background: linear-gradient(135deg, #17a2b8, #20c997); }
-    .progress   { height: 8px; border-radius: 4px; }
-    .badge-position { background: #6c757d; color: white; padding: 3px 8px; border-radius: 12px; font-size: 11px; }
+    .bg-took   { background: linear-gradient(135deg, #28a745, #20c997); }
+    .bg-missed { background: linear-gradient(135deg, #dc3545, #e74c3c); }
+    .bg-passed { background: linear-gradient(135deg, #007bff, #6610f2); }
+    .bg-failed { background: linear-gradient(135deg, #fd7e14, #ffc107); }
+    .bg-avg    { background: linear-gradient(135deg, #17a2b8, #20c997); }
+    .progress  { height: 8px; border-radius: 4px; }
+    .badge-position {
+        background: #6c757d; color: white;
+        padding: 3px 8px; border-radius: 12px; font-size: 11px;
+    }
 </style>
 
 <body>
@@ -78,7 +81,8 @@
                             </div>
                         </div>
                         <div class="col-6 col-md-2 mb-3">
-                            <div class="stat-card" style="background: linear-gradient(135deg,#343a40,#6c757d);">
+                            <div class="stat-card"
+                                 style="background: linear-gradient(135deg,#343a40,#6c757d);">
                                 <h2>{{ $highScore }}/{{ $lowScore }}</h2>
                                 <p>High / Low</p>
                             </div>
@@ -104,6 +108,7 @@
                                             <th>#</th>
                                             <th>Student</th>
                                             <th>Admission No</th>
+                                            <th>Class</th>
                                             <th>Score</th>
                                             <th>Percentage</th>
                                             <th>Result</th>
@@ -122,18 +127,24 @@
                                             }
                                         @endphp
                                         <tr>
-                                            <td><span class="badge-position">{{ $item['position'] }}</span></td>
+                                            <td>
+                                                <span class="badge-position">{{ $item['position'] }}</span>
+                                            </td>
                                             <td class="font-weight-bold">{{ $item['student']->name }}</td>
                                             <td>{{ $item['student']->admission_no ?? '-' }}</td>
+                                            <td>{{ $item['student']->class_name ?? '-' }}</td>
                                             <td>
                                                 <strong>{{ $item['score'] }}</strong>
                                                 <small class="text-muted">/ {{ $item['total_score'] }}</small>
                                             </td>
                                             <td>
                                                 <div class="d-flex align-items-center">
-                                                    <div class="progress flex-grow-1 mr-2" style="width:80px;">
-                                                        <div class="progress-bar {{ $item['percentage'] >= 50 ? 'bg-success' : 'bg-danger' }}"
-                                                             style="width: {{ $item['percentage'] }}%"></div>
+                                                    <div class="progress flex-grow-1 mr-2"
+                                                         style="width:80px;">
+                                                        <div class="progress-bar
+                                                            {{ $item['percentage'] >= 50 ? 'bg-success' : 'bg-danger' }}"
+                                                             style="width: {{ $item['percentage'] }}%">
+                                                        </div>
                                                     </div>
                                                     <small>{{ $item['percentage'] }}%</small>
                                                 </div>
@@ -148,7 +159,8 @@
                                             <td><small>{{ $timeSpent }}</small></td>
                                             <td>
                                                 <a href="{{ route('tests.studentIndepthAnalysis', [$test->id, $item['student']->id]) }}"
-                                                   class="btn btn-sm btn-primary" title="In-depth Analysis">
+                                                   class="btn btn-sm btn-primary"
+                                                   title="In-depth Analysis">
                                                     <i class="fas fa-chart-bar"></i> Analyse
                                                 </a>
                                             </td>
@@ -187,7 +199,9 @@
                                         @foreach($didNotTest as $i => $student)
                                         <tr>
                                             <td>{{ $i + 1 }}</td>
-                                            <td class="font-weight-bold text-danger">{{ $student->name }}</td>
+                                            <td class="font-weight-bold text-danger">
+                                                {{ $student->name }}
+                                            </td>
                                             <td>{{ $student->admission_no ?? '-' }}</td>
                                             <td>{{ $student->class_name ?? '-' }}</td>
                                         </tr>
