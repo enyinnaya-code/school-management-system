@@ -19,7 +19,7 @@
                             <div class="card-body">
 
                                 @if($tests->isEmpty())
-                                <p>No tests available at the moment.</p>
+                                    <p>No tests available at the moment.</p>
                                 @else
                                 <table class="table table-striped">
                                     <thead>
@@ -39,60 +39,63 @@
                                     <tbody>
                                         @foreach($tests as $test)
                                         @php
-                                        $data = $studentTestData[$test->id] ?? null;
+                                            $data = $studentTestData[$test->id] ?? null;
                                         @endphp
                                         <tr>
-                                            <td>
-                                                @if($test->classes->isNotEmpty())
-                                                {{ $test->classes->pluck('name')->join(', ') }}
-                                                @else
-                                                -
-                                                @endif
-                                            </td>
+                                            <td>{{ $test->test_name }}</td>
                                             <td>{{ $test->test_type }}</td>
                                             <td>{{ $test->duration }}</td>
-                                            <td>{{ $test->schoolClass->name }}</td>
+
+                                            {{-- ← FIXED: use classes() pivot, not schoolClass() --}}
+                                            <td>
+                                                @if($test->classes->isNotEmpty())
+                                                    {{ $test->classes->pluck('name')->join(', ') }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+
                                             <td>
                                                 @if($data && $data->start_time)
-                                                {{ \Carbon\Carbon::parse($data->start_time)->format('j-F-Y g:i A') }}
+                                                    {{ \Carbon\Carbon::parse($data->start_time)->format('j-F-Y g:i A') }}
                                                 @else
-                                                -
+                                                    -
                                                 @endif
                                             </td>
                                             <td>
                                                 @if($data && $data->end_time)
-                                                {{ \Carbon\Carbon::parse($data->end_time)->format('j-F-Y g:i A') }}
+                                                    {{ \Carbon\Carbon::parse($data->end_time)->format('j-F-Y g:i A') }}
                                                 @else
-                                                -
+                                                    -
                                                 @endif
                                             </td>
                                             <td>
                                                 @if($data && $data->start_time && $data->end_time)
-                                                @php
-                                                $start = \Carbon\Carbon::parse($data->start_time);
-                                                $end = \Carbon\Carbon::parse($data->end_time);
-                                                @endphp
-                                                {{ $start->diff($end)->format('%H:%I:%S') }}
+                                                    @php
+                                                        $start = \Carbon\Carbon::parse($data->start_time);
+                                                        $end   = \Carbon\Carbon::parse($data->end_time);
+                                                    @endphp
+                                                    {{ $start->diff($end)->format('%H:%I:%S') }}
                                                 @else
-                                                -
+                                                    -
                                                 @endif
                                             </td>
                                             <td class="font-weight-bold">
                                                 @if($data)
-                                                {{ $data->score }}/{{ $data->test_total_score }}
+                                                    {{ $data->score }}/{{ $data->test_total_score }}
                                                 @else
-                                                Not Taken
+                                                    Not Taken
                                                 @endif
                                             </td>
                                             <td>
                                                 @if($data)
-                                                @if($data->is_passed)
-                                                <span class="text-success">Passed</span>
+                                                    @if($data->is_passed)
+                                                        <span class="text-success">Passed</span>
+                                                    @else
+                                                        <span class="text-danger">Failed</span>
+                                                    @endif
                                                 @else
-                                                <span class="text-danger">Failed</span>
-                                                @endif
-                                                @else
-                                                -
+                                                    -
                                                 @endif
                                             </td>
                                             <td>
@@ -105,9 +108,8 @@
                                         @endforeach
                                     </tbody>
                                 </table>
-
-
                                 @endif
+
                                 <div class="d-flex justify-content-center mt-4">
                                     {{ $tests->links() }}
                                 </div>
@@ -120,3 +122,4 @@
         </div>
     </div>
     @include('includes.footer')
+</body>
