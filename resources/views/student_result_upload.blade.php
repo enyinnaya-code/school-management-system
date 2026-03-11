@@ -80,7 +80,7 @@
                                                                class="form-control form-control-sm score-input"
                                                                data-max="10"
                                                                value="{{ old('results.'.$subject->id.'.first_ca', $existing?->first_ca ?? '') }}"
-                                                               placeholder="0–10"
+                                                               placeholder=""
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center">
@@ -89,7 +89,7 @@
                                                                class="form-control form-control-sm score-input"
                                                                data-max="10"
                                                                value="{{ old('results.'.$subject->id.'.second_ca', $existing?->second_ca ?? '') }}"
-                                                               placeholder="0–10"
+                                                               placeholder=""
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center">
@@ -98,7 +98,7 @@
                                                                class="form-control form-control-sm score-input"
                                                                data-max="20"
                                                                value="{{ old('results.'.$subject->id.'.mid_term_test', $existing?->mid_term_test ?? '') }}"
-                                                               placeholder="0–20"
+                                                               placeholder=""
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center">
@@ -107,7 +107,7 @@
                                                                class="form-control form-control-sm score-input"
                                                                data-max="60"
                                                                value="{{ old('results.'.$subject->id.'.examination', $existing?->examination ?? '') }}"
-                                                               placeholder="0–60"
+                                                               placeholder=""
                                                                style="min-width:70px">
                                                     </td>
                                                     <td class="text-center font-weight-bold">
