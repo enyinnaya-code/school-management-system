@@ -1025,29 +1025,28 @@ class TestController extends Controller
     }
 
 
-    public function past()
-    {
-        $user = Auth::user();
+   public function past()
+{
+    $user = Auth::user();
 
-        $submittedTestIds = DB::table('students_exams')
-            ->where('user_id', $user->id)
-            ->where('is_submited', 1)
-            ->pluck('test_id');
+    $submittedTestIds = DB::table('students_exams')
+        ->where('user_id', $user->id)
+        ->where('is_submited', 1)
+        ->pluck('test_id');
 
-        $tests = Test::with('schoolClass')
-            ->whereIn('id', $submittedTestIds)
-            ->orderBy('scheduled_date', 'desc')
-            ->paginate(15);
+    $tests = Test::with('classes')   // ← was 'schoolClass'
+        ->whereIn('id', $submittedTestIds)
+        ->orderBy('scheduled_date', 'desc')
+        ->paginate(15);
 
-        // Collect detailed exam data keyed by test_id
-        $studentTestData = DB::table('students_exams')
-            ->where('user_id', $user->id)
-            ->whereIn('test_id', $submittedTestIds)
-            ->get()
-            ->keyBy('test_id');
+    $studentTestData = DB::table('students_exams')
+        ->where('user_id', $user->id)
+        ->whereIn('test_id', $submittedTestIds)
+        ->get()
+        ->keyBy('test_id');
 
-        return view('past_test', compact('tests', 'studentTestData'));
-    }
+    return view('past_test', compact('tests', 'studentTestData'));
+}
 
 
     public function viewPast($testId)

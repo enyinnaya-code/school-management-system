@@ -42,7 +42,13 @@
                                         $data = $studentTestData[$test->id] ?? null;
                                         @endphp
                                         <tr>
-                                            <td>{{ $test->test_name }}</td>
+                                            <td>
+                                                @if($test->classes->isNotEmpty())
+                                                {{ $test->classes->pluck('name')->join(', ') }}
+                                                @else
+                                                -
+                                                @endif
+                                            </td>
                                             <td>{{ $test->test_type }}</td>
                                             <td>{{ $test->duration }}</td>
                                             <td>{{ $test->schoolClass->name }}</td>
@@ -90,7 +96,8 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <a href="{{ route('tests.viewPast', ['testId' => $test->id]) }}" class="btn btn-primary btn-sm" title="View Past Questions">
+                                                <a href="{{ route('tests.viewPast', ['testId' => $test->id]) }}"
+                                                    class="btn btn-primary btn-sm" title="View Past Questions">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                             </td>
