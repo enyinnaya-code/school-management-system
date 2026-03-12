@@ -29,10 +29,7 @@
                                         {{ $currentTerm->name }}
                                     </small>
                                 </div>
-                                {{-- <a href="{{ url()->previous() }}"
-                                   class="btn btn-secondary btn-sm mt-2 mt-md-0">
-                                    <i class="fas fa-arrow-left"></i> Back
-                                </a> --}}
+                               
                             </div>
                         </div>
                     </div>
@@ -56,7 +53,7 @@
                         {{-- ══════════════════════════════════════════════ --}}
                         {{-- SECTION 1: TERMLY SCORE (auto-calculated)     --}}
                         {{-- ══════════════════════════════════════════════ --}}
-                        <div class="card mb-4">
+                        {{-- <div class="card mb-4">
                             <div class="card-body">
                                 <div class="section-title">
                                     <i class="fas fa-chart-bar mr-2"></i>
@@ -105,7 +102,7 @@
                                     </table>
                                 </div>
                             </div>
-                        </div>
+                        </div> --}}
 
                         {{-- ══════════════════════════════════════════════ --}}
                         {{-- SECTION 2: COGNITIVE ABILITY                  --}}
@@ -113,7 +110,7 @@
                         <div class="card mb-4">
                             <div class="card-body">
                                 <div class="section-title">
-                                    <i class="fas fa-brain mr-2"></i> 2. Cognitive Ability
+                                    <i class="fas fa-brain mr-2"></i> Cognitive Ability
                                 </div>
                                 <p class="text-muted small mb-3">
                                     <i class="fas fa-info-circle"></i>

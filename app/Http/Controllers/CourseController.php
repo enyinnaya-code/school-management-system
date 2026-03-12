@@ -45,29 +45,25 @@ class CourseController extends Controller
                         ->where('section_id', $request->section_id)
                         ->exists();
                     if ($exists) {
-                        $fail('The course already exists for the selected section.');
+                        $fail('This course already exists for the selected section.');
                     }
                 }
             ],
             'section_id' => 'required|exists:sections,id',
-            'class_ids' => 'required|array|min:1',
+            'class_ids'  => 'required|array|min:1',
             'class_ids.*' => 'exists:school_classes,id',
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        // Create the course
         $course = Course::create([
             'course_name' => $courseName,
-            'section_id' => $request->section_id,
-            'added_by' => Auth::id(),
+            'section_id'  => $request->section_id,
+            'added_by'    => Auth::id(),
         ]);
 
-        // Attach selected classes to the course
         $course->schoolClasses()->attach($request->class_ids);
 
         return redirect()->route('course.create')->with('success', 'Course added successfully!');
@@ -117,24 +113,40 @@ class CourseController extends Controller
     {
         $course = Course::findOrFail($id);
 
-        $request->validate([
-            'course_name' => 'required|string|max:255|unique:courses,course_name,' . $id,
-            'section_id' => 'required|exists:sections,id',
-            'class_ids' => 'required|array|min:1',
+        $validator = Validator::make($request->all(), [
+            'course_name' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request, $id) {
+                    // Allow same name for same section, but exclude current record
+                    $exists = Course::where('course_name', strtoupper($value))
+                        ->where('section_id', $request->section_id)
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($exists) {
+                        $fail('This course already exists for the selected section.');
+                    }
+                }
+            ],
+            'section_id'  => 'required|exists:sections,id',
+            'class_ids'   => 'required|array|min:1',
             'class_ids.*' => 'exists:school_classes,id',
         ]);
 
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
         $course->update([
-            'course_name' => $request->course_name,
-            'section_id' => $request->section_id,
+            'course_name' => strtoupper($request->course_name),
+            'section_id'  => $request->section_id,
         ]);
 
-        // Sync the classes (removes old, adds new)
         $course->schoolClasses()->sync($request->class_ids);
 
         return redirect()->route('course.manage')->with('success', 'Course updated successfully!');
     }
-
 
 
 
