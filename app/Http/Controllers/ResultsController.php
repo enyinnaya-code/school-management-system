@@ -121,7 +121,6 @@ class ResultsController extends Controller
         $section = Section::find($class->section_id);
         $user    = Auth::user();
 
-        // Security check for non-admin users
         if (!in_array($user->user_type, [1, 2])) {
             if (!$this->isTeacherAssignedToClass($user->id, $class->id)) {
                 abort(403, 'You are not assigned to this class.');
@@ -135,9 +134,8 @@ class ResultsController extends Controller
             return redirect()->back()->with('error', 'No current academic session or term is set.');
         }
 
-        // ── Check if this class has an active custom result sheet for the current term ──
+        // ── NURSERY: Custom result sheet template ─────────────────────────────
         $sheetTemplate = DB::table('result_sheet_templates')
-            ->where('term_id', $currentTerm->id)
             ->where('is_active', 1)
             ->get()
             ->first(function ($t) use ($class) {
@@ -145,14 +143,12 @@ class ResultsController extends Controller
                 return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
             });
 
-        // Inside studentResultUpload
         if ($sheetTemplate) {
             $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
             $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
 
-            $service  = new ResultSheetService();
-            $subjects = $service->loadTemplateStructure($sheetTemplate->id);
-
+            $service    = new ResultSheetService();
+            $subjects   = $service->loadTemplateStructure($sheetTemplate->id);
             $allItemIds = collect($subjects)->flatMap(function ($subject) {
                 $ids = collect($subject->items)->pluck('id');
                 foreach ($subject->subcategories as $sub) {
@@ -188,7 +184,53 @@ class ResultsController extends Controller
             ));
         }
 
-        // ── Fallback: standard numeric result upload ──
+        // ── PRIMARY: Primary school cognitive ability grid ────────────────────
+        $isPrimaryClass = DB::table('primary_result_classes')
+            ->where('school_class_id', $class->id)
+            ->exists();
+
+        if ($isPrimaryClass) {
+            $subjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
+                $q->where('school_classes.id', $class->id);
+            })->orderBy('course_name')->get(['id', 'course_name']);
+
+            $existingResults = \App\Models\PrimarySchoolResult::where('student_id', $studentId)
+                ->where('session_id', $currentSession->id)
+                ->where('term_id', $currentTerm->id)
+                ->get()
+                ->keyBy('course_id');
+
+            $termlyScores = $this->calculateTermlyScores(
+                $studentId,
+                $currentSession->id,
+                $currentTerm->id
+            );
+
+            $remark = StudentRemark::where('student_id', $student->id)
+                ->where('class_id', $class->id)
+                ->where('session_id', $currentSession->id)
+                ->where('term_id', $currentTerm->id)
+                ->first();
+
+            $affectiveRatings = array_merge(
+                $this->defaultRatings('affective'),
+                $remark?->affective_ratings ?? []
+            );
+
+            return view('primary_student_result_upload', compact(
+                'student',
+                'class',
+                'section',
+                'subjects',
+                'existingResults',
+                'termlyScores',
+                'affectiveRatings',
+                'currentSession',
+                'currentTerm'
+            ));
+        }
+
+        // ── OTHER (Secondary/JS/SS): Standard numeric result upload ───────────
         $subjectsQuery = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
         })->orderBy('course_name');
@@ -209,7 +251,7 @@ class ResultsController extends Controller
             ->get()
             ->keyBy('course_id');
 
-        $sheetTemplate = null; // ← FIX: pass null so the blade doesn't throw undefined variable
+        $sheetTemplate = null;
 
         return view('student_result_upload', compact(
             'student',
@@ -219,9 +261,39 @@ class ResultsController extends Controller
             'existingResults',
             'currentSession',
             'currentTerm',
-            'sheetTemplate'  // ← FIX: include in compact
+            'sheetTemplate'
         ));
     }
+
+    private function calculateTermlyScores($studentId, $sessionId, $currentTermId)
+    {
+        $session = Session::find($sessionId);
+        $terms   = $session?->terms()->orderBy('name')->get() ?? collect();
+
+        $scores     = [];
+        $cumulative = 0;
+
+        foreach ($terms as $term) {
+            $termTotal = \App\Models\PrimarySchoolResult::where('student_id', $studentId)
+                ->where('session_id', $sessionId)
+                ->where('term_id', $term->id)
+                ->sum('final_obtained');
+
+            $scores[$term->id] = [
+                'name'       => $term->name,
+                'total'      => $termTotal,
+                'is_current' => $term->id == $currentTermId,
+            ];
+
+            $cumulative += $termTotal;
+        }
+
+        return [
+            'terms'      => $scores,
+            'cumulative' => $cumulative,
+        ];
+    }
+
 
 
     public function saveStudentSheetRatings(Request $request, $studentId, $templateId)
@@ -1377,5 +1449,66 @@ class ResultsController extends Controller
         $filename = strtoupper($student->name) . '_Transcript.pdf';
 
         return $action === 'download' ? $pdf->download($filename) : $pdf->stream($filename);
+    }
+
+
+    public function savePrimaryStudentResults(Request $request, $studentId)
+    {
+        $student = User::where('user_type', 4)->findOrFail($studentId);
+        $class   = SchoolClass::findOrFail($student->class_id);
+        $user    = Auth::user();
+
+        if (!in_array($user->user_type, [1, 2])) {
+            if (!$this->isTeacherAssignedToClass($user->id, $class->id)) {
+                abort(403, 'You are not assigned to this class.');
+            }
+        }
+
+        $currentSession = Session::where('is_current', true)->first();
+        $currentTerm    = $currentSession?->terms()->where('is_current', true)->first();
+
+        if (!$currentSession || !$currentTerm) {
+            return redirect()->back()->with('error', 'No current academic session or term is set.');
+        }
+
+        $request->validate([
+            'results'                          => 'nullable|array',
+            'results.*.first_half_obtainable'  => 'nullable|numeric|min:0|max:1000',
+            'results.*.first_half_obtained'    => 'nullable|numeric|min:0|max:1000',
+            'results.*.second_half_obtainable' => 'nullable|numeric|min:0|max:1000',
+            'results.*.second_half_obtained'   => 'nullable|numeric|min:0|max:1000',
+            'results.*.final_obtainable'       => 'nullable|numeric|min:0|max:1000',
+            'results.*.final_obtained'         => 'nullable|numeric|min:0|max:1000',
+            'results.*.class_average'          => 'nullable|numeric|min:0|max:1000',
+            'results.*.teacher_remark'         => 'nullable|string|max:255',
+        ]);
+
+        // Save subject results only
+        foreach ($request->input('results', []) as $courseId => $data) {
+            $allNull = collect($data)->every(fn($v) => $v === null || $v === '');
+            if ($allNull) continue;
+
+            \App\Models\PrimarySchoolResult::updateOrCreate(
+                [
+                    'student_id' => $studentId,
+                    'course_id'  => $courseId,
+                    'session_id' => $currentSession->id,
+                    'term_id'    => $currentTerm->id,
+                ],
+                [
+                    'first_half_obtainable'  => $data['first_half_obtainable']  ?? null,
+                    'first_half_obtained'    => $data['first_half_obtained']    ?? null,
+                    'second_half_obtainable' => $data['second_half_obtainable'] ?? null,
+                    'second_half_obtained'   => $data['second_half_obtained']   ?? null,
+                    'final_obtainable'       => $data['final_obtainable']       ?? null,
+                    'final_obtained'         => $data['final_obtained']         ?? null,
+                    'class_average'          => $data['class_average']          ?? null,
+                    'teacher_remark'         => $data['teacher_remark']         ?? null,
+                    'uploaded_by'            => Auth::id(),
+                ]
+            );
+        }
+
+        return redirect()->back()->with('success', 'Primary school results saved successfully.');
     }
 }

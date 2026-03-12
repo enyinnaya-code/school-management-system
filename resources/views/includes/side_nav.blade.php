@@ -42,6 +42,18 @@
           <li class="divider mx-4"></li>
           <li><a class="nav-link" href="{{ route('result_sheets.create') }}">Custom Result Sheets</a></li>
           <li><a class="nav-link" href="{{ route('result_sheets.index') }}">Manage Result Sheets</a></li>
+          <li class="divider mx-4"></li>
+          <li>
+            <a class="nav-link" href="{{ route('results.settings.primaryResultClass') }}">
+              Set Pri. Result Class
+            </a>
+          </li>
+          <li class="divider mx-4"></li>
+          <li>
+            <a class="nav-link" href="{{ route('results.settings.customSubjectNo') }}">
+              Set Custom Subj. No
+            </a>
+          </li>
         </ul>
       </li>
 
@@ -138,7 +150,8 @@
           <i data-feather="check-square"></i><span>Student Attendance</span>
         </a>
         <ul class="dropdown-menu">
-         @if(in_array(auth()->user()->user_type, [1, 2, 7, 8]) || (auth()->user()->user_type == 3 && auth()->user()->is_form_teacher))
+          @if(in_array(auth()->user()->user_type, [1, 2, 7, 8]) || (auth()->user()->user_type == 3 &&
+          auth()->user()->is_form_teacher))
           <li><a class="nav-link" href="{{ route('attendance.students.mark') }}">Mark Attendance</a></li>
           @endif
           <li><a class="nav-link" href="{{ route('attendance.students.index') }}">View Attendance</a></li>
@@ -279,7 +292,8 @@
         </a>
         <ul class="dropdown-menu">
           <li><a class="nav-link" href="{{ route('results.upload') }}">Upload Results</a></li>
-          @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 && Auth::user()->is_form_teacher))
+          @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 &&
+          Auth::user()->is_form_teacher))
           <li><a class="nav-link" href="{{ route('results.print') }}">Print Results</a></li>
           <li><a class="nav-link" href="{{ route('students.promote') }}">Promote Students</a></li>
           <li><a class="nav-link" href="{{ route('students.promotion.history') }}">Promotion History</a></li>
@@ -367,7 +381,8 @@
       {{-- END: CBT --}}
 
       <!-- ========== LIBRARY (Types 1,2,3,4,7,8,9,10 + Librarians) ========== -->
-      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10]) || (Auth::user()->user_type == 3 && Auth::user()->is_librarian == 1))
+      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10]) || (Auth::user()->user_type == 3 &&
+      Auth::user()->is_librarian == 1))
       <li class="menu-header">LIBRARY</li>
 
       <!-- Physical Library -->
@@ -376,7 +391,8 @@
           <i data-feather="book"></i><span>Physical Library</span>
         </a>
         <ul class="dropdown-menu">
-          @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 && Auth::user()->is_librarian == 1))
+          @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 && Auth::user()->is_librarian
+          == 1))
           <li><a class="nav-link" href="{{ route('physical_library.add_book') }}">Add Books</a></li>
           <li><a class="nav-link" href="{{ route('physical_library.manage_books') }}">Manage Books</a></li>
           <li><a class="nav-link" href="{{ route('physical_library.borrowing_returns') }}">Borrowing & Returns</a></li>
@@ -388,7 +404,8 @@
 
           <li><a class="nav-link" href="{{ route('physical_library.request_borrow') }}">Borrow a Book</a></li>
 
-          @if(!in_array(Auth::user()->user_type, [1, 2, 9]) && !(Auth::user()->user_type == 3 && Auth::user()->is_librarian == 1))
+          @if(!in_array(Auth::user()->user_type, [1, 2, 9]) && !(Auth::user()->user_type == 3 &&
+          Auth::user()->is_librarian == 1))
           <li><a class="nav-link" href="{{ route('physical_library.my_borrows') }}">My Borrowed Books</a></li>
           @endif
         </ul>
@@ -402,7 +419,8 @@
         <ul class="dropdown-menu">
           <li><a class="nav-link" href="{{ route('e_library.view_resources') }}">Browse Resources</a></li>
 
-          @if(in_array(Auth::user()->user_type, [1, 2, 9]) || (Auth::user()->user_type == 3 && Auth::user()->is_librarian == 1))
+          @if(in_array(Auth::user()->user_type, [1, 2, 9]) || (Auth::user()->user_type == 3 &&
+          Auth::user()->is_librarian == 1))
           <li class="divider mx-4"></li>
           <li><a class="nav-link" href="{{ route('e_library.add_resource') }}">Add Resources</a></li>
           <li><a class="nav-link" href="{{ route('e_library.manage_resources') }}">Manage Resources</a></li>

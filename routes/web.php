@@ -38,6 +38,7 @@ use App\Http\Controllers\StudentReportCardController;
 use App\Http\Controllers\ParentReportCardController;
 use App\Http\Controllers\CounsellorController;
 use App\Http\Controllers\ResultSheetController;
+use App\Http\Controllers\ResultSettingsController;
 
 
 
@@ -238,6 +239,26 @@ Route::middleware(['auth'])->group(function () {
         ->name('tests.checkSubmitted')
         ->middleware('auth');
 
+
+
+        // Result Settings
+Route::prefix('results/settings')->name('results.settings.')->middleware(['auth'])->group(function () {
+
+    // Primary Result Class
+    Route::get('/primary-result-class', [ResultSettingsController::class, 'primaryResultClass'])
+        ->name('primaryResultClass');
+    Route::post('/primary-result-class', [ResultSettingsController::class, 'savePrimaryResultClass'])
+        ->name('savePrimaryResultClass');
+    Route::get('/get-classes/{sectionId}', [ResultSettingsController::class, 'getClassesBySection'])
+        ->name('getClassesBySection');
+
+    // Custom Subject Number
+    Route::get('/custom-subject-no', [ResultSettingsController::class, 'customSubjectNo'])
+        ->name('customSubjectNo');
+    Route::post('/custom-subject-no', [ResultSettingsController::class, 'saveCustomSubjectNo'])
+        ->name('saveCustomSubjectNo');
+});
+
     // Announcement routes
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
     Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
@@ -383,6 +404,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/student-result-upload/{student}', [ResultsController::class, 'studentResultUpload'])->name('student.result.upload');
     Route::post('/upload-result', [ResultsController::class, 'uploadResult'])->name('results.uploadResult');
     Route::post('/save-result', [ResultsController::class, 'saveResult'])->name('results.saveResult');
+
+    Route::post('/results/primary-student/{studentId}/save', [ResultsController::class, 'savePrimaryStudentResults'])
+    ->name('results.savePrimaryStudent')
+    ->middleware('auth');
 
     // Class Promotion Routes
     Route::get('/students/promote', [StudentController::class, 'promoteForm'])->name('students.promote');
