@@ -29,10 +29,10 @@
                                         {{ $currentTerm->name }}
                                     </small>
                                 </div>
-                                <a href="{{ url()->previous() }}"
+                                {{-- <a href="{{ url()->previous() }}"
                                    class="btn btn-secondary btn-sm mt-2 mt-md-0">
                                     <i class="fas fa-arrow-left"></i> Back
-                                </a>
+                                </a> --}}
                             </div>
                         </div>
                     </div>
