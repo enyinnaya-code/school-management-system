@@ -1458,6 +1458,7 @@ class ResultsController extends Controller
         $class   = SchoolClass::findOrFail($student->class_id);
         $user    = Auth::user();
 
+        // Authorization
         if (!in_array($user->user_type, [1, 2])) {
             if (!$this->isTeacherAssignedToClass($user->id, $class->id)) {
                 abort(403, 'You are not assigned to this class.');
@@ -1471,22 +1472,37 @@ class ResultsController extends Controller
             return redirect()->back()->with('error', 'No current academic session or term is set.');
         }
 
+        // Validation — obtained values must not exceed the fixed obtainable maximums
         $request->validate([
             'results'                          => 'nullable|array',
-            'results.*.first_half_obtainable'  => 'nullable|numeric|min:0|max:1000',
-            'results.*.first_half_obtained'    => 'nullable|numeric|min:0|max:1000',
-            'results.*.second_half_obtainable' => 'nullable|numeric|min:0|max:1000',
-            'results.*.second_half_obtained'   => 'nullable|numeric|min:0|max:1000',
-            'results.*.final_obtainable'       => 'nullable|numeric|min:0|max:1000',
-            'results.*.final_obtained'         => 'nullable|numeric|min:0|max:1000',
-            'results.*.class_average'          => 'nullable|numeric|min:0|max:1000',
+            'results.*.first_half_obtained'    => 'nullable|numeric|min:0|max:30',
+            'results.*.second_half_obtained'   => 'nullable|numeric|min:0|max:70',
             'results.*.teacher_remark'         => 'nullable|string|max:255',
+
+            // Hidden obtainable fields submitted from the form (we will override them anyway)
+            'results.*.first_half_obtainable'  => 'nullable|numeric',
+            'results.*.second_half_obtainable' => 'nullable|numeric',
+            'results.*.final_obtainable'       => 'nullable|numeric',
+            'results.*.final_obtained'         => 'nullable|numeric|min:0|max:100',
         ]);
 
-        // Save subject results only
         foreach ($request->input('results', []) as $courseId => $data) {
-            $allNull = collect($data)->every(fn($v) => $v === null || $v === '');
-            if ($allNull) continue;
+
+            $firstObtained  = isset($data['first_half_obtained'])  && $data['first_half_obtained']  !== ''
+                ? (float) $data['first_half_obtained']  : null;
+            $secondObtained = isset($data['second_half_obtained']) && $data['second_half_obtained'] !== ''
+                ? (float) $data['second_half_obtained'] : null;
+
+            // Skip entirely if both halves are blank
+            if ($firstObtained === null && $secondObtained === null) {
+                continue;
+            }
+
+            // Auto-calculate final obtained = first + second (using 0 for any null half)
+            $finalObtained = round(($firstObtained ?? 0) + ($secondObtained ?? 0), 2);
+
+            // Clamp to 100 just in case
+            $finalObtained = min($finalObtained, 100);
 
             \App\Models\PrimarySchoolResult::updateOrCreate(
                 [
@@ -1496,14 +1512,20 @@ class ResultsController extends Controller
                     'term_id'    => $currentTerm->id,
                 ],
                 [
-                    'first_half_obtainable'  => $data['first_half_obtainable']  ?? null,
-                    'first_half_obtained'    => $data['first_half_obtained']    ?? null,
-                    'second_half_obtainable' => $data['second_half_obtainable'] ?? null,
-                    'second_half_obtained'   => $data['second_half_obtained']   ?? null,
-                    'final_obtainable'       => $data['final_obtainable']       ?? null,
-                    'final_obtained'         => $data['final_obtained']         ?? null,
-                    'class_average'          => $data['class_average']          ?? null,
-                    'teacher_remark'         => $data['teacher_remark']         ?? null,
+                    // Fixed obtainable values — always stored server-side, not from form input
+                    'first_half_obtainable'  => 30,
+                    'second_half_obtainable' => 70,
+                    'final_obtainable'       => 100,
+
+                    // Obtained values
+                    'first_half_obtained'    => $firstObtained,
+                    'second_half_obtained'   => $secondObtained,
+                    'final_obtained'         => $finalObtained,
+
+                    // class_average removed — column no longer used
+                    'class_average'          => null,
+
+                    'teacher_remark'         => $data['teacher_remark'] ?? null,
                     'uploaded_by'            => Auth::id(),
                 ]
             );
