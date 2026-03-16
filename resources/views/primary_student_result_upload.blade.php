@@ -377,5 +377,16 @@ $(function () {
     }
     td.align-middle { vertical-align: middle !important; }
     .subject-name { vertical-align: middle !important; }
+
+    /* Remove number input spinner arrows — Chrome, Safari, Edge */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    /* Remove number input spinner arrows — Firefox */
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
 </style>
 </body>
