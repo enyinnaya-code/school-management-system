@@ -491,107 +491,144 @@ class ResultsController extends Controller
 
     public function masterList(Request $request, $classId)
     {
-        $class = SchoolClass::findOrFail($classId);
+        $class   = SchoolClass::findOrFail($classId);
         $section = Section::find($class->section_id);
-        $user = Auth::user();
+        $user    = Auth::user();
 
         // Security check for non-admin users
         if (!in_array($user->user_type, [1, 2])) {
             $allowed = $this->isTeacherAssignedToClass($user->id, $classId);
-
             if (!$allowed && $user->is_form_teacher && $user->form_class_id == $classId) {
                 $allowed = true;
             }
-
             if (!$allowed) {
                 abort(403, 'You are not authorized to view the master list for this class.');
             }
         }
 
-        // Fetch all sessions
-        $sessions = Session::orderByDesc('name')->get();
+        // ── Detect primary class ──────────────────────────────────────────────────
+        $isPrimary = DB::table('primary_result_classes')
+            ->where('school_class_id', $classId)
+            ->exists();
 
-        // Get selected session or default to current
+        // Session/term resolution (same as before)
+        $sessions          = Session::orderByDesc('name')->get();
         $selectedSessionId = $request->input('session_id');
         if (!$selectedSessionId) {
-            $currentSession = Session::where('is_current', true)->first();
+            $currentSession    = Session::where('is_current', true)->first();
             $selectedSessionId = $currentSession?->id;
         }
         $selectedSession = Session::find($selectedSessionId);
-
         if (!$selectedSession) {
             return redirect()->back()->with('error', 'Selected session not found.');
         }
 
-        // Get terms for selected session
-        $terms = $selectedSession->terms()->orderBy('name')->get();
-
-        // Get selected term or default to current
+        $terms          = $selectedSession->terms()->orderBy('name')->get();
         $selectedTermId = $request->input('term_id');
         if (!$selectedTermId) {
-            $currentTerm = $terms->where('is_current', true)->first();
+            $currentTerm    = $terms->where('is_current', true)->first();
             $selectedTermId = $currentTerm?->id ?? $terms->first()?->id;
         }
         $selectedTerm = Term::find($selectedTermId);
-
         if (!$selectedTerm) {
             return redirect()->back()->with('error', 'Selected term not found.');
         }
 
-        // Get all subjects offered by this class
+        // Subjects and students (same for both paths)
         $subjects = Course::whereHas('schoolClasses', function ($query) use ($class) {
             $query->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
 
-        // Fetch all students in the class
         $students = User::where('user_type', 4)
             ->where('class_id', $classId)
             ->orderBy('name')
             ->get();
 
-        // Fetch all results for this class, session, and term
-        $results = Result::where('session_id', $selectedSession->id)
-            ->where('term_id', $selectedTerm->id)
-            ->whereIn('student_id', $students->pluck('id'))
-            ->whereIn('course_id', $subjects->pluck('id'))
-            ->get()
-            ->groupBy('student_id');
+        $studentIds = $students->pluck('id');
+        $subjectIds = $subjects->pluck('id');
 
-        // Calculate totals and positions for each student
-        $studentSummaries = $students->map(function ($student) use ($results, $subjects) {
-            $studentResults = $results->get($student->id, collect());
+        // ══════════════════════════════════════════════════════════════════════════
+        // PRIMARY PATH — fetch from primary_school_results
+        // ══════════════════════════════════════════════════════════════════════════
+        if ($isPrimary) {
+            $results = \App\Models\PrimarySchoolResult::where('session_id', $selectedSession->id)
+                ->where('term_id', $selectedTerm->id)
+                ->whereIn('student_id', $studentIds)
+                ->whereIn('course_id', $subjectIds)
+                ->get()
+                ->groupBy('student_id');
 
-            $totalScore = 0;
-            $subjectsWithScores = 0;
+            $studentSummaries = $students->map(function ($student) use ($results, $subjects) {
+                $studentResults = $results->get($student->id, collect());
 
-            foreach ($subjects as $subject) {
-                $result = $studentResults->firstWhere('course_id', $subject->id);
-                if ($result && $result->total > 0) {
-                    $totalScore += $result->total;
-                    $subjectsWithScores++;
+                $totalScore         = 0;
+                $subjectsWithScores = 0;
+
+                foreach ($subjects as $subject) {
+                    $result = $studentResults->firstWhere('course_id', $subject->id);
+                    if ($result && $result->final_obtained > 0) {
+                        $totalScore += $result->final_obtained;
+                        $subjectsWithScores++;
+                    }
                 }
-            }
 
-            $average = $subjects->count() > 0 ? round($totalScore / $subjects->count(), 2) : 0;
-            $grade = $this->calculateGrade($average);
+                $average = $subjects->count() > 0
+                    ? round($totalScore / $subjects->count(), 2)
+                    : 0;
 
-            return [
-                'student' => $student,
-                'total_score' => $totalScore,
-                'average' => $average,
-                'grade' => $grade,
-            ];
-        });
+                return [
+                    'student'     => $student,
+                    'total_score' => $totalScore,
+                    'average'     => $average,
+                    'grade'       => $this->calculateGrade($average),
+                ];
+            });
 
-        // Sort by total score descending to determine positions
-        $sortedStudents = $studentSummaries->sortByDesc('total_score')->values();
+            // ══════════════════════════════════════════════════════════════════════════
+            // SECONDARY PATH — fetch from results (original logic)
+            // ══════════════════════════════════════════════════════════════════════════
+        } else {
+            $results = Result::where('session_id', $selectedSession->id)
+                ->where('term_id', $selectedTerm->id)
+                ->whereIn('student_id', $studentIds)
+                ->whereIn('course_id', $subjectIds)
+                ->get()
+                ->groupBy('student_id');
 
-        // Assign positions
-        $sortedStudents = $sortedStudents->map(function ($item, $index) {
-            $item['position'] = $index + 1;
-            $item['formatted_position'] = ($index + 1) . $this->getPositionSuffix($index + 1);
-            return $item;
-        });
+            $studentSummaries = $students->map(function ($student) use ($results, $subjects) {
+                $studentResults = $results->get($student->id, collect());
+
+                $totalScore         = 0;
+                $subjectsWithScores = 0;
+
+                foreach ($subjects as $subject) {
+                    $result = $studentResults->firstWhere('course_id', $subject->id);
+                    if ($result && $result->total > 0) {
+                        $totalScore += $result->total;
+                        $subjectsWithScores++;
+                    }
+                }
+
+                $average = $subjects->count() > 0
+                    ? round($totalScore / $subjects->count(), 2)
+                    : 0;
+
+                return [
+                    'student'     => $student,
+                    'total_score' => $totalScore,
+                    'average'     => $average,
+                    'grade'       => $this->calculateGrade($average),
+                ];
+            });
+        }
+
+        // Sort and assign positions (shared for both paths)
+        $sortedStudents = $studentSummaries->sortByDesc('total_score')->values()
+            ->map(function ($item, $index) {
+                $item['position']           = $index + 1;
+                $item['formatted_position'] = ($index + 1) . $this->getPositionSuffix($index + 1);
+                return $item;
+            });
 
         return view('results.master_list', compact(
             'class',
@@ -603,7 +640,8 @@ class ResultsController extends Controller
             'sessions',
             'selectedSession',
             'terms',
-            'selectedTerm'
+            'selectedTerm',
+            'isPrimary'      // ← pass this so the view can adapt column headers if needed
         ));
     }
 
