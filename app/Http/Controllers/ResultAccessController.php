@@ -1,26 +1,22 @@
 <?php
-// ── app/Http/Controllers/ResultAccessController.php ────────────────────
 
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Session;
 use App\Models\Term;
 use App\Models\SchoolClass;
+use App\Models\Section;
 use App\Models\ResultAccessRestriction;
 use App\Models\TermSetting;
 
 class ResultAccessController extends Controller
 {
-    // ═══════════════════════════════════════════════════════════════════
-    // MAIN PAGE — shows both the restriction manager and term settings
-    // ═══════════════════════════════════════════════════════════════════
     public function index(Request $request)
     {
-        // Session / Term selection
+        // ── Session / Term ────────────────────────────────────────────────────
         $sessions = Session::orderByDesc('name')->get();
 
         $selectedSessionId = $request->input('session_id');
@@ -41,11 +37,26 @@ class ResultAccessController extends Controller
         }
         $selectedTerm = Term::find($selectedTermId);
 
-        // All students (paginated + searchable)
-        $search = $request->input('search');
+        // ── Filters ───────────────────────────────────────────────────────────
+        $search          = $request->input('search', '');
+        $filterSectionId = $request->input('section_id', '');
+        $filterClassId   = $request->input('class_id', '');
+        $perPage         = (int) $request->input('per_page', 20);
+        $perPage         = in_array($perPage, [10, 20, 50, 100]) ? $perPage : 20;
 
+        // ── Sections dropdown ─────────────────────────────────────────────────
+        $sections = Section::orderBy('section_name')->get(['id', 'section_name']);
+
+        // ── Classes dropdown (filtered by section) ────────────────────────────
+        $classesQuery = SchoolClass::orderBy('name');
+        if ($filterSectionId) {
+            $classesQuery->where('section_id', $filterSectionId);
+        }
+        $classes = $classesQuery->get(['id', 'name', 'section_id']);
+
+        // ── Students ──────────────────────────────────────────────────────────
         $studentsQuery = User::where('user_type', 4)
-            ->with('class')
+            ->with(['class.section'])
             ->orderBy('name');
 
         if ($search) {
@@ -55,51 +66,41 @@ class ResultAccessController extends Controller
             });
         }
 
-        // Filter by class if requested
-        $filterClassId = $request->input('class_id');
         if ($filterClassId) {
             $studentsQuery->where('class_id', $filterClassId);
+        } elseif ($filterSectionId) {
+            $studentsQuery->whereHas('class', fn($q) => $q->where('section_id', $filterSectionId));
         }
 
-        $students = $studentsQuery->paginate(20)->withQueryString();
+        $students = $studentsQuery->paginate($perPage)->withQueryString();
 
-        // Already blocked students for the selected session/term
-        $blockedIds = collect();
+        // ── Blocked students ──────────────────────────────────────────────────
+        $blockedIds     = collect();
+        $blockedReasons = collect();
+
         if ($selectedSession && $selectedTerm) {
-            $blockedIds = ResultAccessRestriction::where('session_id', $selectedSession->id)
+            $restrictions   = ResultAccessRestriction::where('session_id', $selectedSession->id)
                 ->where('term_id', $selectedTerm->id)
-                ->pluck('student_id');
+                ->get(['student_id', 'reason']);
+            $blockedIds     = $restrictions->pluck('student_id');
+            $blockedReasons = $restrictions->pluck('reason', 'student_id');
         }
 
-        // Term settings for selected term
-        $termSettings = null;
-        if ($selectedSession && $selectedTerm) {
-            $termSettings = TermSetting::where('session_id', $selectedSession->id)
-                ->where('term_id', $selectedTerm->id)
-                ->first();
-        }
-
-        // Classes for the filter dropdown
-        $classes = SchoolClass::orderBy('name')->get(['id', 'name']);
+        // ── Term settings ─────────────────────────────────────────────────────
+        $termSettings = ($selectedSession && $selectedTerm)
+            ? TermSetting::where('session_id', $selectedSession->id)
+                ->where('term_id', $selectedTerm->id)->first()
+            : null;
 
         return view('results.settings.index', compact(
-            'sessions',
-            'selectedSession',
-            'terms',
-            'selectedTerm',
-            'students',
-            'blockedIds',
-            'termSettings',
-            'classes',
-            'search',
-            'filterClassId'
+            'sessions', 'selectedSession', 'terms', 'selectedTerm',
+            'students', 'blockedIds', 'blockedReasons', 'termSettings',
+            'sections', 'classes',
+            'search', 'filterSectionId', 'filterClassId', 'perPage'
         ));
     }
 
 
-    // ═══════════════════════════════════════════════════════════════════
-    // BLOCK / UNBLOCK a student
-    // ═══════════════════════════════════════════════════════════════════
     public function toggleBlock(Request $request)
     {
         $request->validate([
@@ -112,17 +113,10 @@ class ResultAccessController extends Controller
 
         if ($request->action === 'block') {
             ResultAccessRestriction::updateOrCreate(
-                [
-                    'student_id' => $request->student_id,
-                    'session_id' => $request->session_id,
-                    'term_id'    => $request->term_id,
-                ],
-                [
-                    'reason'     => $request->reason ?? 'Owing school fees',
-                    'blocked_by' => Auth::id(),
-                ]
+                ['student_id' => $request->student_id, 'session_id' => $request->session_id, 'term_id' => $request->term_id],
+                ['reason' => $request->reason ?: 'Owing school fees', 'blocked_by' => Auth::id()]
             );
-            return back()->with('success', 'Student has been blocked from viewing results.');
+            return back()->with('success', 'Student blocked from viewing results.');
         }
 
         ResultAccessRestriction::where('student_id', $request->student_id)
@@ -130,13 +124,10 @@ class ResultAccessController extends Controller
             ->where('term_id', $request->term_id)
             ->delete();
 
-        return back()->with('success', 'Student access has been restored.');
+        return back()->with('success', 'Student access restored.');
     }
 
 
-    // ═══════════════════════════════════════════════════════════════════
-    // BULK BLOCK — block multiple students at once
-    // ═══════════════════════════════════════════════════════════════════
     public function bulkBlock(Request $request)
     {
         $request->validate([
@@ -147,31 +138,20 @@ class ResultAccessController extends Controller
             'reason'        => 'nullable|string|max:500',
         ]);
 
-        $reason = $request->reason ?? 'Owing school fees';
+        $reason = $request->reason ?: 'Owing school fees';
         $now    = now();
 
-        foreach ($request->student_ids as $studentId) {
+        foreach ($request->student_ids as $sid) {
             ResultAccessRestriction::updateOrCreate(
-                [
-                    'student_id' => $studentId,
-                    'session_id' => $request->session_id,
-                    'term_id'    => $request->term_id,
-                ],
-                [
-                    'reason'     => $reason,
-                    'blocked_by' => Auth::id(),
-                    'updated_at' => $now,
-                ]
+                ['student_id' => $sid, 'session_id' => $request->session_id, 'term_id' => $request->term_id],
+                ['reason' => $reason, 'blocked_by' => Auth::id(), 'updated_at' => $now]
             );
         }
 
-        return back()->with('success', count($request->student_ids) . ' student(s) blocked successfully.');
+        return back()->with('success', count($request->student_ids) . ' student(s) blocked.');
     }
 
 
-    // ═══════════════════════════════════════════════════════════════════
-    // SAVE TERM SETTINGS (resumption date, fees, payable-by date)
-    // ═══════════════════════════════════════════════════════════════════
     public function saveTermSettings(Request $request)
     {
         $request->validate([
@@ -184,20 +164,17 @@ class ResultAccessController extends Controller
         ]);
 
         TermSetting::updateOrCreate(
+            ['session_id' => $request->session_id, 'term_id' => $request->term_id],
             [
-                'session_id' => $request->session_id,
-                'term_id'    => $request->term_id,
-            ],
-            [
-                'resumption_date' => $request->resumption_date  ?: null,
-                'school_fees'     => $request->school_fees      ?: null,
-                'fees_payable_by' => $request->fees_payable_by  ?: null,
-                'notes'           => $request->notes            ?: null,
+                'resumption_date' => $request->resumption_date ?: null,
+                'school_fees'     => $request->school_fees     ?: null,
+                'fees_payable_by' => $request->fees_payable_by ?: null,
+                'notes'           => $request->notes           ?: null,
                 'updated_by'      => Auth::id(),
                 'created_by'      => Auth::id(),
             ]
         );
 
-        return back()->with('success', 'Term settings saved successfully.');
+        return back()->with('success', 'Term settings saved.');
     }
 }
