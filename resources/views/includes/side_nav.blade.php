@@ -286,6 +286,7 @@
       </li>
 
       <!-- Results -->
+      <!-- Results -->
       <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
           <i data-feather="file-text"></i><span>Results</span>
@@ -298,14 +299,14 @@
           <li><a class="nav-link" href="{{ route('students.promote') }}">Promote Students</a></li>
           <li><a class="nav-link" href="{{ route('students.promotion.history') }}">Promotion History</a></li>
           @endif
+          @if(in_array(Auth::user()->user_type, [1, 2]))
+          <li><a class="nav-link" href="{{ route('results.settings.index') }}">Result Access & Term Settings</a></li>
+          @endif
         </ul>
       </li>
 
       @endif
       {{-- END: MY TEACHING (types 1,2,3,7,8,9,10) --}}
-
-
-   
 
       <!-- ========== E-LEARNING (Types 1,2,3,4,7,8,9,10) ========== -->
       @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10]))
