@@ -305,20 +305,7 @@
       {{-- END: MY TEACHING (types 1,2,3,7,8,9,10) --}}
 
 
-      @if(in_array(Auth::user()->user_type, [1, 2, 7,8]))
-
-      <li class="dropdown">
-        <a href="{{ route('dynamic.dashboard') }}" class="nav-link">
-          <i data-feather="monitor"></i><span>Dashboard</span>
-        </a>
-      </li>
-
-      <li class="dropdown">
-        <a href="{{ route('results.settings.index') }}" class="nav-link">
-          <i data-feather="fas fa-ban"></i><span>Result Access Settings</span>
-        </a>
-      </li>
-      @endif
+   
 
       <!-- ========== E-LEARNING (Types 1,2,3,4,7,8,9,10) ========== -->
       @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10]))
