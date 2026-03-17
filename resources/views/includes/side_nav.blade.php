@@ -306,7 +306,7 @@
 
       @if(in_array(Auth::user()->user_type, [1, 2]))
       <li><a class="nav-link" href="{{ route('results.settings.index') }}">
-          <i class="fas fa-ban mr-1 text-danger"></i> Result Access & Term Settings
+          <i class="fas fa-ban mr-1"></i> Result Access & Term Settings
         </a></li>
       @endif
 
