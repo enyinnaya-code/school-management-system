@@ -369,7 +369,7 @@
     </div>
 </div>
 
-@include('includes.footer')
+@include('includes.edit_footer')
 
 {{-- Quick Block Modal --}}
 <div class="modal fade" id="quickBlockModal" tabindex="-1">
@@ -401,7 +401,7 @@
     </div>
 </div>
 
-<script src="{{ asset('js/jquery.min.js') }}"></script>
+{{-- <script src="{{ asset('js/jquery.min.js') }}"></script> --}}
 <script>
 (function () {
     'use strict';
