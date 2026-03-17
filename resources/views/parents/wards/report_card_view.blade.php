@@ -14,20 +14,19 @@
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h4>Report Card - {{ strtoupper($student->name) }}</h4>
-                                <a href="{{ route('parents.wards.reportcards.pdf') }}" target="_blank" class="btn btn-success btn-lg">
+                                <a href="{{ route('parents.wards.reportcards.pdf') }}" target="_blank"
+                                   class="btn btn-success btn-lg">
                                     <i class="fas fa-file-pdf"></i> Download as PDF
                                 </a>
                             </div>
+
                             <div class="card-body p-4">
-                                <!-- Full Report Card HTML -->
                                 <div class="container"
                                     style="border: 2px solid #000; padding: 20px; font-family: Arial, sans-serif; font-size: 14px;">
-                                    
-                                    <!-- Header -->
-                                    <div class="header"
-                                        style="display: table; width: 100%; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px;">
-                                        <div class="header-left"
-                                            style="display: table-cell; width: 120px; text-align: center;">
+
+                                    {{-- ── Header ───────────────────────────── --}}
+                                    <div style="display:table; width:100%; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:10px;">
+                                        <div style="display:table-cell; width:120px; text-align:center;">
                                             @php
                                                 $settings = school_settings();
                                                 $logoPath = $settings && $settings->logo
@@ -35,195 +34,320 @@
                                                     : asset('images/school_management_logo__1_-removebg-preview.png');
                                             @endphp
                                             <img src="{{ $logoPath }}" alt="School Logo"
-                                                style="width: 90px; height: 90px; object-fit: contain;">
+                                                 style="width:90px; height:90px; object-fit:contain;">
                                         </div>
-                                        <div class="header-center"
-                                            style="display: table-cell; text-align: center; padding: 0 10px;">
-                                            <div style="font-size: 18px; font-weight: bold;">
-                                                {{ strtoupper(school_name()) }}
-                                            </div>
-                                            <div style="font-style: italic; font-size: 12px;">
-                                                Motto: Excellence Personified
-                                            </div>
-                                            <div style="font-size: 13px;">
-                                                {{ $settings->address ?? 'School Address' }}
-                                            </div>
-                                            <div style="font-size: 14px; font-weight: bold; margin-top: 5px;">
+                                        <div style="display:table-cell; text-align:center; padding:0 10px;">
+                                            <div style="font-size:18px; font-weight:bold;">{{ strtoupper(school_name()) }}</div>
+                                            <div style="font-size:13px;">{{ $settings->address ?? 'School Address' }}</div>
+                                            <div style="font-size:14px; font-weight:bold; margin-top:5px;">
                                                 STUDENT'S ACADEMIC REPORT CARD
                                             </div>
                                         </div>
-                                        <div class="header-right"
-                                            style="display: table-cell; width: 80px; text-align: center;">
-                                            <div style="background-color: #f0f0f0; padding: 3px 10px; border-radius: 3px; font-weight: bold;">
+                                        <div style="display:table-cell; width:80px; text-align:center;">
+                                            <div style="background-color:#f0f0f0; padding:3px 10px; border-radius:3px; font-weight:bold;">
                                                 {{ $class->name }}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- Student Name & Info -->
-                                    <div style="text-align: center; padding: 8px 0; border-bottom: 2px solid #000;">
-                                        <div style="font-size: 18px; font-weight: bold;">
-                                            {{ strtoupper($student->name) }}
-                                        </div>
-                                        <div style="font-size: 12px;">
+                                    {{-- ── Student Info ─────────────────────── --}}
+                                    <div style="text-align:center; padding:8px 0; border-bottom:2px solid #000;">
+                                        <div style="font-size:18px; font-weight:bold;">{{ strtoupper($student->name) }}</div>
+                                        <div style="font-size:12px;">
                                             <strong>Gender:</strong> {{ ucfirst($student->gender) }} |
                                             <strong>Admission No:</strong> {{ $student->admission_no }}
                                         </div>
                                     </div>
 
-                                    <!-- Term Info -->
-                                    <div style="display: table; width: 100%; margin: 10px 0; border-bottom: 1px solid #000; padding-bottom: 8px;">
-                                        <div style="display: table-cell; width: 33.33%; font-size: 12px;">
+                                    {{-- ── Term Info ────────────────────────── --}}
+                                    <div style="display:table; width:100%; margin:10px 0; border-bottom:1px solid #000; padding-bottom:8px;">
+                                        <div style="display:table-cell; width:33.33%; font-size:12px;">
                                             <div><strong>Term:</strong> {{ $currentTerm->name }}</div>
                                             <div><strong>Session:</strong> {{ $currentSession->name }}</div>
                                         </div>
-                                        <div style="display: table-cell; width: 33.33%; font-size: 12px; text-align: center;">
+                                        <div style="display:table-cell; width:33.33%; font-size:12px; text-align:center;">
                                             <div><strong>Class:</strong> {{ $class->name }}</div>
                                             <div><strong>Class Teacher:</strong> {{ $classTeacher?->name ?? 'Not Assigned' }}</div>
                                         </div>
-                                        <div style="display: table-cell; width: 33.33%; font-size: 12px; text-align: right;">
+                                        <div style="display:table-cell; width:33.33%; font-size:12px; text-align:right;">
                                             <div><strong>No. in Class:</strong> {{ $totalStudentsInClass }}</div>
                                             <div><strong>Position:</strong> <strong>{{ $formattedPosition }}</strong></div>
                                         </div>
                                     </div>
 
-                                    <!-- Main Content: Results + Skills -->
-                                    <div style="display: table; width: 100%; margin-top: 10px;">
-                                        <!-- Academic Results -->
-                                        <div style="display: table-cell; width: 65%; vertical-align: top; padding-right: 12px;">
-                                            <table style="width: 100%; border-collapse: collapse;">
+                                    {{-- ════════════════════════════════════════════════════════════
+                                         NURSERY / CUSTOM RESULT SHEET
+                                         ════════════════════════════════════════════════════════════ --}}
+                                    @if(isset($isNursery) && $isNursery && isset($sheetTemplate))
+
+                                    <div style="margin-top:10px;">
+                                        @foreach($subjects as $subject)
+                                        <div style="margin-bottom:16px;">
+                                            <div style="font-weight:bold; background:#f0f0f0; padding:5px; border:1px solid #000; margin-bottom:4px;">
+                                                {{ $subject->name }}
+                                            </div>
+
+                                            {{-- Items directly under the subject --}}
+                                            @if(count($subject->items))
+                                            <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:6px;">
                                                 <thead>
-                                                    <tr style="background-color: #f0f0f0;">
-                                                        <th style="border: 1px solid #000; padding: 5px; width: 25%;">SUBJECTS</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">1st CA (10)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">2nd CA (10)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">Mid Term (10)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">Exam (70)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">TOTAL</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">GRADE</th>
+                                                    <tr style="background:#f8f8f8;">
+                                                        <th style="border:1px solid #000; padding:4px; text-align:left;">Item</th>
+                                                        @foreach($sheetTemplate->rating_columns as $col)
+                                                            <th style="border:1px solid #000; padding:4px; text-align:center;">{{ $col }}</th>
+                                                        @endforeach
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($subject->items as $item)
+                                                    <tr>
+                                                        <td style="border:1px solid #000; padding:4px;">{{ $item->name }}</td>
+                                                        @foreach($sheetTemplate->rating_columns as $col)
+                                                            <td style="border:1px solid #000; padding:4px; text-align:center;">
+                                                                {{ ($ratings[$item->id] ?? '') === $col ? '✓' : '' }}
+                                                            </td>
+                                                        @endforeach
+                                                    </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                            @endif
+
+                                            {{-- Subcategories --}}
+                                            @foreach($subject->subcategories as $sub)
+                                            <div style="font-style:italic; font-size:12px; padding:3px 5px; background:#fafafa; border:1px solid #ddd; margin-bottom:3px;">
+                                                {{ $sub->name }}
+                                            </div>
+                                            <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:6px;">
+                                                <tbody>
+                                                    @foreach($sub->items as $item)
+                                                    <tr>
+                                                        <td style="border:1px solid #000; padding:4px;">{{ $item->name }}</td>
+                                                        @foreach($sheetTemplate->rating_columns as $col)
+                                                            <td style="border:1px solid #000; padding:4px; text-align:center; width:40px;">
+                                                                {{ ($ratings[$item->id] ?? '') === $col ? '✓' : '' }}
+                                                            </td>
+                                                        @endforeach
+                                                    </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                            @endforeach
+                                        </div>
+                                        @endforeach
+
+                                        {{-- Footer fields (remark, reopening date etc.) --}}
+                                        @if(isset($sheetTemplate->footer_fields) && count($sheetTemplate->footer_fields))
+                                        <div style="margin-top:10px; border-top:1px solid #000; padding-top:8px;">
+                                            @foreach($sheetTemplate->footer_fields as $fieldKey => $fieldLabel)
+                                            <div style="margin-bottom:8px; font-size:12px;">
+                                                <strong>{{ $fieldLabel }}:</strong>
+                                                {{ $footerData?->{$fieldKey} ?? '__________________________' }}
+                                            </div>
+                                            @endforeach
+                                        </div>
+                                        @endif
+                                    </div>
+
+                                    @else
+                                    {{-- ════════════════════════════════════════════════════════════
+                                         PRIMARY & SECONDARY — main content (results + skills)
+                                         ════════════════════════════════════════════════════════════ --}}
+                                    <div style="display:table; width:100%; margin-top:10px;">
+
+                                        {{-- Left: Academic Results --}}
+                                        <div style="display:table-cell; width:65%; vertical-align:top; padding-right:12px;">
+
+                                            @if(isset($isPrimary) && $isPrimary)
+                                            {{-- ── PRIMARY table ─────────────────────────────── --}}
+                                            <table style="width:100%; border-collapse:collapse;">
+                                                <thead>
+                                                    <tr style="background:#f0f0f0;">
+                                                        <th rowspan="2" style="border:1px solid #000; padding:5px; text-align:left; width:22%; vertical-align:middle;">SUBJECTS</th>
+                                                        <th colspan="2" style="border:1px solid #000; padding:4px; font-size:10px; text-align:center;">1st Half (Max 30)</th>
+                                                        <th colspan="2" style="border:1px solid #000; padding:4px; font-size:10px; text-align:center;">2nd Half (Max 70)</th>
+                                                        <th colspan="2" style="border:1px solid #000; padding:4px; font-size:10px; text-align:center;">Total (Max 100)</th>
+                                                        <th rowspan="2" style="border:1px solid #000; padding:4px; font-size:10px; text-align:center; vertical-align:middle;">Remark</th>
+                                                    </tr>
+                                                    <tr style="background:#f8f8f8;">
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtained</th>
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtained</th>
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtained</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @forelse($results as $result)
                                                     <tr>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: left;">
-                                                            {{ $result['course_name'] }}
-                                                        </td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">
-                                                            {{ $result['first_ca'] > 0 ? $result['first_ca'] : '-' }}
-                                                        </td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">
-                                                            {{ $result['second_ca'] > 0 ? $result['second_ca'] : '-' }}
-                                                        </td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">
-                                                            {{ $result['mid_term_test'] > 0 ? $result['mid_term_test'] : '-' }}
-                                                        </td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">
-                                                            {{ $result['examination'] > 0 ? $result['examination'] : '-' }}
-                                                        </td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">
-                                                            <strong>{{ $result['total'] > 0 ? $result['total'] : '-' }}</strong>
-                                                        </td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">
-                                                            <strong>{{ $result['grade'] }}</strong>
-                                                        </td>
+                                                        <td style="border:1px solid #000; padding:5px; text-align:left;">{{ $result['course_name'] }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['first_half_obtainable'] }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['first_half_obtained'] > 0 ? $result['first_half_obtained'] : '-' }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['second_half_obtainable'] }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['second_half_obtained'] > 0 ? $result['second_half_obtained'] : '-' }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['final_obtainable'] }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;"><strong>{{ $result['final_obtained'] > 0 ? $result['final_obtained'] : '-' }}</strong></td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['teacher_remark'] ?: '-' }}</td>
                                                     </tr>
                                                     @empty
-                                                    <tr>
-                                                        <td colspan="7" style="text-align:center; padding: 10px;">
-                                                            No subjects offered.
-                                                        </td>
-                                                    </tr>
+                                                    <tr><td colspan="8" style="text-align:center; padding:10px;">No subjects recorded.</td></tr>
                                                     @endforelse
                                                 </tbody>
                                             </table>
 
-                                            <!-- Summary Table -->
-                                            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                                                <tr style="background-color:#f0f0f0;">
-                                                    <td style="padding: 5px;"><strong>NO. OF SUBJECTS:</strong></td>
-                                                    <td style="padding: 5px;">{{ $subjectCount }}</td>
-                                                    <td style="padding: 5px;"><strong>TOTAL OBTAINABLE:</strong></td>
-                                                    <td style="padding: 5px;">{{ $subjectCount * 100 }}</td>
+                                            @else
+                                            {{-- ── SECONDARY table ────────────────────────────── --}}
+                                            <table style="width:100%; border-collapse:collapse;">
+                                                <thead>
+                                                    <tr style="background:#f0f0f0;">
+                                                        <th rowspan="2" style="border:1px solid #000; padding:5px; text-align:left; width:22%; vertical-align:middle;">SUBJECTS</th>
+                                                        <th colspan="2" style="border:1px solid #000; padding:4px; font-size:10px; text-align:center;">1st Half (Max 30)</th>
+                                                        <th colspan="2" style="border:1px solid #000; padding:4px; font-size:10px; text-align:center;">2nd Half (Max 70)</th>
+                                                        <th colspan="2" style="border:1px solid #000; padding:4px; font-size:10px; text-align:center;">Total (Max 100)</th>
+                                                        <th rowspan="2" style="border:1px solid #000; padding:4px; font-size:10px; text-align:center; vertical-align:middle;">Grade</th>
+                                                    </tr>
+                                                    <tr style="background:#f8f8f8;">
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtained</th>
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtained</th>
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border:1px solid #000; padding:3px; font-size:9px; text-align:center;">Obtained</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @forelse($results as $result)
+                                                    <tr>
+                                                        <td style="border:1px solid #000; padding:5px; text-align:left;">{{ $result['course_name'] }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['first_half_obtainable'] }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['first_half_obtained'] > 0 ? $result['first_half_obtained'] : '-' }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['second_half_obtainable'] }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['second_half_obtained'] > 0 ? $result['second_half_obtained'] : '-' }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;">{{ $result['final_obtainable'] }}</td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;"><strong>{{ $result['final_obtained'] > 0 ? $result['final_obtained'] : '-' }}</strong></td>
+                                                        <td style="border:1px solid #000; padding:4px; text-align:center;"><strong>{{ $result['grade'] }}</strong></td>
+                                                    </tr>
+                                                    @empty
+                                                    <tr><td colspan="8" style="text-align:center; padding:10px;">No subjects offered.</td></tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+                                            @endif
+
+                                            {{-- ── Summary ──────────────────────────────────── --}}
+                                            <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+                                                <tr style="background:#f0f0f0;">
+                                                    <td style="padding:5px;"><strong>NO. OF SUBJECTS:</strong></td>
+                                                    <td style="padding:5px;">{{ $subjectCount }}</td>
+                                                    <td style="padding:5px;"><strong>TOTAL OBTAINABLE:</strong></td>
+                                                    <td style="padding:5px;">{{ $subjectCount * 100 }}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td style="padding: 5px;"><strong>TOTAL SCORE:</strong></td>
-                                                    <td style="padding: 5px;"><strong>{{ $overallTotal }}</strong></td>
-                                                    <td style="padding: 5px;"><strong>AVERAGE:</strong></td>
-                                                    <td style="padding: 5px;"><strong>{{ $overallAverage }}</strong></td>
+                                                    <td style="padding:5px;"><strong>TOTAL SCORE:</strong></td>
+                                                    <td style="padding:5px;"><strong>{{ $overallTotal }}</strong></td>
+                                                    <td style="padding:5px;"><strong>AVERAGE:</strong></td>
+                                                    <td style="padding:5px;"><strong>{{ $overallAverage }}</strong></td>
                                                 </tr>
-                                                <tr style="background-color:#f0f0f0;">
-                                                    <td style="padding: 5px;"><strong>GRADE:</strong></td>
-                                                    <td style="padding: 5px;"><strong>{{ $overallGrade }}</strong></td>
-                                                    <td style="padding: 5px;"><strong>POSITION:</strong></td>
-                                                    <td style="padding: 5px;"><strong>{{ $formattedPosition }} / {{ $totalStudentsInClass }}</strong></td>
+                                                <tr style="background:#f0f0f0;">
+                                                    <td style="padding:5px;"><strong>GRADE:</strong></td>
+                                                    <td style="padding:5px;"><strong>{{ $overallGrade }}</strong></td>
+                                                    <td style="padding:5px;"><strong>POSITION:</strong></td>
+                                                    <td style="padding:5px;"><strong>{{ $formattedPosition }} / {{ $totalStudentsInClass }}</strong></td>
                                                 </tr>
                                             </table>
 
-                                            <!-- Remarks -->
-                                            <div style="margin-top: 15px; border-top: 1px solid #000; padding-top: 10px;">
-                                                <div style="margin-bottom: 10px;">
+                                            {{-- ── Remarks ──────────────────────────────────── --}}
+                                            <div style="margin-top:15px; border-top:1px solid #000; padding-top:10px;">
+                                                <div style="margin-bottom:10px; font-size:12px;">
                                                     <strong>CLASS TEACHER'S REMARK:</strong><br>
                                                     {{ $teacherRemark ?: '_________________________________________________' }}
                                                 </div>
-                                                <div>
+
+                                                @if(isset($isPrimary) && $isPrimary)
+                                                <div style="font-size:12px;">
+                                                    <strong>HEAD MASTER/MISTRESS REMARK:</strong><br>
+                                                    {{ $headmasterRemark ?: '_________________________________________________' }}
+                                                </div>
+                                                @else
+                                                <div style="font-size:12px;">
                                                     <strong>PRINCIPAL'S REMARK:</strong><br>
                                                     {{ $principalRemark ?: '_________________________________________________' }}
                                                 </div>
+                                                @endif
                                             </div>
-                                        </div>
+                                        </div>{{-- /left --}}
 
-                                        <!-- Skills Section -->
-                                        <div style="display: table-cell; width: 35%; vertical-align: top; border-left: 1px solid #000; padding-left: 10px;">
-                                            <div style="margin-bottom: 15px;">
-                                                <div style="font-weight: bold; background-color: #f0f0f0; padding: 4px; border: 1px solid #000; text-align: center;">
+                                        {{-- Right: Skills ────────────────────────────────── --}}
+                                        <div style="display:table-cell; width:35%; vertical-align:top; border-left:1px solid #000; padding-left:10px;">
+
+                                            {{-- Affective Skills — all 13 traits --}}
+                                            <div style="margin-bottom:15px;">
+                                                <div style="font-weight:bold; background:#f0f0f0; padding:4px; border:1px solid #000; text-align:center;">
                                                     AFFECTIVE SKILLS
                                                 </div>
-                                                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Punctuality</td><td style="padding: 3px; text-align: center;">{{ $affectiveRatings['punctuality'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Politeness</td><td style="padding: 3px; text-align: center;">{{ $affectiveRatings['politeness'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Neatness</td><td style="padding: 3px; text-align: center;">{{ $affectiveRatings['neatness'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Honesty</td><td style="padding: 3px; text-align: center;">{{ $affectiveRatings['honesty'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Leadership Skill</td><td style="padding: 3px; text-align: center;">{{ $affectiveRatings['leadership_skill'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Cooperation</td><td style="padding: 3px; text-align: center;">{{ $affectiveRatings['cooperation'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Attentiveness</td><td style="padding: 3px; text-align: center;">{{ $affectiveRatings['attentiveness'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Perseverance</td><td style="padding: 3px; text-align: center;">{{ $affectiveRatings['perseverance'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Attitude to Work</td><td style="padding: 3px; text-align: center;">{{ $affectiveRatings['attitude_to_work'] ?? '-' }}</td></tr>
+                                                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Punctuality</td><td style="padding:3px; text-align:center; width:30px;">{{ $affectiveRatings['punctuality'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Politeness</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['politeness'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Neatness</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['neatness'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Honesty</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['honesty'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Leadership Skill</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['leadership_skill'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Cooperation</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['cooperation'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Attentiveness</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['attentiveness'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Perseverance</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['perseverance'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Attitude to Work</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['attitude_to_work'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Helping Others</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['helping_other'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Emotional Stability</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['emotional_stability'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Health</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['health'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Speaking/Handwriting</td><td style="padding:3px; text-align:center;">{{ $affectiveRatings['speaking_handwriting'] ?? '-' }}</td></tr>
                                                 </table>
                                             </div>
 
+                                            {{-- Psychomotor Skills — all 7 traits --}}
                                             <div>
-                                                <div style="font-weight: bold; background-color: #f0f0f0; padding: 4px; border: 1px solid #000; text-align: center;">
+                                                <div style="font-weight:bold; background:#f0f0f0; padding:4px; border:1px solid #000; text-align:center;">
                                                     PSYCHOMOTOR SKILLS
                                                 </div>
-                                                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Handwriting</td><td style="padding: 3px; text-align: center;">{{ $psychomotorRatings['handwriting'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Verbal Fluency</td><td style="padding: 3px; text-align: center;">{{ $psychomotorRatings['verbal_fluency'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Sports</td><td style="padding: 3px; text-align: center;">{{ $psychomotorRatings['sports'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Handling Tools</td><td style="padding: 3px; text-align: center;">{{ $psychomotorRatings['handling_tools'] ?? '-' }}</td></tr>
-                                                    <tr><td style="padding: 3px; border-right: 1px solid #000;">Drawing & Painting</td><td style="padding: 3px; text-align: center;">{{ $psychomotorRatings['drawing_painting'] ?? '-' }}</td></tr>
+                                                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Handwriting</td><td style="padding:3px; text-align:center; width:30px;">{{ $psychomotorRatings['handwriting'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Verbal Fluency</td><td style="padding:3px; text-align:center;">{{ $psychomotorRatings['verbal_fluency'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Sports</td><td style="padding:3px; text-align:center;">{{ $psychomotorRatings['sports'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Handling Tools</td><td style="padding:3px; text-align:center;">{{ $psychomotorRatings['handling_tools'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Drawing & Painting</td><td style="padding:3px; text-align:center;">{{ $psychomotorRatings['drawing_painting'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Games</td><td style="padding:3px; text-align:center;">{{ $psychomotorRatings['games'] ?? '-' }}</td></tr>
+                                                    <tr><td style="padding:3px; border-right:1px solid #000;">Musical Skills</td><td style="padding:3px; text-align:center;">{{ $psychomotorRatings['musical_skills'] ?? '-' }}</td></tr>
                                                 </table>
                                             </div>
 
-                                            <div style="margin-top: 10px; font-size: 13px; border: 1px solid #000; padding: 5px;">
+                                            {{-- Rating Key --}}
+                                            <div style="margin-top:10px; font-size:13px; border:1px solid #000; padding:5px;">
                                                 <strong>RATING KEY:</strong><br>
                                                 5 - Excellent | 4 - Very Good<br>
                                                 3 - Good | 2 - Fair | 1 - Poor
                                             </div>
 
-                                            <div style="margin-top: 15px; text-align: center; border: 1px solid #000; padding: 10px;">
-                                                <div style="font-weight: bold; font-size: 13px;">PRINCIPAL'S SIGNATURE & STAMP</div>
-                                                <div style="height: 40px; margin-top: 10px; border-bottom: 1px solid #000;"></div>
+                                            {{-- Signature --}}
+                                            <div style="margin-top:15px; text-align:center; border:1px solid #000; padding:10px;">
+                                                <div style="font-weight:bold; font-size:13px;">
+                                                    @if(isset($isPrimary) && $isPrimary)
+                                                        HEAD MASTER/MISTRESS SIGNATURE & STAMP
+                                                    @else
+                                                        PRINCIPAL'S SIGNATURE & STAMP
+                                                    @endif
+                                                </div>
+                                                <div style="height:40px; margin-top:10px; border-bottom:1px solid #000;"></div>
                                             </div>
-                                        </div>
-                                    </div>
 
-                                    <!-- Footer -->
-                                    <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #000; font-size: 13px; text-align: center;">
+                                        </div>{{-- /right --}}
+                                    </div>{{-- /main-content --}}
+
+                                    <div style="margin-top:20px; padding-top:10px; border-top:1px solid #000; font-size:13px; text-align:center;">
                                         <strong>Next Term Begins:</strong> ____________________ |
                                         <strong>Next Term Fees Payable By:</strong> ____________________
                                     </div>
-                                </div>
+                                    @endif {{-- end nursery/primary/secondary split --}}
+
+                                </div>{{-- /container --}}
                             </div>
                         </div>
                     </div>
@@ -234,49 +358,21 @@
     </div>
 </body>
 
-<!-- Print & PDF Styles -->
 <style media="print">
-    @page {
-        size: A4;
-        margin: 15mm;
-    }
-
+    @page { size: A4; margin: 15mm; }
     body, .main-wrapper, #app, .main-content, .section, .col-12 {
-        margin: 0 !important;
-        padding: 0 !important;
-        background: white !important;
+        margin: 0 !important; padding: 0 !important; background: white !important;
     }
-
-    body * {
-        visibility: hidden;
-    }
-
-    .card, .card * {
-        visibility: visible;
-    }
-
+    body * { visibility: hidden; }
+    .card, .card * { visibility: visible; }
     .card {
-        position: fixed;
-        left: 0;
-        top: 0;
-        width: 100%;
-        max-width: 210mm;
-        box-shadow: none !important;
-        border: none !important;
+        position: fixed; left: 0; top: 0;
+        width: 100%; max-width: 210mm;
+        box-shadow: none !important; border: none !important;
     }
-
-    .card-header .btn {
-        display: none !important;
-    }
-
-    .card-body {
-        padding: 0 !important;
-    }
-
-    .navbar-bg, .main-sidebar, .navbar, .main-footer, .loader {
-        display: none !important;
-    }
-
+    .card-header .btn { display: none !important; }
+    .card-body { padding: 0 !important; }
+    .navbar-bg, .main-sidebar, .navbar, .main-footer, .loader { display: none !important; }
     table { page-break-inside: avoid; }
     tr { page-break-inside: avoid; }
 </style>

@@ -11,24 +11,22 @@ use App\Models\Pin;
 use App\Models\Session;
 use App\Models\Term;
 use App\Models\SchoolClass;
+use App\Models\Section;
 use App\Models\Course;
 use App\Models\Result;
 use App\Models\StudentRemark;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\ResultSheetService;
 
 class ParentReportCardController extends Controller
 {
     public function selectWard()
     {
         $parent = Auth::user();
+        $wards  = $parent->students()->with(['class.section'])->get();
 
-        // Get all wards
-        $wards = $parent->students()->with(['class.section'])->get();
-
-        // Get all student IDs of wards
         $wardStudentIds = $wards->pluck('id');
 
-        // Get distinct sessions where any ward has an issued PIN
         $sessions = Session::whereHas('issuedPins', function ($query) use ($wardStudentIds) {
             $query->whereIn('student_id', $wardStudentIds);
         })
@@ -48,10 +46,9 @@ class ParentReportCardController extends Controller
             'pin'        => 'required|string',
         ]);
 
-        $parent = Auth::user();
+        $parent  = Auth::user();
         $student = User::findOrFail($request->student_id);
 
-        // Check if this student is actually a ward of the parent
         if (!$parent->students()->where('student_id', $student->id)->exists()) {
             return back()->with('error', 'You do not have permission to view this ward\'s report.');
         }
@@ -75,7 +72,6 @@ class ParentReportCardController extends Controller
             return back()->with('error', 'This PIN has been used 5 times and is expired.');
         }
 
-        // Increment usage
         $pin->increment('usage_count');
         if ($pin->usage_count >= 5) {
             $pin->update(['is_used' => true]);
@@ -93,6 +89,7 @@ class ParentReportCardController extends Controller
         return redirect()->route('parents.wards.reportcards.view');
     }
 
+
     public function showReport()
     {
         $access = session('parent_verified_report');
@@ -103,50 +100,249 @@ class ParentReportCardController extends Controller
         }
 
         $student = User::findOrFail($access['student_id']);
-        $parent = Auth::user();
+        $parent  = Auth::user();
 
         if (!$parent->students()->where('student_id', $student->id)->exists()) {
             abort(403);
         }
 
         $currentSession = Session::findOrFail($access['session_id']);
-        $currentTerm = Term::findOrFail($access['term_id']);
-        $class = SchoolClass::findOrFail($student->class_id);
+        $currentTerm    = Term::findOrFail($access['term_id']);
+        $class          = SchoolClass::findOrFail($student->class_id);
+        $section        = Section::find($class->section_id);
 
-        // Same result calculation logic (copy from StudentReportCardController)
+        // ── 1. Check for nursery / custom result-sheet template ───────────────
+        $sheetTemplate = DB::table('result_sheet_templates')
+            ->where('is_active', 1)
+            ->get()
+            ->first(function ($t) use ($class) {
+                $classes = json_decode($t->applicable_classes ?? '[]', true);
+                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            });
+
+        if ($sheetTemplate) {
+            return $this->showResultSheet(
+                $student, $class, $section, $currentSession, $currentTerm, $sheetTemplate
+            );
+        }
+
+        // ── 2. Check for primary school ───────────────────────────────────────
+        $isPrimary = DB::table('primary_result_classes')
+            ->where('school_class_id', $class->id)
+            ->exists();
+
+        if ($isPrimary) {
+            return $this->showPrimaryReport(
+                $student, $class, $section, $currentSession, $currentTerm
+            );
+        }
+
+        // ── 3. Secondary school (default) ─────────────────────────────────────
+        return $this->showSecondaryReport(
+            $student, $class, $section, $currentSession, $currentTerm
+        );
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // NURSERY — custom result sheet (ratings/checkboxes)
+    // ═══════════════════════════════════════════════════════════════════════════
+    private function showResultSheet($student, $class, $section, $session, $term, $sheetTemplate)
+    {
+        $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
+        $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields  ?? '{}', true);
+
+        $service  = new ResultSheetService();
+        $subjects = $service->loadTemplateStructure($sheetTemplate->id);
+
+        $allItemIds = collect($subjects)->flatMap(function ($subject) {
+            $ids = collect($subject->items)->pluck('id');
+            foreach ($subject->subcategories as $sub) {
+                $ids = $ids->merge(collect($sub->items)->pluck('id'));
+            }
+            return $ids;
+        });
+
+        $ratings = DB::table('result_sheet_ratings')
+            ->where('student_id', $student->id)
+            ->where('session_id', $session->id)
+            ->where('term_id', $term->id)
+            ->whereIn('item_id', $allItemIds)
+            ->get(['item_id', 'rating_value'])
+            ->mapWithKeys(fn($row) => [(int) $row->item_id => trim($row->rating_value)])
+            ->toArray();
+
+        $footerData = DB::table('result_sheet_footer_data')
+            ->where('student_id', $student->id)
+            ->where('session_id', $session->id)
+            ->where('term_id', $term->id)
+            ->where('template_id', $sheetTemplate->id)
+            ->first();
+
+        // Render inside the parent's own view wrapper
+        return view('parents.wards.report_card_view', [
+            'student'        => $student,
+            'class'          => $class,
+            'section'        => $section,
+            'currentSession' => $session,
+            'currentTerm'    => $term,
+            'classTeacher'   => $this->getClassTeacher($class->id),
+
+            // School-type flags
+            'isNursery'      => true,
+            'isPrimary'      => false,
+
+            // Nursery-specific
+            'sheetTemplate'  => $sheetTemplate,
+            'subjects'       => $subjects,
+            'ratings'        => $ratings,
+            'footerData'     => $footerData,
+
+            // Placeholders (not used for nursery but blade may reference them)
+            'results'              => collect(),
+            'overallTotal'         => 0,
+            'overallAverage'       => 0,
+            'overallGrade'         => '-',
+            'formattedPosition'    => '-',
+            'totalStudentsInClass' => 0,
+            'subjectCount'         => 0,
+            'affectiveRatings'     => $this->defaultRatings('affective'),
+            'psychomotorRatings'   => $this->defaultRatings('psychomotor'),
+            'teacherRemark'        => '',
+            'principalRemark'      => '',
+            'headmasterRemark'     => '',
+        ]);
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIMARY SCHOOL — 1st Half / 2nd Half / Total
+    // ═══════════════════════════════════════════════════════════════════════════
+    private function showPrimaryReport($student, $class, $section, $session, $term)
+    {
+        $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
+            $q->where('school_classes.id', $class->id);
+        })->orderBy('course_name')->get();
+
+        $studentPrimaryResults = \App\Models\PrimarySchoolResult::where('student_id', $student->id)
+            ->where('session_id', $session->id)
+            ->where('term_id', $term->id)
+            ->get()
+            ->keyBy('course_id');
+
+        $results = $allSubjects->map(function ($subject) use ($studentPrimaryResults) {
+            $r = $studentPrimaryResults->get($subject->id);
+            return [
+                'course_name'            => $subject->course_name,
+                'first_half_obtainable'  => $r?->first_half_obtainable  ?? 30,
+                'first_half_obtained'    => $r?->first_half_obtained    ?? 0,
+                'second_half_obtainable' => $r?->second_half_obtainable ?? 70,
+                'second_half_obtained'   => $r?->second_half_obtained   ?? 0,
+                'final_obtainable'       => $r?->final_obtainable       ?? 100,
+                'final_obtained'         => $r?->final_obtained         ?? 0,
+                'teacher_remark'         => $r?->teacher_remark         ?? '',
+            ];
+        });
+
+        $overallTotal   = $results->sum('final_obtained');
+        $subjectCount   = $allSubjects->count();
+        $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
+        $overallGrade   = $this->calculateGrade($overallAverage);
+
+        $classStudents        = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
+        $totalStudentsInClass = $classStudents->count();
+
+        $allStudentTotals = \App\Models\PrimarySchoolResult::where('session_id', $session->id)
+            ->where('term_id', $term->id)
+            ->whereIn('student_id', $classStudents)
+            ->select('student_id', DB::raw('SUM(final_obtained) as total_score'))
+            ->groupBy('student_id')
+            ->orderByDesc('total_score')
+            ->get();
+
+        $studentPosition   = $allStudentTotals->search(fn($item) => $item->student_id == $student->id);
+        $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
+        $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
+
+        $remark = StudentRemark::where('student_id', $student->id)
+            ->where('class_id', $class->id)
+            ->where('session_id', $session->id)
+            ->where('term_id', $term->id)
+            ->first();
+
+        return view('parents.wards.report_card_view', [
+            'student'              => $student,
+            'class'                => $class,
+            'section'              => $section,
+            'currentSession'       => $session,
+            'currentTerm'          => $term,
+            'classTeacher'         => $this->getClassTeacher($class->id),
+            'results'              => $results,
+            'overallTotal'         => $overallTotal,
+            'overallAverage'       => $overallAverage,
+            'overallGrade'         => $overallGrade,
+            'formattedPosition'    => $formattedPosition,
+            'totalStudentsInClass' => $totalStudentsInClass,
+            'subjectCount'         => $subjectCount,
+            'affectiveRatings'     => array_merge($this->defaultRatings('affective'),   $remark?->affective_ratings   ?? []),
+            'psychomotorRatings'   => array_merge($this->defaultRatings('psychomotor'), $remark?->psychomotor_ratings ?? []),
+            'teacherRemark'        => $remark?->teacher_remark    ?? '',
+            'headmasterRemark'     => $remark?->headmaster_remark ?? '',
+            'principalRemark'      => '',
+
+            // Type flags
+            'isPrimary'  => true,
+            'isNursery'  => false,
+
+            // Not used for primary
+            'sheetTemplate' => null,
+            'subjects'      => collect(),
+            'ratings'       => [],
+            'footerData'    => null,
+        ]);
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECONDARY SCHOOL — 1st Half / 2nd Half / Total / Grade
+    // ═══════════════════════════════════════════════════════════════════════════
+    private function showSecondaryReport($student, $class, $section, $session, $term)
+    {
         $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
 
         $studentResults = Result::where('student_id', $student->id)
-            ->where('session_id', $currentSession->id)
-            ->where('term_id', $currentTerm->id)
+            ->where('session_id', $session->id)
+            ->where('term_id', $term->id)
             ->get()
             ->keyBy('course_id');
 
         $results = $allSubjects->map(function ($subject) use ($studentResults) {
             $result = $studentResults->get($subject->id);
             return [
-                'course_name'   => $subject->course_name,
-                'first_ca'      => $result?->first_ca ?? 0,
-                'second_ca'     => $result?->second_ca ?? 0,
-                'mid_term_test' => $result?->mid_term_test ?? 0,
-                'examination'   => $result?->examination ?? 0,
-                'total'         => $result?->total ?? 0,
-                'grade'         => $result?->grade ?? '-',
+                'course_name'            => $subject->course_name,
+                'first_half_obtainable'  => $result?->first_half_obtainable  ?? 30,
+                'first_half_obtained'    => $result?->first_half_obtained    ?? 0,
+                'second_half_obtainable' => $result?->second_half_obtainable ?? 70,
+                'second_half_obtained'   => $result?->second_half_obtained   ?? 0,
+                'final_obtainable'       => $result?->final_obtainable       ?? 100,
+                'final_obtained'         => $result?->final_obtained         ?? 0,
+                'total'                  => $result?->total                  ?? 0,
+                'grade'                  => $result?->grade                  ?? '-',
             ];
         });
 
-        $overallTotal   = $results->sum('total');
+        $overallTotal   = $results->sum('final_obtained');
         $subjectCount   = $allSubjects->count();
         $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
         $overallGrade   = $this->calculateGrade($overallAverage);
 
-        $classStudents = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
+        $classStudents        = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
         $totalStudentsInClass = $classStudents->count();
 
-        $studentsScores = Result::where('session_id', $currentSession->id)
-            ->where('term_id', $currentTerm->id)
+        $studentsScores = Result::where('session_id', $session->id)
+            ->where('term_id', $term->id)
             ->whereIn('student_id', $classStudents)
             ->whereIn('course_id', $allSubjects->pluck('id'))
             ->select('student_id', DB::raw('SUM(total) as total_score'))
@@ -154,114 +350,117 @@ class ParentReportCardController extends Controller
             ->orderByDesc('total_score')
             ->get();
 
-        $studentPosition = $studentsScores->search(fn($item) => $item->student_id == $student->id);
-        $studentPosition = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
+        $studentPosition   = $studentsScores->search(fn($item) => $item->student_id == $student->id);
+        $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
-
-        $classTeacher = User::where('is_form_teacher', true)->where('form_class_id', $class->id)->first();
 
         $remark = StudentRemark::where('student_id', $student->id)
             ->where('class_id', $class->id)
-            ->where('session_id', $currentSession->id)
-            ->where('term_id', $currentTerm->id)
+            ->where('session_id', $session->id)
+            ->where('term_id', $term->id)
             ->first();
 
-        $affectiveRatings   = array_merge($this->defaultRatings('affective'),   $remark?->affective_ratings ?? []);
-        $psychomotorRatings = array_merge($this->defaultRatings('psychomotor'), $remark?->psychomotor_ratings ?? []);
+        return view('parents.wards.report_card_view', [
+            'student'              => $student,
+            'class'                => $class,
+            'section'              => $section,
+            'currentSession'       => $session,
+            'currentTerm'          => $term,
+            'classTeacher'         => $this->getClassTeacher($class->id),
+            'results'              => $results,
+            'overallTotal'         => $overallTotal,
+            'overallAverage'       => $overallAverage,
+            'overallGrade'         => $overallGrade,
+            'formattedPosition'    => $formattedPosition,
+            'totalStudentsInClass' => $totalStudentsInClass,
+            'subjectCount'         => $subjectCount,
+            'affectiveRatings'     => array_merge($this->defaultRatings('affective'),   $remark?->affective_ratings   ?? []),
+            'psychomotorRatings'   => array_merge($this->defaultRatings('psychomotor'), $remark?->psychomotor_ratings ?? []),
+            'teacherRemark'        => $remark?->teacher_remark   ?? '',
+            'principalRemark'      => $remark?->principal_remark ?? '',
+            'headmasterRemark'     => '',
 
-        $teacherRemark   = $remark?->teacher_remark ?? '';
-        $principalRemark = $remark?->principal_remark ?? '';
+            // Type flags
+            'isPrimary' => false,
+            'isNursery' => false,
 
-        return view('parents.wards.report_card_view', compact(
-            'student',
-            'class',
-            'results',
-            'overallTotal',
-            'overallAverage',
-            'overallGrade',
-            'currentSession',
-            'currentTerm',
-            'classTeacher',
-            'affectiveRatings',
-            'psychomotorRatings',
-            'teacherRemark',
-            'principalRemark',
-            'formattedPosition',
-            'totalStudentsInClass',
-            'subjectCount'
-        ));
+            // Not used for secondary
+            'sheetTemplate' => null,
+            'subjects'      => collect(),
+            'ratings'       => [],
+            'footerData'    => null,
+        ]);
     }
 
-    public function downloadPdf()
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function getClassTeacher($classId)
     {
-        // Same logic as showReport() but return PDF
-        // ... (copy showReport logic and end with Pdf::loadView(...) -> stream()
-        // Use the same view: parents.wards.report_card_view
+        return User::where('is_form_teacher', true)->where('form_class_id', $classId)->first();
     }
 
-    public function issuedPins()
-    {
-        $parent = Auth::user();
-        $wards = $parent->students()->with(['class'])->get();
-
-        $issuedPins = IssuedPin::whereIn('student_id', $wards->pluck('id'))
-            ->with(['student', 'session', 'term', 'section', 'schoolClass', 'pin'])
-            ->orderByDesc('created_at')
-            ->get();
-
-        return view('parents.wards.issued_pins', compact('issuedPins', 'wards'));
-    }
-
-    // Helper methods
     private function calculateGrade($total)
     {
         if ($total >= 70) return 'A';
         if ($total >= 60) return 'B';
         if ($total >= 50) return 'C';
-        if ($total >= 40) return 'D';
-        if ($total >= 30) return 'E';
+        if ($total >= 45) return 'D';
+        if ($total >= 40) return 'E';
         return 'F';
     }
 
     private function getPositionSuffix($position)
     {
-        if ($position % 100 >= 11 && $position % 100 <= 13) {
-            return 'th';
-        }
-        switch ($position % 10) {
-            case 1:
-                return 'st';
-            case 2:
-                return 'nd';
-            case 3:
-                return 'rd';
-            default:
-                return 'th';
-        }
+        if ($position % 100 >= 11 && $position % 100 <= 13) return 'th';
+        return match ($position % 10) {
+            1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th',
+        };
     }
 
     private function defaultRatings($type)
     {
         if ($type === 'affective') {
             return [
-                'punctuality' => '-',
-                'politeness' => '-',
-                'neatness' => '-',
-                'honesty' => '-',
-                'leadership_skill' => '-',
-                'cooperation' => '-',
-                'attentiveness' => '-',
-                'perseverance' => '-',
-                'attitude_to_work' => '-',
+                'punctuality'          => null,
+                'politeness'           => null,
+                'neatness'             => null,
+                'honesty'              => null,
+                'leadership_skill'     => null,
+                'cooperation'          => null,
+                'attentiveness'        => null,
+                'perseverance'         => null,
+                'attitude_to_work'     => null,
+                'helping_other'        => null,
+                'emotional_stability'  => null,
+                'health'               => null,
+                'speaking_handwriting' => null,
             ];
         }
 
         return [
-            'handwriting' => '-',
-            'verbal_fluency' => '-',
-            'sports' => '-',
-            'handling_tools' => '-',
-            'drawing_painting' => '-',
+            'handwriting'      => null,
+            'verbal_fluency'   => null,
+            'sports'           => null,
+            'handling_tools'   => null,
+            'drawing_painting' => null,
+            'games'            => null,
+            'musical_skills'   => null,
         ];
+    }
+
+
+    public function issuedPins()
+    {
+        $parent    = Auth::user();
+        $wards     = $parent->students()->with(['class'])->get();
+        $issuedPins = IssuedPin::whereIn('student_id', $wards->pluck('id'))
+            ->with(['student', 'session', 'term', 'section', 'schoolClass', 'pin'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('parents.wards.issued_pins', compact('issuedPins', 'wards'));
     }
 }
