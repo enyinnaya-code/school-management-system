@@ -232,6 +232,18 @@
                                                 @endif
                                             </div>
 
+                                            {{-- ── Signature block — inside left column, same as parent view ── --}}
+                                            <div style="margin-top: 15px; text-align: center; border: 1px solid #000; padding: 10px;">
+                                                <div style="font-weight: bold; font-size: 13px;">
+                                                    @if(isset($isPrimary) && $isPrimary)
+                                                        HEAD MASTER/MISTRESS SIGNATURE & STAMP
+                                                    @else
+                                                        PRINCIPAL'S SIGNATURE & STAMP
+                                                    @endif
+                                                </div>
+                                                <div style="height: 40px; margin-top: 10px; border-bottom: 1px solid #000;"></div>
+                                            </div>
+
                                         </div>{{-- /left --}}
 
                                         {{-- Right: Skills ───────────────────────────────────────── --}}
@@ -345,21 +357,9 @@
                                         </div>{{-- /right --}}
                                     </div>{{-- /main-content --}}
 
-                                    {{-- ── Signature block (full width, centred) ────────────── --}}
-                                    <div style="margin-top: 15px; text-align: center; border: 1px solid #000; padding: 10px; width: 50%; margin-left: auto; margin-right: auto;">
-                                        <div style="font-weight: bold; font-size: 13px;">
-                                            @if(isset($isPrimary) && $isPrimary)
-                                                HEAD MASTER/MISTRESS SIGNATURE & STAMP
-                                            @else
-                                                PRINCIPAL'S SIGNATURE & STAMP
-                                            @endif
-                                        </div>
-                                        <div style="height: 40px; margin-top: 10px; border-bottom: 1px solid #000;"></div>
-                                    </div>
-
                                     {{-- ── Footer: Resumption Date & Fees Payable By ────────── --}}
                                     {{-- Data sourced from TermSetting (set in Result Access settings) --}}
-                                    <div style="margin-top: 15px; padding-top: 10px; border-top: 2px solid #000;">
+                                    <div style="margin-top: 20px; padding-top: 10px; border-top: 2px solid #000;">
                                         <div style="display: table; width: 100%; font-size: 13px;">
                                             <div style="display: table-cell; width: 50%; vertical-align: top;">
                                                 <strong>Next Term Resumption Date:</strong><br>
