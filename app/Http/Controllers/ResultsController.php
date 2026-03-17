@@ -845,43 +845,193 @@ class ResultsController extends Controller
     public function printStudent($studentId, Request $request, $action = 'stream')
     {
         $student = User::where('user_type', 4)->findOrFail($studentId);
-        $class = SchoolClass::findOrFail($student->class_id);
+        $class   = SchoolClass::findOrFail($student->class_id);
         $section = Section::find($class->section_id);
 
         $sessionId = $request->query('session_id');
         $termId    = $request->query('term_id');
 
-        $currentSession = $sessionId ? Session::findOrFail($sessionId) : Session::where('is_current', true)->first();
-        $currentTerm    = $termId ? Term::findOrFail($termId) : ($currentSession?->terms()->where('is_current', true)->first());
+        $currentSession = $sessionId
+            ? Session::findOrFail($sessionId)
+            : Session::where('is_current', true)->first();
+
+        $currentTerm = $termId
+            ? Term::findOrFail($termId)
+            : $currentSession?->terms()->where('is_current', true)->first();
 
         if (!$currentSession || !$currentTerm) {
             abort(404, 'No current session or term is set.');
         }
 
-        // Get all subjects for the class
+        // ── Determine class type ──────────────────────────────────────────────────
+        $isPrimary = DB::table('primary_result_classes')
+            ->where('school_class_id', $class->id)
+            ->exists();
+
+        // ── Shared: class teacher, remarks, ratings ───────────────────────────────
+        $classTeacher = User::where('is_form_teacher', true)
+            ->where('form_class_id', $class->id)
+            ->first();
+
+        $remark = StudentRemark::where('student_id', $student->id)
+            ->where('class_id', $class->id)
+            ->where('session_id', $currentSession->id)
+            ->where('term_id', $currentTerm->id)
+            ->first();
+
+        // Default ratings structure
+        $defaultAffective = [
+            'punctuality'          => null,
+            'politeness'           => null,
+            'neatness'             => null,
+            'honesty'              => null,
+            'leadership_skill'     => null,
+            'cooperation'          => null,
+            'attentiveness'        => null,
+            'perseverance'         => null,
+            'attitude_to_work'     => null,
+            'helping_other'        => null,
+            'emotional_stability'  => null,
+            'health'               => null,
+            'speaking_handwriting' => null,
+        ];
+
+        $defaultPsychomotor = [
+            'handwriting'      => null,
+            'verbal_fluency'   => null,
+            'sports'           => null,
+            'handling_tools'   => null,
+            'drawing_painting' => null,
+            'games'            => null,
+            'musical_skills'   => null,
+        ];
+
+        $affectiveRatings   = array_merge($defaultAffective,   $remark?->affective_ratings   ?? []);
+        $psychomotorRatings = array_merge($defaultPsychomotor, $remark?->psychomotor_ratings ?? []);
+
+        $teacherRemark     = $remark?->teacher_remark     ?? '';
+        $principalRemark   = $remark?->principal_remark   ?? '';
+        $headmasterRemark  = $remark?->headmaster_remark  ?? '';
+
+        // ── Watermark flag ────────────────────────────────────────────────────────
+        $isTeacherOrAdmin = in_array(Auth::user()->user_type, [1, 2, 3]);
+        $showWatermark    = $isTeacherOrAdmin;
+
+        // ── Total students in class (same for both) ───────────────────────────────
+        $classStudentIds      = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
+        $totalStudentsInClass = $classStudentIds->count();
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // PRIMARY SCHOOL PATH
+        // ══════════════════════════════════════════════════════════════════════════
+        if ($isPrimary) {
+
+            // All subjects for this class
+            $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
+                $q->where('school_classes.id', $class->id);
+            })->orderBy('course_name')->get();
+
+            // This student's primary results
+            $studentPrimaryResults = \App\Models\PrimarySchoolResult::where('student_id', $studentId)
+                ->where('session_id', $currentSession->id)
+                ->where('term_id', $currentTerm->id)
+                ->get()
+                ->keyBy('course_id');
+
+            // Build results array for the view
+            $results = $allSubjects->map(function ($subject) use ($studentPrimaryResults) {
+                $r = $studentPrimaryResults->get($subject->id);
+                return [
+                    'course_name'            => $subject->course_name,
+                    'first_half_obtainable'  => $r?->first_half_obtainable  ?? 30,
+                    'first_half_obtained'    => $r?->first_half_obtained    ?? 0,
+                    'second_half_obtainable' => $r?->second_half_obtainable ?? 70,
+                    'second_half_obtained'   => $r?->second_half_obtained   ?? 0,
+                    'final_obtainable'       => $r?->final_obtainable       ?? 100,
+                    'final_obtained'         => $r?->final_obtained         ?? 0,
+                    'teacher_remark'         => $r?->teacher_remark         ?? '',
+                ];
+            });
+
+            // Overall totals for primary (sum of final_obtained across subjects)
+            $overallTotal   = $results->sum('final_obtained');
+            $subjectCount   = $allSubjects->count();
+            $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
+            $overallGrade   = $this->calculateGrade($overallAverage);
+
+            // Position: rank students by sum of final_obtained
+            $allStudentTotals = \App\Models\PrimarySchoolResult::where('session_id', $currentSession->id)
+                ->where('term_id', $currentTerm->id)
+                ->whereIn('student_id', $classStudentIds)
+                ->select('student_id', DB::raw('SUM(final_obtained) as total_score'))
+                ->groupBy('student_id')
+                ->orderByDesc('total_score')
+                ->get();
+
+            $studentPosition = $allStudentTotals->search(fn($item) => $item->student_id == $studentId);
+            $studentPosition = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
+            $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
+
+            // Generate PDF — use primary-specific view
+            $pdf = Pdf::loadView('primary_student_report_card', [
+                'student'              => $student,
+                'class'                => $class,
+                'section'              => $section,
+                'results'              => $results,
+                'overallTotal'         => $overallTotal,
+                'overallAverage'       => $overallAverage,
+                'overallGrade'         => $overallGrade,
+                'currentSession'       => $currentSession,
+                'currentTerm'          => $currentTerm,
+                'classTeacher'         => $classTeacher,
+                'affectiveRatings'     => $affectiveRatings,
+                'psychomotorRatings'   => $psychomotorRatings,
+                'teacherRemark'        => $teacherRemark,
+                'headmasterRemark'     => $headmasterRemark,   // ← Primary uses this
+                'principalRemark'      => '',                  // ← Not used for primary
+                'formattedPosition'    => $formattedPosition,
+                'totalStudentsInClass' => $totalStudentsInClass,
+                'subjectCount'         => $subjectCount,
+                'showWatermark'        => $showWatermark,
+                'isPrimary'            => true,
+            ])->setPaper('a4', 'portrait');
+
+            $filename = strtoupper($student->name) . '_Primary_Report_Card_' . $currentTerm->name . '.pdf';
+
+            if ($action === 'download' && $isTeacherOrAdmin) {
+                abort(403, 'Download not allowed for preview mode.');
+            }
+
+            return $action === 'download' ? $pdf->download($filename) : $pdf->stream($filename);
+        }
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // SECONDARY SCHOOL PATH
+        // ══════════════════════════════════════════════════════════════════════════
+
+        // All subjects for the class
         $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
 
-        // Get student's results
+        // This student's secondary results
         $studentResults = Result::where('student_id', $studentId)
             ->where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
             ->get()
             ->keyBy('course_id');
 
-        // Build results array (THIS IS CRITICAL — DO NOT SKIP)
+        // Build results array
         $results = $allSubjects->map(function ($subject) use ($studentResults) {
             $result = $studentResults->get($subject->id);
-
             return [
                 'course_name'   => $subject->course_name,
-                'first_ca'      => $result?->first_ca ?? 0,
-                'second_ca'     => $result?->second_ca ?? 0,
+                'first_ca'      => $result?->first_ca      ?? 0,
+                'second_ca'     => $result?->second_ca     ?? 0,
                 'mid_term_test' => $result?->mid_term_test ?? 0,
-                'examination'   => $result?->examination ?? 0,
-                'total'         => $result?->total ?? 0,
-                'grade'         => $result?->grade ?? '-',
+                'examination'   => $result?->examination   ?? 0,
+                'total'         => $result?->total         ?? 0,
+                'grade'         => $result?->grade         ?? '-',
             ];
         });
 
@@ -891,48 +1041,26 @@ class ResultsController extends Controller
         $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
         $overallGrade   = $this->calculateGrade($overallAverage);
 
-        // Position
-        $classStudents = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
-        $totalStudentsInClass = $classStudents->count();
-
+        // Position: rank by sum of total across subjects
         $studentsScores = Result::where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
-            ->whereIn('student_id', $classStudents)
+            ->whereIn('student_id', $classStudentIds)
             ->whereIn('course_id', $allSubjects->pluck('id'))
             ->select('student_id', DB::raw('SUM(total) as total_score'))
             ->groupBy('student_id')
             ->orderByDesc('total_score')
             ->get();
 
-        $studentPosition = $studentsScores->search(fn($item) => $item->student_id == $studentId);
-        $studentPosition = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
+        $studentPosition   = $studentsScores->search(fn($item) => $item->student_id == $studentId);
+        $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-        // Teacher & Remarks
-        $classTeacher = User::where('is_form_teacher', true)->where('form_class_id', $class->id)->first();
-
-        $remark = StudentRemark::where('student_id', $student->id)
-            ->where('class_id', $class->id)
-            ->where('session_id', $currentSession->id)
-            ->where('term_id', $currentTerm->id)
-            ->first();
-
-        $affectiveRatings   = array_merge($this->defaultRatings('affective'),   $remark?->affective_ratings ?? []);
-        $psychomotorRatings = array_merge($this->defaultRatings('psychomotor'), $remark?->psychomotor_ratings ?? []);
-
-        $teacherRemark   = $remark?->teacher_remark ?? '';
-        $principalRemark = $remark?->principal_remark ?? '';
-
-        // Watermark for teachers/admins
-        $isTeacherOrAdmin = in_array(Auth::user()->user_type, [1, 2, 3]); // admin, superadmin, teacher
-        $showWatermark = $isTeacherOrAdmin;
-
-        // Generate PDF
+        // Generate PDF — use secondary view
         $pdf = Pdf::loadView('student_report_card', [
             'student'              => $student,
             'class'                => $class,
             'section'              => $section,
-            'results'              => $results,                    // ← MUST be included
+            'results'              => $results,
             'overallTotal'         => $overallTotal,
             'overallAverage'       => $overallAverage,
             'overallGrade'         => $overallGrade,
@@ -942,22 +1070,24 @@ class ResultsController extends Controller
             'affectiveRatings'     => $affectiveRatings,
             'psychomotorRatings'   => $psychomotorRatings,
             'teacherRemark'        => $teacherRemark,
-            'principalRemark'      => $principalRemark,
+            'principalRemark'      => $principalRemark,    // ← Secondary uses this
+            'headmasterRemark'     => '',                  // ← Not used for secondary
             'formattedPosition'    => $formattedPosition,
             'totalStudentsInClass' => $totalStudentsInClass,
             'subjectCount'         => $subjectCount,
-            'showWatermark'        => $showWatermark,              // ← for watermark
+            'showWatermark'        => $showWatermark,
+            'isPrimary'            => false,
         ])->setPaper('a4', 'portrait');
 
         $filename = strtoupper($student->name) . '_Report_Card_' . $currentTerm->name . '.pdf';
 
-        // Block download for teachers
         if ($action === 'download' && $isTeacherOrAdmin) {
             abort(403, 'Download not allowed for preview mode.');
         }
 
         return $action === 'download' ? $pdf->download($filename) : $pdf->stream($filename);
     }
+
 
     // Add this helper method to the controller
     private function getPositionSuffix($position)
