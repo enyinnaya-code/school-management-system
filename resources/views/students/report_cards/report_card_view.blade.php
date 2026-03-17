@@ -86,11 +86,19 @@
                                             <table style="width: 100%; border-collapse: collapse;">
                                                 <thead>
                                                     <tr style="background-color: #f0f0f0;">
-                                                        <th style="border: 1px solid #000; padding: 5px; text-align:left; width:28%;">SUBJECTS</th>
-                                                        <th style="border: 1px solid #000; padding: 5px; font-size:10px;">1st Half<br>(Max 30)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px; font-size:10px;">2nd Half<br>(Max 70)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px; font-size:10px;">Total<br>(Max 100)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px; font-size:10px;">Remark</th>
+                                                        <th rowspan="2" style="border: 1px solid #000; padding: 5px; text-align:left; width:22%; vertical-align:middle;">SUBJECTS</th>
+                                                        <th colspan="2" style="border: 1px solid #000; padding: 4px; font-size:10px; text-align:center;">1st Half (Max 30)</th>
+                                                        <th colspan="2" style="border: 1px solid #000; padding: 4px; font-size:10px; text-align:center;">2nd Half (Max 70)</th>
+                                                        <th colspan="2" style="border: 1px solid #000; padding: 4px; font-size:10px; text-align:center;">Total (Max 100)</th>
+                                                        <th rowspan="2" style="border: 1px solid #000; padding: 4px; font-size:10px; text-align:center; vertical-align:middle;">Remark</th>
+                                                    </tr>
+                                                    <tr style="background-color: #f8f8f8;">
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtained</th>
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtained</th>
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtained</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -99,25 +107,31 @@
                                                         <td style="border: 1px solid #000; padding: 5px; text-align: left;">
                                                             {{ $result['course_name'] }}
                                                         </td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                                                            {{ $result['first_half_obtainable'] }}
+                                                        </td>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">
                                                             {{ $result['first_half_obtained'] > 0 ? $result['first_half_obtained'] : '-' }}
-                                                            / {{ $result['first_half_obtainable'] }}
                                                         </td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                                                            {{ $result['second_half_obtainable'] }}
+                                                        </td>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">
                                                             {{ $result['second_half_obtained'] > 0 ? $result['second_half_obtained'] : '-' }}
-                                                            / {{ $result['second_half_obtainable'] }}
                                                         </td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">
-                                                            <strong>{{ $result['final_obtained'] > 0 ? $result['final_obtained'] : '-' }}
-                                                            / {{ $result['final_obtainable'] }}</strong>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                                                            {{ $result['final_obtainable'] }}
                                                         </td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">
+                                                            <strong>{{ $result['final_obtained'] > 0 ? $result['final_obtained'] : '-' }}</strong>
+                                                        </td>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">
                                                             {{ $result['teacher_remark'] ?: '-' }}
                                                         </td>
                                                     </tr>
                                                     @empty
                                                     <tr>
-                                                        <td colspan="5" style="text-align:center; padding: 10px;">No subjects recorded.</td>
+                                                        <td colspan="8" style="text-align:center; padding: 10px;">No subjects recorded.</td>
                                                     </tr>
                                                     @endforelse
                                                 </tbody>
