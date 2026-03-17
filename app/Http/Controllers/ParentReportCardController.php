@@ -16,6 +16,7 @@ use App\Models\Course;
 use App\Models\Result;
 use App\Models\StudentRemark;
 use App\Models\ResultAccessRestriction;
+use App\Models\TermSetting;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\ResultSheetService;
 
@@ -147,6 +148,13 @@ class ParentReportCardController extends Controller
         $class          = SchoolClass::findOrFail($student->class_id);
         $section        = Section::find($class->section_id);
 
+        // ── Term settings: resumption date, school fees, fees payable by ──────
+        // These are set by admin in ResultAccessController::saveTermSettings()
+        // and stored in the term_settings table keyed by session_id + term_id.
+        $termSettings = TermSetting::where('session_id', $currentSession->id)
+            ->where('term_id', $currentTerm->id)
+            ->first();
+
         // ── 1. Check for nursery / custom result-sheet template ───────────────
         $sheetTemplate = DB::table('result_sheet_templates')
             ->where('is_active', 1)
@@ -158,7 +166,7 @@ class ParentReportCardController extends Controller
 
         if ($sheetTemplate) {
             return $this->showResultSheet(
-                $student, $class, $section, $currentSession, $currentTerm, $sheetTemplate
+                $student, $class, $section, $currentSession, $currentTerm, $sheetTemplate, $termSettings
             );
         }
 
@@ -169,13 +177,13 @@ class ParentReportCardController extends Controller
 
         if ($isPrimary) {
             return $this->showPrimaryReport(
-                $student, $class, $section, $currentSession, $currentTerm
+                $student, $class, $section, $currentSession, $currentTerm, $termSettings
             );
         }
 
         // ── 3. Secondary school (default) ─────────────────────────────────────
         return $this->showSecondaryReport(
-            $student, $class, $section, $currentSession, $currentTerm
+            $student, $class, $section, $currentSession, $currentTerm, $termSettings
         );
     }
 
@@ -183,7 +191,7 @@ class ParentReportCardController extends Controller
     // ═══════════════════════════════════════════════════════════════════════════
     // NURSERY — custom result sheet (ratings/checkboxes)
     // ═══════════════════════════════════════════════════════════════════════════
-    private function showResultSheet($student, $class, $section, $session, $term, $sheetTemplate)
+    private function showResultSheet($student, $class, $section, $session, $term, $sheetTemplate, $termSettings)
     {
         $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
         $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields  ?? '{}', true);
@@ -215,7 +223,7 @@ class ParentReportCardController extends Controller
             ->where('template_id', $sheetTemplate->id)
             ->first();
 
-        // ── Attendance (nursery uses same query) ──────────────────────────────
+        // ── Attendance ────────────────────────────────────────────────────────
         $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $student->id)
             ->where('class_id', $class->id)
             ->where('session_id', $session->id)
@@ -234,6 +242,7 @@ class ParentReportCardController extends Controller
             'currentSession' => $session,
             'currentTerm'    => $term,
             'classTeacher'   => $this->getClassTeacher($class->id),
+            'termSettings'   => $termSettings,
 
             'isNursery' => true,
             'isPrimary' => false,
@@ -255,7 +264,7 @@ class ParentReportCardController extends Controller
             'teacherRemark'        => '',
             'principalRemark'      => '',
             'headmasterRemark'     => '',
-            'attendanceSummary'    => $attendanceSummary,   // ← attendance
+            'attendanceSummary'    => $attendanceSummary,
         ]);
     }
 
@@ -263,7 +272,7 @@ class ParentReportCardController extends Controller
     // ═══════════════════════════════════════════════════════════════════════════
     // PRIMARY SCHOOL — 1st Half / 2nd Half / Total
     // ═══════════════════════════════════════════════════════════════════════════
-    private function showPrimaryReport($student, $class, $section, $session, $term)
+    private function showPrimaryReport($student, $class, $section, $session, $term, $termSettings)
     {
         $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
@@ -334,6 +343,7 @@ class ParentReportCardController extends Controller
             'currentSession'       => $session,
             'currentTerm'          => $term,
             'classTeacher'         => $this->getClassTeacher($class->id),
+            'termSettings'         => $termSettings,
             'results'              => $results,
             'overallTotal'         => $overallTotal,
             'overallAverage'       => $overallAverage,
@@ -346,7 +356,7 @@ class ParentReportCardController extends Controller
             'teacherRemark'        => $remark?->teacher_remark    ?? '',
             'headmasterRemark'     => $remark?->headmaster_remark ?? '',
             'principalRemark'      => '',
-            'attendanceSummary'    => $attendanceSummary,   // ← attendance
+            'attendanceSummary'    => $attendanceSummary,
 
             'isPrimary'     => true,
             'isNursery'     => false,
@@ -361,7 +371,7 @@ class ParentReportCardController extends Controller
     // ═══════════════════════════════════════════════════════════════════════════
     // SECONDARY SCHOOL — 1st Half / 2nd Half / Total / Grade
     // ═══════════════════════════════════════════════════════════════════════════
-    private function showSecondaryReport($student, $class, $section, $session, $term)
+    private function showSecondaryReport($student, $class, $section, $session, $term, $termSettings)
     {
         $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
@@ -434,6 +444,7 @@ class ParentReportCardController extends Controller
             'currentSession'       => $session,
             'currentTerm'          => $term,
             'classTeacher'         => $this->getClassTeacher($class->id),
+            'termSettings'         => $termSettings,
             'results'              => $results,
             'overallTotal'         => $overallTotal,
             'overallAverage'       => $overallAverage,
@@ -446,7 +457,7 @@ class ParentReportCardController extends Controller
             'teacherRemark'        => $remark?->teacher_remark   ?? '',
             'principalRemark'      => $remark?->principal_remark ?? '',
             'headmasterRemark'     => '',
-            'attendanceSummary'    => $attendanceSummary,   // ← attendance
+            'attendanceSummary'    => $attendanceSummary,
 
             'isPrimary'     => false,
             'isNursery'     => false,

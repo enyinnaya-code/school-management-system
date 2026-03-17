@@ -146,7 +146,7 @@
                                         </div>
                                         @endforeach
 
-                                        {{-- Footer fields (remark, reopening date etc.) --}}
+                                        {{-- Nursery template footer fields (remark, reopening date etc.) --}}
                                         @if(isset($sheetTemplate->footer_fields) && count($sheetTemplate->footer_fields))
                                         <div style="margin-top:10px; border-top:1px solid #000; padding-top:8px;">
                                             @foreach($sheetTemplate->footer_fields as $fieldKey => $fieldLabel)
@@ -352,26 +352,47 @@
                                         </div>{{-- /right --}}
                                     </div>{{-- /main-content --}}
 
-                                    {{-- ── Footer: Resumption Date & Fees ──────────────────── --}}
+                                    {{-- ── Footer: Resumption Date, School Fees & Fees Payable ── --}}
+                                    {{-- Data sourced from TermSetting (set by admin in Result Access settings) --}}
                                     <div style="margin-top:20px; padding-top:10px; border-top:2px solid #000;">
                                         <div style="display:table; width:100%; font-size:13px;">
-                                            <div style="display:table-cell; width:50%; vertical-align:top; padding-right:10px;">
+                                            <div style="display:table-cell; width:34%; vertical-align:top; padding-right:8px;">
                                                 <strong>Next Term Resumption Date:</strong><br>
-                                                <span style="font-size:14px;">
-                                                    {{ $currentTerm->resumption_date
-                                                        ? \Carbon\Carbon::parse($currentTerm->resumption_date)->format('l, d F Y')
-                                                        : '____________________________' }}
+                                                <span style="font-size:13px; font-weight:bold;">
+                                                    @if($termSettings?->resumption_date)
+                                                        {{ \Carbon\Carbon::parse($termSettings->resumption_date)->format('l, d F Y') }}
+                                                    @else
+                                                        ____________________________
+                                                    @endif
                                                 </span>
                                             </div>
-                                            <div style="display:table-cell; width:50%; vertical-align:top; text-align:right;">
-                                                <strong>Next Term School Fees Payable By:</strong><br>
-                                                <span style="font-size:14px;">
-                                                    {{ $currentTerm->fees_due_date
-                                                        ? \Carbon\Carbon::parse($currentTerm->fees_due_date)->format('l, d F Y')
-                                                        : '____________________________' }}
+                                            <div style="display:table-cell; width:33%; vertical-align:top; padding-right:8px; text-align:center;">
+                                                <strong>School Fees:</strong><br>
+                                                <span style="font-size:13px; font-weight:bold;">
+                                                    @if($termSettings?->school_fees)
+                                                        &#8358;{{ number_format($termSettings->school_fees, 2) }}
+                                                    @else
+                                                        ____________________________
+                                                    @endif
+                                                </span>
+                                            </div>
+                                            <div style="display:table-cell; width:33%; vertical-align:top; text-align:right;">
+                                                <strong>Fees Payable By:</strong><br>
+                                                <span style="font-size:13px; font-weight:bold;">
+                                                    @if($termSettings?->fees_payable_by)
+                                                        {{ \Carbon\Carbon::parse($termSettings->fees_payable_by)->format('l, d F Y') }}
+                                                    @else
+                                                        ____________________________
+                                                    @endif
                                                 </span>
                                             </div>
                                         </div>
+
+                                        @if($termSettings?->notes)
+                                        <div style="margin-top:8px; font-size:12px; font-style:italic; border-top:1px dashed #999; padding-top:6px;">
+                                            <strong>Note:</strong> {{ $termSettings->notes }}
+                                        </div>
+                                        @endif
                                     </div>
 
                                     @endif {{-- end nursery/primary/secondary split --}}
