@@ -1029,17 +1029,19 @@ class ResultsController extends Controller
         $results = $allSubjects->map(function ($subject) use ($studentResults) {
             $result = $studentResults->get($subject->id);
             return [
-                'course_name'   => $subject->course_name,
-                'first_ca'      => $result?->first_ca      ?? 0,
-                'second_ca'     => $result?->second_ca     ?? 0,
-                'mid_term_test' => $result?->mid_term_test ?? 0,
-                'examination'   => $result?->examination   ?? 0,
-                'total'         => $result?->total         ?? 0,
-                'grade'         => $result?->grade         ?? '-',
+                'course_name'            => $subject->course_name,
+                'first_half_obtainable'  => $result?->first_half_obtainable  ?? 30,
+                'first_half_obtained'    => $result?->first_half_obtained    ?? 0,
+                'second_half_obtainable' => $result?->second_half_obtainable ?? 70,
+                'second_half_obtained'   => $result?->second_half_obtained   ?? 0,
+                'final_obtainable'       => $result?->final_obtainable       ?? 100,
+                'final_obtained'         => $result?->final_obtained         ?? 0,
+                'total'                  => $result?->total                  ?? 0,
+                'grade'                  => $result?->grade                  ?? '-',
             ];
         });
 
-        $overallTotal   = $results->sum('total');
+        $overallTotal   = $results->sum('final_obtained');
         $subjectCount   = $allSubjects->count();
         $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
         $overallGrade   = $this->calculateGrade($overallAverage);

@@ -184,33 +184,38 @@
 
                 @else
                 {{-- ════════════════════════════════════════════════════════════
-                     SECONDARY SCHOOL — CA / Exam / Total / Grade table
+                     SECONDARY SCHOOL — 1st Half / 2nd Half / Total / Grade
                      ════════════════════════════════════════════════════════════ --}}
                 <table>
                     <thead>
                         <tr>
-                            <th style="width:25%; text-align:left; padding-left:4px;">SUBJECTS</th>
-                            <th class="rotate-text">1st CA (10)</th>
-                            <th class="rotate-text">2nd CA (10)</th>
-                            <th class="rotate-text">Mid Term (20)</th>
-                            <th class="rotate-text">Exam (60)</th>
-                            <th class="rotate-text">TOTAL</th>
-                            <th class="rotate-text">GRADE</th>
+                            <th style="width:28%; text-align:left; padding-left:4px;">SUBJECTS</th>
+                            <th class="rotate-text">1st Half Obtainable</th>
+                            <th class="rotate-text">1st Half Obtained</th>
+                            <th class="rotate-text">2nd Half Obtainable</th>
+                            <th class="rotate-text">2nd Half Obtained</th>
+                            <th class="rotate-text">Total Obtainable</th>
+                            <th class="rotate-text">Total Obtained</th>
+                            <th class="rotate-text">Grade</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($results as $result)
-                        <tr class="{{ $result['total'] == 0 ? 'no-score-row' : '' }}">
+                        @php
+                            $hasScore = ($result['first_half_obtained'] > 0 || $result['second_half_obtained'] > 0 || $result['final_obtained'] > 0);
+                        @endphp
+                        <tr class="{{ !$hasScore ? 'no-score-row' : '' }}">
                             <td class="subject-name">{{ $result['course_name'] }}</td>
-                            <td>{{ $result['first_ca'] > 0      ? $result['first_ca']      : '-' }}</td>
-                            <td>{{ $result['second_ca'] > 0     ? $result['second_ca']     : '-' }}</td>
-                            <td>{{ $result['mid_term_test'] > 0 ? $result['mid_term_test'] : '-' }}</td>
-                            <td>{{ $result['examination'] > 0   ? $result['examination']   : '-' }}</td>
-                            <td><strong>{{ $result['total'] > 0 ? $result['total'] : '-' }}</strong></td>
+                            <td>{{ $result['first_half_obtainable'] }}</td>
+                            <td>{{ $result['first_half_obtained'] > 0 ? $result['first_half_obtained'] : '-' }}</td>
+                            <td>{{ $result['second_half_obtainable'] }}</td>
+                            <td>{{ $result['second_half_obtained'] > 0 ? $result['second_half_obtained'] : '-' }}</td>
+                            <td>{{ $result['final_obtainable'] }}</td>
+                            <td><strong>{{ $result['final_obtained'] > 0 ? $result['final_obtained'] : '-' }}</strong></td>
                             <td><strong>{{ $result['grade'] }}</strong></td>
                         </tr>
                         @empty
-                        <tr><td colspan="7" style="text-align:center;">No subjects offered in this class.</td></tr>
+                        <tr><td colspan="8" style="text-align:center;">No subjects offered in this class.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
