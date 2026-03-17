@@ -13,18 +13,33 @@ use App\Models\SchoolClass;
 use App\Models\Course;
 use App\Models\Result;
 use App\Models\StudentRemark;
+use App\Models\ResultAccessRestriction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Services\ResultSheetService;
 
 class StudentReportCardController extends Controller
 {
+    // ──────────────────────────────────────────────────────────────────────────
+    // Helper: check if the current student is blocked for a session+term.
+    // Returns the restriction model (truthy) or null (falsy).
+    // ──────────────────────────────────────────────────────────────────────────
+    private function getBlock(int $studentId, int $sessionId, int $termId): ?ResultAccessRestriction
+    {
+        return ResultAccessRestriction::where('student_id', $studentId)
+            ->where('session_id', $sessionId)
+            ->where('term_id', $termId)
+            ->first();
+    }
+
+
     public function index()
     {
         $student  = Auth::user();
         $sessions = Session::orderByDesc('name')->get();
         return view('students.report_cards.index', compact('sessions', 'student'));
     }
+
 
     public function verifyPin(Request $request)
     {
@@ -36,6 +51,18 @@ class StudentReportCardController extends Controller
 
         $student = Auth::user();
 
+        // ── Block check BEFORE pin validation ────────────────────────────────
+        // We check here so the student cannot use a valid PIN to bypass the block.
+        $block = $this->getBlock($student->id, $request->session_id, $request->term_id);
+        if ($block) {
+            $reason = $block->reason ?: 'You have been restricted from accessing your result.';
+            return back()->with(
+                'error',
+                'Access denied: ' . $reason . ' Please contact the school administration.'
+            );
+        }
+
+        // ── PIN existence check ───────────────────────────────────────────────
         $issuedPin = IssuedPin::where('student_id', $student->id)
             ->where('session_id', $request->session_id)
             ->where('term_id', $request->term_id)
@@ -98,6 +125,7 @@ class StudentReportCardController extends Controller
         $student = Auth::user();
         $access  = session('verified_report_access');
 
+        // ── Session/expiry guard ──────────────────────────────────────────────
         if (
             !$access ||
             !isset($access['session_id'], $access['term_id']) ||
@@ -110,6 +138,18 @@ class StudentReportCardController extends Controller
         $sessionId = $access['session_id'];
         $termId    = $access['term_id'];
 
+        // ── Block check ───────────────────────────────────────────────────────
+        // Even if the student passed PIN verification, a block added afterwards
+        // (or a block that was set before the session was stored) will deny access.
+        $block = $this->getBlock($student->id, $sessionId, $termId);
+        if ($block) {
+            session()->forget('verified_report_access'); // clear cached access
+            $reason = $block->reason ?: 'You have been restricted from accessing your result.';
+            return redirect()->route('students.reportcards.index')
+                ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
+        }
+
+        // ── Issued-pin existence guard ────────────────────────────────────────
         $hasValidPin = IssuedPin::where('student_id', $student->id)
             ->where('session_id', $sessionId)
             ->where('term_id', $termId)
@@ -147,6 +187,7 @@ class StudentReportCardController extends Controller
         $student = Auth::user();
         $access  = session('verified_report_access');
 
+        // ── Session/expiry guard ──────────────────────────────────────────────
         if (
             !$access ||
             !isset($access['session_id'], $access['term_id']) ||
@@ -159,6 +200,16 @@ class StudentReportCardController extends Controller
         $sessionId = $access['session_id'];
         $termId    = $access['term_id'];
 
+        // ── Block check ───────────────────────────────────────────────────────
+        $block = $this->getBlock($student->id, $sessionId, $termId);
+        if ($block) {
+            session()->forget('verified_report_access');
+            $reason = $block->reason ?: 'You have been restricted from accessing your result.';
+            return redirect()->route('students.reportcards.index')
+                ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
+        }
+
+        // ── Issued-pin existence guard ────────────────────────────────────────
         $hasValidPin = IssuedPin::where('student_id', $student->id)
             ->where('session_id', $sessionId)
             ->where('term_id', $termId)
@@ -303,7 +354,6 @@ class StudentReportCardController extends Controller
             $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
             $overallGrade   = $this->calculateGrade($overallAverage);
 
-            // Position ranked by sum of final_obtained
             $allStudentTotals = \App\Models\PrimarySchoolResult::where('session_id', $session->id)
                 ->where('term_id', $term->id)
                 ->whereIn('student_id', $classStudents)
@@ -329,7 +379,7 @@ class StudentReportCardController extends Controller
                 'affectiveRatings'     => $affectiveRatings,
                 'psychomotorRatings'   => $psychomotorRatings,
                 'teacherRemark'        => $teacherRemark,
-                'headmasterRemark'     => $headmasterRemark, // ← primary
+                'headmasterRemark'     => $headmasterRemark,
                 'principalRemark'      => '',
                 'formattedPosition'    => $formattedPosition,
                 'totalStudentsInClass' => $totalStudentsInClass,
@@ -394,7 +444,7 @@ class StudentReportCardController extends Controller
             'affectiveRatings'     => $affectiveRatings,
             'psychomotorRatings'   => $psychomotorRatings,
             'teacherRemark'        => $teacherRemark,
-            'principalRemark'      => $principalRemark, // ← secondary
+            'principalRemark'      => $principalRemark,
             'headmasterRemark'     => '',
             'formattedPosition'    => $formattedPosition,
             'totalStudentsInClass' => $totalStudentsInClass,
@@ -429,7 +479,6 @@ class StudentReportCardController extends Controller
     {
         if ($type === 'affective') {
             return [
-                // original
                 'punctuality'          => null,
                 'politeness'           => null,
                 'neatness'             => null,
@@ -439,7 +488,6 @@ class StudentReportCardController extends Controller
                 'attentiveness'        => null,
                 'perseverance'         => null,
                 'attitude_to_work'     => null,
-                // newly added
                 'helping_other'        => null,
                 'emotional_stability'  => null,
                 'health'               => null,
@@ -447,15 +495,12 @@ class StudentReportCardController extends Controller
             ];
         }
 
-        // psychomotor
         return [
-            // original
             'handwriting'      => null,
             'verbal_fluency'   => null,
             'sports'           => null,
             'handling_tools'   => null,
             'drawing_painting' => null,
-            // newly added
             'games'            => null,
             'musical_skills'   => null,
         ];

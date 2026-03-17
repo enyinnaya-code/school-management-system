@@ -418,7 +418,7 @@
                                                            value="{{ $termSettings?->resumption_date?->format('Y-m-d') ?? '' }}">
                                                 </div>
                                             </div>
-                                            <div class="col-md-4">
+                                            {{-- <div class="col-md-4">
                                                 <div class="form-group">
                                                     <label class="font-weight-bold">
                                                         <i class="fas fa-money-bill-wave mr-1 text-warning"></i>
@@ -428,7 +428,7 @@
                                                            step="0.01" min="0" placeholder="e.g. 50000"
                                                            value="{{ $termSettings?->school_fees ?? '' }}">
                                                 </div>
-                                            </div>
+                                            </div> --}}
                                             <div class="col-md-4">
                                                 <div class="form-group">
                                                     <label class="font-weight-bold">
@@ -671,8 +671,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<i class="fas fa-info-circle mr-1"></i>' +
                 '<strong>' + total + ' student(s) selected</strong> — ' +
                 parts.join(' ') +
-                (cActive  > 0 ? ' &nbsp;<em class="text-muted small">→ click <strong>Block Selected</strong> to block active ones</em>' : '') +
-                (cBlocked > 0 ? ' &nbsp;<em class="text-muted small">→ click <strong>Unblock Selected</strong> to restore blocked ones</em>' : '');
+                (cActive  > 0 ? ' &nbsp;<em class="text-dark small">→ click <strong>Block Selected</strong> to block active ones</em>' : '') +
+                (cBlocked > 0 ? ' &nbsp;<em class="text-dark small">→ click <strong>Unblock Selected</strong> to restore blocked ones</em>' : '');
         }
     }
 

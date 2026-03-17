@@ -15,11 +15,25 @@ use App\Models\Section;
 use App\Models\Course;
 use App\Models\Result;
 use App\Models\StudentRemark;
+use App\Models\ResultAccessRestriction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\ResultSheetService;
 
 class ParentReportCardController extends Controller
 {
+    // ──────────────────────────────────────────────────────────────────────────
+    // Helper: check if a student is blocked for a given session + term.
+    // Returns the restriction model (truthy) or null (falsy).
+    // ──────────────────────────────────────────────────────────────────────────
+    private function getBlock(int $studentId, int $sessionId, int $termId): ?ResultAccessRestriction
+    {
+        return ResultAccessRestriction::where('student_id', $studentId)
+            ->where('session_id', $sessionId)
+            ->where('term_id', $termId)
+            ->first();
+    }
+
+
     public function selectWard()
     {
         $parent = Auth::user();
@@ -49,10 +63,23 @@ class ParentReportCardController extends Controller
         $parent  = Auth::user();
         $student = User::findOrFail($request->student_id);
 
+        // ── Parent-ward relationship check ────────────────────────────────────
         if (!$parent->students()->where('student_id', $student->id)->exists()) {
             return back()->with('error', 'You do not have permission to view this ward\'s report.');
         }
 
+        // ── Block check BEFORE pin validation ────────────────────────────────
+        // Prevents a blocked student's PIN from being consumed or bypassed.
+        $block = $this->getBlock($student->id, $request->session_id, $request->term_id);
+        if ($block) {
+            $reason = $block->reason ?: 'This ward has been restricted from accessing their result.';
+            return back()->with(
+                'error',
+                'Access denied: ' . $reason . ' Please contact the school administration.'
+            );
+        }
+
+        // ── PIN existence check ───────────────────────────────────────────────
         $issuedPin = IssuedPin::where('student_id', $student->id)
             ->where('session_id', $request->session_id)
             ->where('term_id', $request->term_id)
@@ -94,6 +121,7 @@ class ParentReportCardController extends Controller
     {
         $access = session('parent_verified_report');
 
+        // ── Session / expiry guard ────────────────────────────────────────────
         if (!$access || ($access['expires_at'] ?? null) < now()) {
             return redirect()->route('parents.wards.reportcards')
                 ->with('error', 'Session expired. Please verify PIN again.');
@@ -102,8 +130,20 @@ class ParentReportCardController extends Controller
         $student = User::findOrFail($access['student_id']);
         $parent  = Auth::user();
 
+        // ── Parent-ward relationship guard ────────────────────────────────────
         if (!$parent->students()->where('student_id', $student->id)->exists()) {
             abort(403);
+        }
+
+        // ── Block check ───────────────────────────────────────────────────────
+        // Catches cases where the block was applied AFTER the PIN was verified
+        // (e.g. admin blocked mid-session) or the session was carried over.
+        $block = $this->getBlock($student->id, $access['session_id'], $access['term_id']);
+        if ($block) {
+            session()->forget('parent_verified_report'); // clear cached access
+            $reason = $block->reason ?: 'This ward has been restricted from accessing their result.';
+            return redirect()->route('parents.wards.reportcards')
+                ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
         }
 
         $currentSession = Session::findOrFail($access['session_id']);
@@ -179,7 +219,6 @@ class ParentReportCardController extends Controller
             ->where('template_id', $sheetTemplate->id)
             ->first();
 
-        // Render inside the parent's own view wrapper
         return view('parents.wards.report_card_view', [
             'student'        => $student,
             'class'          => $class,
@@ -188,17 +227,14 @@ class ParentReportCardController extends Controller
             'currentTerm'    => $term,
             'classTeacher'   => $this->getClassTeacher($class->id),
 
-            // School-type flags
-            'isNursery'      => true,
-            'isPrimary'      => false,
+            'isNursery' => true,
+            'isPrimary' => false,
 
-            // Nursery-specific
-            'sheetTemplate'  => $sheetTemplate,
-            'subjects'       => $subjects,
-            'ratings'        => $ratings,
-            'footerData'     => $footerData,
+            'sheetTemplate' => $sheetTemplate,
+            'subjects'      => $subjects,
+            'ratings'       => $ratings,
+            'footerData'    => $footerData,
 
-            // Placeholders (not used for nursery but blade may reference them)
             'results'              => collect(),
             'overallTotal'         => 0,
             'overallAverage'       => 0,
@@ -290,11 +326,8 @@ class ParentReportCardController extends Controller
             'headmasterRemark'     => $remark?->headmaster_remark ?? '',
             'principalRemark'      => '',
 
-            // Type flags
-            'isPrimary'  => true,
-            'isNursery'  => false,
-
-            // Not used for primary
+            'isPrimary'     => true,
+            'isNursery'     => false,
             'sheetTemplate' => null,
             'subjects'      => collect(),
             'ratings'       => [],
@@ -380,11 +413,8 @@ class ParentReportCardController extends Controller
             'principalRemark'      => $remark?->principal_remark ?? '',
             'headmasterRemark'     => '',
 
-            // Type flags
-            'isPrimary' => false,
-            'isNursery' => false,
-
-            // Not used for secondary
+            'isPrimary'     => false,
+            'isNursery'     => false,
             'sheetTemplate' => null,
             'subjects'      => collect(),
             'ratings'       => [],
@@ -454,8 +484,8 @@ class ParentReportCardController extends Controller
 
     public function issuedPins()
     {
-        $parent    = Auth::user();
-        $wards     = $parent->students()->with(['class'])->get();
+        $parent     = Auth::user();
+        $wards      = $parent->students()->with(['class'])->get();
         $issuedPins = IssuedPin::whereIn('student_id', $wards->pluck('id'))
             ->with(['student', 'session', 'term', 'section', 'schoolClass', 'pin'])
             ->orderByDesc('created_at')
