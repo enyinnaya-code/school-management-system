@@ -29,7 +29,7 @@
         .student-basic-info { font-size: 10px; }
 
         .term-info-section { display: table; width: 100%; margin: 10px 0; border-bottom: 1px solid #000; padding-bottom: 8px; }
-        .term-info-left, .term-info-center, .term-info-right { display: table-cell; width: 33.33%; vertical-align: top; font-size: 10px; }
+        .term-info-left, .term-info-center, .term-info-right { display: table-cell; width: 25%; vertical-align: top; font-size: 10px; }
         .info-item { margin-bottom: 3px; }
         .info-label { font-weight: bold; }
 
@@ -100,7 +100,7 @@
             </div>
         </div>
 
-        {{-- ── Term & Class Info ────────────────────────────────────────────── --}}
+        {{-- ── Term & Class Info (4 columns — last column is attendance) ──────── --}}
         <div class="term-info-section">
             <div class="term-info-left">
                 <div class="info-item"><span class="info-label">Term:</span> {{ $currentTerm->name }}</div>
@@ -113,6 +113,16 @@
             <div class="term-info-right">
                 <div class="info-item"><span class="info-label">No. in Class:</span> {{ $totalStudentsInClass }}</div>
                 <div class="info-item"><span class="info-label">Position:</span> <strong>{{ $formattedPosition }}</strong></div>
+            </div>
+            <div class="term-info-right">
+                <div class="info-item">
+                    <span class="info-label">Times Present:</span>
+                    {{ $attendanceSummary->present ?? '-' }} / {{ $attendanceSummary->total_days ?? '-' }}
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Times Absent:</span>
+                    {{ $attendanceSummary->absent ?? '-' }}
+                </div>
             </div>
         </div>
 
@@ -268,7 +278,7 @@
             {{-- Right: Skills ──────────────────────────────────────────────── --}}
             <div class="right-section">
 
-                {{-- Affective Skills — all 13 traits --}}
+                {{-- Affective Skills --}}
                 <div class="skills-section">
                     <div class="section-title">AFFECTIVE SKILLS</div>
                     <table class="skills-table">
@@ -308,7 +318,6 @@
                             <td class="skill-name">Attitude to Work</td>
                             <td class="skill-rating">{{ $affectiveRatings['attitude_to_work'] ?? '-' }}</td>
                         </tr>
-                        {{-- Newly added --}}
                         <tr>
                             <td class="skill-name">Helping Others</td>
                             <td class="skill-rating">{{ $affectiveRatings['helping_other'] ?? '-' }}</td>
@@ -328,7 +337,7 @@
                     </table>
                 </div>
 
-                {{-- Psychomotor Skills — all 7 traits --}}
+                {{-- Psychomotor Skills --}}
                 <div class="skills-section">
                     <div class="section-title">PSYCHOMOTOR SKILLS</div>
                     <table class="skills-table">
@@ -352,7 +361,6 @@
                             <td class="skill-name">Drawing & Painting</td>
                             <td class="skill-rating">{{ $psychomotorRatings['drawing_painting'] ?? '-' }}</td>
                         </tr>
-                        {{-- Newly added --}}
                         <tr>
                             <td class="skill-name">Games</td>
                             <td class="skill-rating">{{ $psychomotorRatings['games'] ?? '-' }}</td>
@@ -370,12 +378,6 @@
                     5 - Excellent | 4 - Very Good<br>
                     3 - Good | 2 - Fair | 1 - Poor
                 </div>
-
-                {{-- Signature --}}
-                {{-- <div style="margin-top: 15px; text-align: center; border: 1px solid #000; padding: 10px;">
-                    <div style="font-weight: bold; font-size: 9px;">PRINCIPAL'S SIGNATURE & STAMP</div>
-                    <div style="height: 40px; margin-top: 10px;"></div>
-                </div> --}}
 
             </div>{{-- /right-section --}}
         </div>{{-- /main-content --}}
@@ -413,11 +415,6 @@
             This is a preview copy – not for official use or distribution
         </div>
         @endif
-
-        {{-- <div class="footer">
-            <strong>Next Term Begins:</strong> ____________________ |
-            <strong>Next Term Fees Payable By:</strong> ____________________
-        </div> --}}
 
     </div>
 </body>

@@ -971,6 +971,18 @@ class ResultsController extends Controller
         $classStudentIds      = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
         $totalStudentsInClass = $classStudentIds->count();
 
+        // ── Attendance summary for this student, this term ────────────────────────
+        $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $studentId)
+            ->where('class_id', $class->id)
+            ->where('session_id', $currentSession->id)
+            ->where('session_term', $currentTerm->id)
+            ->selectRaw("
+            COUNT(*) as total_days,
+            SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
+            SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
+        ")
+            ->first();
+
         // ══════════════════════════════════════════════════════════════════════════
         // PRIMARY SCHOOL PATH
         // ══════════════════════════════════════════════════════════════════════════
@@ -1017,7 +1029,6 @@ class ResultsController extends Controller
             $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
             $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-            // ↓ FIXED: uses 'student_report_card' (same view), isPrimary = true
             $pdf = Pdf::loadView('student_report_card', [
                 'student'              => $student,
                 'class'                => $class,
@@ -1032,13 +1043,14 @@ class ResultsController extends Controller
                 'affectiveRatings'     => $affectiveRatings,
                 'psychomotorRatings'   => $psychomotorRatings,
                 'teacherRemark'        => $teacherRemark,
-                'headmasterRemark'     => $headmasterRemark, // ← primary uses this
-                'principalRemark'      => '',                // ← not used for primary
+                'headmasterRemark'     => $headmasterRemark,
+                'principalRemark'      => '',
                 'formattedPosition'    => $formattedPosition,
                 'totalStudentsInClass' => $totalStudentsInClass,
                 'subjectCount'         => $subjectCount,
                 'showWatermark'        => $showWatermark,
-                'isPrimary'            => true,              // ← correct
+                'isPrimary'            => true,
+                'attendanceSummary'    => $attendanceSummary,  // ← attendance
             ])->setPaper('a4', 'portrait');
 
             $filename = strtoupper($student->name) . '_Primary_Report_Card_' . $currentTerm->name . '.pdf';
@@ -1097,7 +1109,6 @@ class ResultsController extends Controller
         $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-        // ↓ FIXED: isPrimary = false, principalRemark = actual value
         $pdf = Pdf::loadView('student_report_card', [
             'student'              => $student,
             'class'                => $class,
@@ -1112,13 +1123,14 @@ class ResultsController extends Controller
             'affectiveRatings'     => $affectiveRatings,
             'psychomotorRatings'   => $psychomotorRatings,
             'teacherRemark'        => $teacherRemark,
-            'principalRemark'      => $principalRemark,  // ← secondary uses this
-            'headmasterRemark'     => '',                // ← not used for secondary
+            'principalRemark'      => $principalRemark,
+            'headmasterRemark'     => '',
             'formattedPosition'    => $formattedPosition,
             'totalStudentsInClass' => $totalStudentsInClass,
             'subjectCount'         => $subjectCount,
             'showWatermark'        => $showWatermark,
-            'isPrimary'            => false,             // ← correct
+            'isPrimary'            => false,
+            'attendanceSummary'    => $attendanceSummary,  // ← attendance
         ])->setPaper('a4', 'portrait');
 
         $filename = strtoupper($student->name) . '_Report_Card_' . $currentTerm->name . '.pdf';
