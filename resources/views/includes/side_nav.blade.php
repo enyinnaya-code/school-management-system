@@ -304,12 +304,14 @@
       @endif
       {{-- END: MY TEACHING (types 1,2,3,7,8,9,10) --}}
 
-      
+
       @if(in_array(Auth::user()->user_type, [1, 2]))
+
       <li class="dropdown">
-        <a class="menu-toggle nav-link" href="{{ route('results.settings.index') }}">
-          <i class="fas fa-ban"></i> Result Access Settings
-        </a></li>
+        <a href="{{ route('results.settings.index') }}" class="nav-link">
+          <i class="fas fa-ban"></i><span>Result Access Settings</span>
+        </a>
+      </li>
       @endif
 
       <!-- ========== E-LEARNING (Types 1,2,3,4,7,8,9,10) ========== -->
