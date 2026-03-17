@@ -305,11 +305,13 @@
       {{-- END: MY TEACHING (types 1,2,3,7,8,9,10) --}}
 
 
-      @if(in_array(Auth::user()->user_type, [1, 2]))
+      @if(in_array(Auth::user()->user_type, [1, 2, 7,8]))
+
+    
 
       <li class="dropdown">
         <a href="{{ route('results.settings.index') }}" class="nav-link">
-          <i class="fas fa-ban"></i><span>Result Access Settings</span>
+          <i data-feather="fas fa-ban"></i><span>Result Access Settings</span>
         </a>
       </li>
       @endif
