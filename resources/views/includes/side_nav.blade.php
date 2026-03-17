@@ -307,7 +307,11 @@
 
       @if(in_array(Auth::user()->user_type, [1, 2, 7,8]))
 
-    
+      <li class="dropdown">
+        <a href="{{ route('dynamic.dashboard') }}" class="nav-link">
+          <i data-feather="monitor"></i><span>Dashboard</span>
+        </a>
+      </li>
 
       <li class="dropdown">
         <a href="{{ route('results.settings.index') }}" class="nav-link">
