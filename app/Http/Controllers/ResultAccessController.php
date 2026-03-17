@@ -92,7 +92,7 @@ class ResultAccessController extends Controller
                 ->where('term_id', $selectedTerm->id)->first()
             : null;
 
-        return view('results.settings.manage', compact(
+        return view('results.settings.index', compact(
             'sessions', 'selectedSession', 'terms', 'selectedTerm',
             'students', 'blockedIds', 'blockedReasons', 'termSettings',
             'sections', 'classes',
