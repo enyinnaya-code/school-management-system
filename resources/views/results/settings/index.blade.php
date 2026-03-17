@@ -369,7 +369,7 @@
     </div>
 </div>
 
-@include('includes.footer')
+@include('includes.edit_footer')
 
 {{-- Quick Block Modal --}}
 <div class="modal fade" id="quickBlockModal" tabindex="-1">
@@ -402,8 +402,7 @@
 </div>
 
 <script>
-(function () {
-    'use strict';
+document.addEventListener('DOMContentLoaded', function () {
 
     var filterForm    = document.getElementById('filterForm');
     var bulkForm      = document.getElementById('bulkForm');
@@ -412,27 +411,29 @@
     var perPagePicker = document.getElementById('perPagePicker');
     var masterChk     = document.getElementById('masterChk');
 
-    // Store all class options at page load
+    // Cache all class options at page load for section cascade
     var allClassData = classPicker
         ? Array.from(classPicker.options).filter(function (o) { return o.value; }).map(function (o) {
             return { value: o.value, text: o.textContent.trim(), sectionId: o.dataset.section || '' };
           })
         : [];
 
-    // Section → cascade class dropdown then submit
+    // Section → rebuild class dropdown → submit filter
     if (sectionPicker) {
         sectionPicker.addEventListener('change', function () {
-            var sid = this.value;
+            var sid       = this.value;
             var prevClass = classPicker.value;
 
             classPicker.innerHTML = '<option value="">All Classes</option>';
             allClassData.forEach(function (item) {
                 if (!sid || item.sectionId === sid) {
                     var opt = document.createElement('option');
-                    opt.value          = item.value;
-                    opt.textContent    = item.text;
-                    opt.dataset.section = item.sectionId;
-                    if (item.value === prevClass && (!sid || item.sectionId === sid)) opt.selected = true;
+                    opt.value            = item.value;
+                    opt.textContent      = item.text;
+                    opt.dataset.section  = item.sectionId;
+                    if (item.value === prevClass && (!sid || item.sectionId === sid)) {
+                        opt.selected = true;
+                    }
                     classPicker.appendChild(opt);
                 }
             });
@@ -441,12 +442,12 @@
         });
     }
 
-    // Per-page → auto-submit
+    // Per-page change → auto-submit
     if (perPagePicker) {
         perPagePicker.addEventListener('change', function () { filterForm.submit(); });
     }
 
-    // Master checkbox helpers
+    // Row checkboxes helper
     function getRowChks() { return document.querySelectorAll('.rowChk'); }
 
     function syncMaster() {
@@ -479,7 +480,7 @@
         syncMaster();
     });
 
-    // Block Selected
+    // Block Selected (bulk)
     var blockBtn = document.getElementById('blockSelectedBtn');
     if (blockBtn) {
         blockBtn.addEventListener('click', function () {
@@ -490,16 +491,17 @@
         });
     }
 
-    // Quick Block (single) — event delegation, no class dependency
+    // Quick Block single student — event delegation
     document.addEventListener('click', function (evt) {
         var btn = evt.target.closest('.quickBlockBtn');
         if (!btn) return;
-        document.getElementById('modalSid').value       = btn.dataset.sid;
+        document.getElementById('modalSid').value         = btn.dataset.sid;
         document.getElementById('modalSname').textContent = btn.dataset.sname;
-        document.getElementById('modalReason').value    = 'Owing school fees';
-        $('#quickBlockModal').modal('show');
+        document.getElementById('modalReason').value      = 'Owing school fees';
+        // Use Bootstrap's jQuery plugin already loaded in the footer
+        jQuery('#quickBlockModal').modal('show');
     });
 
-}());
+});
 </script>
 </body>
