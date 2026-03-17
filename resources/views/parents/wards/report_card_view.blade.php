@@ -366,7 +366,7 @@
                                                     @endif
                                                 </span>
                                             </div>
-                                            <div style="display:table-cell; width:33%; vertical-align:top; padding-right:8px; text-align:center;">
+                                            {{-- <div style="display:table-cell; width:33%; vertical-align:top; padding-right:8px; text-align:center;">
                                                 <strong>School Fees:</strong><br>
                                                 <span style="font-size:13px; font-weight:bold;">
                                                     @if($termSettings?->school_fees)
@@ -375,7 +375,7 @@
                                                         ____________________________
                                                     @endif
                                                 </span>
-                                            </div>
+                                            </div> --}}
                                             <div style="display:table-cell; width:33%; vertical-align:top; text-align:right;">
                                                 <strong>Fees Payable By:</strong><br>
                                                 <span style="font-size:13px; font-weight:bold;">
