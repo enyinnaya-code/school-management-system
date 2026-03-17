@@ -127,8 +127,15 @@ class ResultAccessController extends Controller
 
         if ($request->action === 'block') {
             ResultAccessRestriction::updateOrCreate(
-                ['student_id' => $request->student_id, 'session_id' => $request->session_id, 'term_id' => $request->term_id],
-                ['reason' => $request->reason ?: 'Owing school fees', 'blocked_by' => Auth::id()]
+                [
+                    'student_id' => $request->student_id,
+                    'session_id' => $request->session_id,
+                    'term_id'    => $request->term_id,
+                ],
+                [
+                    'reason'     => $request->reason ?: 'Owing school fees',
+                    'blocked_by' => Auth::id(),
+                ]
             );
             return back()->with('success', 'Student blocked from viewing results.');
         }
@@ -157,12 +164,38 @@ class ResultAccessController extends Controller
 
         foreach ($request->student_ids as $sid) {
             ResultAccessRestriction::updateOrCreate(
-                ['student_id' => $sid, 'session_id' => $request->session_id, 'term_id' => $request->term_id],
-                ['reason' => $reason, 'blocked_by' => Auth::id(), 'updated_at' => $now]
+                [
+                    'student_id' => $sid,
+                    'session_id' => $request->session_id,
+                    'term_id'    => $request->term_id,
+                ],
+                [
+                    'reason'     => $reason,
+                    'blocked_by' => Auth::id(),
+                    'updated_at' => $now,
+                ]
             );
         }
 
-        return back()->with('success', count($request->student_ids) . ' student(s) blocked.');
+        return back()->with('success', count($request->student_ids) . ' student(s) blocked successfully.');
+    }
+
+
+    public function bulkUnblock(Request $request)
+    {
+        $request->validate([
+            'student_ids'   => 'required|array|min:1',
+            'student_ids.*' => 'exists:users,id',
+            'session_id'    => 'required|exists:school_sessions,id',
+            'term_id'       => 'required|exists:terms,id',
+        ]);
+
+        $deleted = ResultAccessRestriction::whereIn('student_id', $request->student_ids)
+            ->where('session_id', $request->session_id)
+            ->where('term_id', $request->term_id)
+            ->delete();
+
+        return back()->with('success', count($request->student_ids) . ' student(s) unblocked successfully.');
     }
 
 
@@ -178,7 +211,10 @@ class ResultAccessController extends Controller
         ]);
 
         TermSetting::updateOrCreate(
-            ['session_id' => $request->session_id, 'term_id' => $request->term_id],
+            [
+                'session_id' => $request->session_id,
+                'term_id'    => $request->term_id,
+            ],
             [
                 'resumption_date' => $request->resumption_date ?: null,
                 'school_fees'     => $request->school_fees     ?: null,
@@ -189,6 +225,6 @@ class ResultAccessController extends Controller
             ]
         );
 
-        return back()->with('success', 'Term settings saved.');
+        return back()->with('success', 'Term settings saved successfully.');
     }
 }
