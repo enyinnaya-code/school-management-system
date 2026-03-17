@@ -401,7 +401,7 @@
     </div>
 </div>
 
-<script>
+{{-- <script>
 document.addEventListener('DOMContentLoaded', function () {
 
     var filterForm    = document.getElementById('filterForm');
@@ -503,5 +503,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 });
-</script>
+</script> --}}
 </body>
