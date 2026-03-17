@@ -34,7 +34,6 @@
                                 </div>
 
                                 @php
-                                    // Determine if this class is a Primary class
                                     $isPrimary = \Illuminate\Support\Facades\DB::table('primary_result_classes')
                                         ->where('school_class_id', $class->id)
                                         ->exists();
@@ -85,7 +84,7 @@
                                                             @endfor
                                                         </tr>
                                                         <tr>
-                                                            name="affective[leadership_skill]" <td><strong>Leadership Skill</strong></td>
+                                                            <td><strong>Leadership Skill</strong></td>
                                                             @for($i = 1; $i <= 5; $i++)
                                                                 <td><input type="radio" name="affective[leadership_skill]" value="{{ $i }}" {{ ($remark->affective_ratings['leadership_skill'] ?? null) == $i ? 'checked' : '' }}></td>
                                                             @endfor
@@ -208,12 +207,17 @@
                                     </div>
 
                                     {{-- ══════════════════════════════════════════════════════════ --}}
-                                    {{-- REMARKS SECTION — varies by class type (Primary / Secondary) --}}
+                                    {{-- REMARKS SECTION                                           --}}
                                     {{-- ══════════════════════════════════════════════════════════ --}}
 
-                                    <!-- Class Teacher's Remark (always shown) -->
+                                    <!-- Class Teacher's Remark — always shown, always editable -->
                                     <div class="form-group">
-                                        <label><strong>Class Teacher's Remark</strong></label>
+                                        <label>
+                                            <strong>
+                                                <i class="fas fa-chalkboard-teacher mr-1"></i>
+                                                Class Teacher's Remark
+                                            </strong>
+                                        </label>
                                         <textarea name="teacher_remark"
                                                   class="form-control"
                                                   rows="3"
@@ -221,73 +225,41 @@
                                     </div>
 
                                     @if($isPrimary)
-                                        {{-- PRIMARY: Headmaster's Remark (admin/superadmin only) --}}
-                                        @if(in_array(Auth::user()->user_type, [1, 2]))
+                                        {{-- PRIMARY: Head Master/Mistress Remark
+                                             Shown and fully editable for ALL users who can reach this page.
+                                             Route/controller already restricts who can access this view. --}}
                                         <div class="form-group">
                                             <label>
                                                 <strong>
                                                     <i class="fas fa-user-tie mr-1 text-primary"></i>
-                                                    Headmaster's Remark
+                                                    Head Master/Mistress Remark
                                                 </strong>
-                                                <span class="badge badge-primary ml-1" style="font-size:11px;">Primary</span>
                                             </label>
                                             <textarea name="headmaster_remark"
                                                       class="form-control"
                                                       rows="3"
-                                                      placeholder="Enter headmaster's remark…">{{ old('headmaster_remark', $remark->headmaster_remark) }}</textarea>
+                                                      placeholder="Enter head master/mistress remark…">{{ old('headmaster_remark', $remark->headmaster_remark) }}</textarea>
                                         </div>
-                                        @else
-                                            {{-- Non-admin: show read-only if already saved --}}
-                                            @if(!empty($remark->headmaster_remark))
-                                            <div class="form-group">
-                                                <label>
-                                                    <strong>
-                                                        <i class="fas fa-user-tie mr-1 text-primary"></i>
-                                                        Headmaster's Remark
-                                                    </strong>
-                                                </label>
-                                                <textarea class="form-control" rows="3" readonly
-                                                          style="background:#f8f9fa; cursor:not-allowed;">{{ $remark->headmaster_remark }}</textarea>
-                                                <small class="text-muted">Only the Headmaster/Admin can edit this field.</small>
-                                            </div>
-                                            @endif
-                                        @endif
 
                                     @else
-                                        {{-- SECONDARY: Principal's Remark (admin/superadmin only) --}}
-                                        @if(in_array(Auth::user()->user_type, [1, 2]))
+                                        {{-- SECONDARY: Principal's Remark
+                                             Shown and fully editable for ALL users who can reach this page.
+                                             Route/controller already restricts who can access this view. --}}
                                         <div class="form-group">
                                             <label>
                                                 <strong>
                                                     <i class="fas fa-user-tie mr-1 text-success"></i>
                                                     Principal's Remark
                                                 </strong>
-                                                <span class="badge badge-success ml-1" style="font-size:11px;">Secondary</span>
                                             </label>
                                             <textarea name="principal_remark"
                                                       class="form-control"
                                                       rows="3"
                                                       placeholder="Enter principal's remark…">{{ old('principal_remark', $remark->principal_remark) }}</textarea>
                                         </div>
-                                        @else
-                                            {{-- Non-admin: show read-only if already saved --}}
-                                            @if(!empty($remark->principal_remark))
-                                            <div class="form-group">
-                                                <label>
-                                                    <strong>
-                                                        <i class="fas fa-user-tie mr-1 text-success"></i>
-                                                        Principal's Remark
-                                                    </strong>
-                                                </label>
-                                                <textarea class="form-control" rows="3" readonly
-                                                          style="background:#f8f9fa; cursor:not-allowed;">{{ $remark->principal_remark }}</textarea>
-                                                <small class="text-muted">Only the Principal/Admin can edit this field.</small>
-                                            </div>
-                                            @endif
-                                        @endif
                                     @endif
 
-                                    {{-- Pass is_primary flag so the controller knows which remark to save --}}
+                                    {{-- Pass is_primary flag so the controller knows which remark column to save --}}
                                     <input type="hidden" name="is_primary" value="{{ $isPrimary ? '1' : '0' }}">
 
                                     <div class="text-center mt-4">

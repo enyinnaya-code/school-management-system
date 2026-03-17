@@ -1175,14 +1175,13 @@ class ResultsController extends Controller
             return redirect()->back()->with('error', 'No current academic session or term is set.');
         }
 
-        // Determine if this is a Primary class (same logic as the blade)
+        // Determine if this is a Primary class
         $isPrimary = DB::table('primary_result_classes')
             ->where('school_class_id', $class->id)
             ->exists();
 
         // Validation
         $request->validate([
-            // affective (original)
             'affective.punctuality'          => 'nullable|integer|between:1,5',
             'affective.politeness'           => 'nullable|integer|between:1,5',
             'affective.neatness'             => 'nullable|integer|between:1,5',
@@ -1192,25 +1191,20 @@ class ResultsController extends Controller
             'affective.attentiveness'        => 'nullable|integer|between:1,5',
             'affective.perseverance'         => 'nullable|integer|between:1,5',
             'affective.attitude_to_work'     => 'nullable|integer|between:1,5',
-            // affective (newly added)
             'affective.helping_other'        => 'nullable|integer|between:1,5',
             'affective.emotional_stability'  => 'nullable|integer|between:1,5',
             'affective.health'               => 'nullable|integer|between:1,5',
             'affective.speaking_handwriting' => 'nullable|integer|between:1,5',
-
-            // psychomotor (original)
             'psychomotor.handwriting'        => 'nullable|integer|between:1,5',
             'psychomotor.verbal_fluency'     => 'nullable|integer|between:1,5',
             'psychomotor.sports'             => 'nullable|integer|between:1,5',
             'psychomotor.handling_tools'     => 'nullable|integer|between:1,5',
             'psychomotor.drawing_painting'   => 'nullable|integer|between:1,5',
-            // psychomotor (newly added)
             'psychomotor.games'              => 'nullable|integer|between:1,5',
             'psychomotor.musical_skills'     => 'nullable|integer|between:1,5',
-
-            'teacher_remark'     => 'nullable|string|max:1000',
-            'principal_remark'   => 'nullable|string|max:1000',
-            'headmaster_remark'  => 'nullable|string|max:1000',
+            'teacher_remark'                 => 'nullable|string|max:1000',
+            'principal_remark'               => 'nullable|string|max:1000',
+            'headmaster_remark'              => 'nullable|string|max:1000',
         ]);
 
         // Extract and clean ratings (only allowed keys)
@@ -1224,33 +1218,28 @@ class ResultsController extends Controller
             $this->defaultRatings('psychomotor')
         );
 
-        // Fetch existing record so we can preserve admin-only fields for non-admins
-        $existingRemark = StudentRemark::where([
-            'student_id' => $student->id,
-            'class_id'   => $class->id,
-            'session_id' => $currentSession->id,
-            'term_id'    => $currentTerm->id,
-        ])->first();
-
-        $isAdmin = in_array(Auth::user()->user_type, [1, 2]);
-
-        // Determine what to save for each remark field based on class type & user role
+        // Determine which remark columns to save based on class type.
+        // No role restriction — whoever can access this page can save.
         if ($isPrimary) {
-            // Primary school:
-            //   - principal_remark is not used → preserve existing value
-            //   - headmaster_remark is admin-only editable
-            $principalRemark   = $existingRemark?->principal_remark ?? null;
-            $headmasterRemark  = $isAdmin
-                ? $request->input('headmaster_remark')
-                : ($existingRemark?->headmaster_remark ?? null);
+            // Primary: save headmaster_remark, leave principal_remark as-is
+            $principalRemark  = StudentRemark::where([
+                'student_id' => $student->id,
+                'class_id'   => $class->id,
+                'session_id' => $currentSession->id,
+                'term_id'    => $currentTerm->id,
+            ])->value('principal_remark'); // preserve existing
+
+            $headmasterRemark = $request->input('headmaster_remark');
         } else {
-            // Secondary school:
-            //   - headmaster_remark is not used → preserve existing value
-            //   - principal_remark is admin-only editable
-            $principalRemark   = $isAdmin
-                ? $request->input('principal_remark')
-                : ($existingRemark?->principal_remark ?? null);
-            $headmasterRemark  = $existingRemark?->headmaster_remark ?? null;
+            // Secondary: save principal_remark, leave headmaster_remark as-is
+            $principalRemark  = $request->input('principal_remark');
+
+            $headmasterRemark = StudentRemark::where([
+                'student_id' => $student->id,
+                'class_id'   => $class->id,
+                'session_id' => $currentSession->id,
+                'term_id'    => $currentTerm->id,
+            ])->value('headmaster_remark'); // preserve existing
         }
 
         StudentRemark::updateOrCreate(
