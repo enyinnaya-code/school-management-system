@@ -1175,7 +1175,12 @@ class ResultsController extends Controller
             return redirect()->back()->with('error', 'No current academic session or term is set.');
         }
 
-        // Validation — all ratings 1-5 or null
+        // Determine if this is a Primary class (same logic as the blade)
+        $isPrimary = DB::table('primary_result_classes')
+            ->where('school_class_id', $class->id)
+            ->exists();
+
+        // Validation
         $request->validate([
             // affective (original)
             'affective.punctuality'          => 'nullable|integer|between:1,5',
@@ -1203,8 +1208,9 @@ class ResultsController extends Controller
             'psychomotor.games'              => 'nullable|integer|between:1,5',
             'psychomotor.musical_skills'     => 'nullable|integer|between:1,5',
 
-            'teacher_remark'   => 'nullable|string|max:1000',
-            'principal_remark' => 'nullable|string|max:1000',
+            'teacher_remark'     => 'nullable|string|max:1000',
+            'principal_remark'   => 'nullable|string|max:1000',
+            'headmaster_remark'  => 'nullable|string|max:1000',
         ]);
 
         // Extract and clean ratings (only allowed keys)
@@ -1218,13 +1224,34 @@ class ResultsController extends Controller
             $this->defaultRatings('psychomotor')
         );
 
-        // Fetch existing record so we can preserve principal_remark for non-admins
+        // Fetch existing record so we can preserve admin-only fields for non-admins
         $existingRemark = StudentRemark::where([
             'student_id' => $student->id,
             'class_id'   => $class->id,
             'session_id' => $currentSession->id,
             'term_id'    => $currentTerm->id,
         ])->first();
+
+        $isAdmin = in_array(Auth::user()->user_type, [1, 2]);
+
+        // Determine what to save for each remark field based on class type & user role
+        if ($isPrimary) {
+            // Primary school:
+            //   - principal_remark is not used → preserve existing value
+            //   - headmaster_remark is admin-only editable
+            $principalRemark   = $existingRemark?->principal_remark ?? null;
+            $headmasterRemark  = $isAdmin
+                ? $request->input('headmaster_remark')
+                : ($existingRemark?->headmaster_remark ?? null);
+        } else {
+            // Secondary school:
+            //   - headmaster_remark is not used → preserve existing value
+            //   - principal_remark is admin-only editable
+            $principalRemark   = $isAdmin
+                ? $request->input('principal_remark')
+                : ($existingRemark?->principal_remark ?? null);
+            $headmasterRemark  = $existingRemark?->headmaster_remark ?? null;
+        }
 
         StudentRemark::updateOrCreate(
             [
@@ -1236,10 +1263,9 @@ class ResultsController extends Controller
             [
                 'affective_ratings'   => $affectiveRatings,
                 'psychomotor_ratings' => $psychomotorRatings,
-                'teacher_remark'      => $request->teacher_remark,
-                'principal_remark'    => in_array(Auth::user()->user_type, [1, 2])
-                    ? $request->principal_remark
-                    : ($existingRemark?->principal_remark ?? null),
+                'teacher_remark'      => $request->input('teacher_remark'),
+                'principal_remark'    => $principalRemark,
+                'headmaster_remark'   => $headmasterRemark,
                 'updated_by'          => Auth::id(),
             ]
         );

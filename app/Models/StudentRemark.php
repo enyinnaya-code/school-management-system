@@ -14,6 +14,7 @@ class StudentRemark extends Model
         'affective_ratings',
         'psychomotor_ratings',
         'teacher_remark',
+         'headmaster_remark',
         'principal_remark',
         'updated_by',
     ];
