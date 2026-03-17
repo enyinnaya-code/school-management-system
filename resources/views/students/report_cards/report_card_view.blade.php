@@ -214,23 +214,24 @@
 
                                             {{-- ── Remarks ──────────────────────────────────────── --}}
                                             <div style="margin-top: 15px; border-top: 1px solid #000; padding-top: 10px;">
-                                                <div style="margin-bottom: 10px;">
+                                                <div style="margin-bottom: 10px; font-size: 12px;">
                                                     <strong>CLASS TEACHER'S REMARK:</strong><br>
                                                     {{ $teacherRemark ?: '_________________________________________________' }}
                                                 </div>
 
                                                 @if(isset($isPrimary) && $isPrimary)
-                                                <div>
+                                                <div style="font-size: 12px;">
                                                     <strong>HEAD MASTER/MISTRESS REMARK:</strong><br>
                                                     {{ $headmasterRemark ?: '_________________________________________________' }}
                                                 </div>
                                                 @else
-                                                <div>
+                                                <div style="font-size: 12px;">
                                                     <strong>PRINCIPAL'S REMARK:</strong><br>
                                                     {{ $principalRemark ?: '_________________________________________________' }}
                                                 </div>
                                                 @endif
                                             </div>
+
                                         </div>{{-- /left --}}
 
                                         {{-- Right: Skills ───────────────────────────────────────── --}}
@@ -341,24 +342,52 @@
                                                 3 - Good | 2 - Fair | 1 - Poor
                                             </div>
 
-                                            {{-- Signature block --}}
-                                            <div style="margin-top: 15px; text-align: center; border: 1px solid #000; padding: 10px;">
-                                                <div style="font-weight: bold; font-size: 13px;">
-                                                    @if(isset($isPrimary) && $isPrimary)
-                                                        HEAD MASTER/MISTRESS SIGNATURE & STAMP
-                                                    @else
-                                                        PRINCIPAL'S SIGNATURE & STAMP
-                                                    @endif
-                                                </div>
-                                                <div style="height: 40px; margin-top: 10px; border-bottom: 1px solid #000;"></div>
-                                            </div>
-
                                         </div>{{-- /right --}}
                                     </div>{{-- /main-content --}}
 
-                                    <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #000; font-size: 13px; text-align: center;">
-                                        <strong>Next Term Begins:</strong> ____________________ |
-                                        <strong>Next Term Fees Payable By:</strong> ____________________
+                                    {{-- ── Signature block (full width, centred) ────────────── --}}
+                                    <div style="margin-top: 15px; text-align: center; border: 1px solid #000; padding: 10px; width: 50%; margin-left: auto; margin-right: auto;">
+                                        <div style="font-weight: bold; font-size: 13px;">
+                                            @if(isset($isPrimary) && $isPrimary)
+                                                HEAD MASTER/MISTRESS SIGNATURE & STAMP
+                                            @else
+                                                PRINCIPAL'S SIGNATURE & STAMP
+                                            @endif
+                                        </div>
+                                        <div style="height: 40px; margin-top: 10px; border-bottom: 1px solid #000;"></div>
+                                    </div>
+
+                                    {{-- ── Footer: Resumption Date & Fees Payable By ────────── --}}
+                                    {{-- Data sourced from TermSetting (set in Result Access settings) --}}
+                                    <div style="margin-top: 15px; padding-top: 10px; border-top: 2px solid #000;">
+                                        <div style="display: table; width: 100%; font-size: 13px;">
+                                            <div style="display: table-cell; width: 50%; vertical-align: top;">
+                                                <strong>Next Term Resumption Date:</strong><br>
+                                                <span style="font-size: 13px; font-weight: bold;">
+                                                    @if($termSettings?->resumption_date)
+                                                        {{ \Carbon\Carbon::parse($termSettings->resumption_date)->format('l, d F Y') }}
+                                                    @else
+                                                        ____________________________
+                                                    @endif
+                                                </span>
+                                            </div>
+                                            <div style="display: table-cell; width: 50%; vertical-align: top; text-align: right;">
+                                                <strong>Next Term Fees Payable By:</strong><br>
+                                                <span style="font-size: 13px; font-weight: bold;">
+                                                    @if($termSettings?->fees_payable_by)
+                                                        {{ \Carbon\Carbon::parse($termSettings->fees_payable_by)->format('l, d F Y') }}
+                                                    @else
+                                                        ____________________________
+                                                    @endif
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        @if($termSettings?->notes)
+                                        <div style="margin-top: 8px; font-size: 12px; font-style: italic; border-top: 1px dashed #999; padding-top: 6px;">
+                                            <strong>Note:</strong> {{ $termSettings->notes }}
+                                        </div>
+                                        @endif
                                     </div>
 
                                 </div>{{-- /container --}}

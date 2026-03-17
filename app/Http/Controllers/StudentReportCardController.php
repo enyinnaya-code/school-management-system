@@ -14,6 +14,7 @@ use App\Models\Course;
 use App\Models\Result;
 use App\Models\StudentRemark;
 use App\Models\ResultAccessRestriction;
+use App\Models\TermSetting;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Services\ResultSheetService;
@@ -22,7 +23,6 @@ class StudentReportCardController extends Controller
 {
     // ──────────────────────────────────────────────────────────────────────────
     // Helper: check if the current student is blocked for a session+term.
-    // Returns the restriction model (truthy) or null (falsy).
     // ──────────────────────────────────────────────────────────────────────────
     private function getBlock(int $studentId, int $sessionId, int $termId): ?ResultAccessRestriction
     {
@@ -52,7 +52,6 @@ class StudentReportCardController extends Controller
         $student = Auth::user();
 
         // ── Block check BEFORE pin validation ────────────────────────────────
-        // We check here so the student cannot use a valid PIN to bypass the block.
         $block = $this->getBlock($student->id, $request->session_id, $request->term_id);
         if ($block) {
             $reason = $block->reason ?: 'You have been restricted from accessing your result.';
@@ -139,11 +138,9 @@ class StudentReportCardController extends Controller
         $termId    = $access['term_id'];
 
         // ── Block check ───────────────────────────────────────────────────────
-        // Even if the student passed PIN verification, a block added afterwards
-        // (or a block that was set before the session was stored) will deny access.
         $block = $this->getBlock($student->id, $sessionId, $termId);
         if ($block) {
-            session()->forget('verified_report_access'); // clear cached access
+            session()->forget('verified_report_access');
             $reason = $block->reason ?: 'You have been restricted from accessing your result.';
             return redirect()->route('students.reportcards.index')
                 ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
@@ -165,6 +162,11 @@ class StudentReportCardController extends Controller
         $term    = Term::findOrFail($termId);
         $class   = SchoolClass::findOrFail($student->class_id);
 
+        // ── Term settings: resumption date & fees payable by ──────────────────
+        $termSettings = TermSetting::where('session_id', $session->id)
+            ->where('term_id', $term->id)
+            ->first();
+
         $sheetTemplate = DB::table('result_sheet_templates')
             ->where('term_id', $term->id)
             ->where('is_active', 1)
@@ -178,7 +180,7 @@ class StudentReportCardController extends Controller
             return $this->showResultSheet($student, $class, $session, $term, $sheetTemplate);
         }
 
-        return $this->showStandardReport($student, $class, $session, $term);
+        return $this->showStandardReport($student, $class, $session, $term, $termSettings);
     }
 
 
@@ -293,7 +295,7 @@ class StudentReportCardController extends Controller
     /**
      * Standard report — handles BOTH primary and secondary automatically.
      */
-    private function showStandardReport($student, $class, $session, $term)
+    private function showStandardReport($student, $class, $session, $term, $termSettings)
     {
         // ── Detect primary class ──────────────────────────────────────────────
         $isPrimary = DB::table('primary_result_classes')
@@ -324,16 +326,16 @@ class StudentReportCardController extends Controller
         $principalRemark  = $remark?->principal_remark  ?? '';
         $headmasterRemark = $remark?->headmaster_remark ?? '';
 
-        // ── Attendance summary for this student, this term ────────────────────
+        // ── Attendance summary ────────────────────────────────────────────────
         $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $student->id)
             ->where('class_id', $class->id)
             ->where('session_id', $session->id)
             ->where('session_term', $term->id)
             ->selectRaw("
-            COUNT(*) as total_days,
-            SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
-            SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
-        ")
+                COUNT(*) as total_days,
+                SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
+                SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
+            ")
             ->first();
 
         // ══════════════════════════════════════════════════════════════════════
@@ -397,7 +399,8 @@ class StudentReportCardController extends Controller
                 'totalStudentsInClass' => $totalStudentsInClass,
                 'subjectCount'         => $subjectCount,
                 'isPrimary'            => true,
-                'attendanceSummary'    => $attendanceSummary,  // ← attendance
+                'attendanceSummary'    => $attendanceSummary,
+                'termSettings'         => $termSettings,  // ← term settings
             ]);
         }
 
@@ -463,7 +466,8 @@ class StudentReportCardController extends Controller
             'totalStudentsInClass' => $totalStudentsInClass,
             'subjectCount'         => $subjectCount,
             'isPrimary'            => false,
-            'attendanceSummary'    => $attendanceSummary,  // ← attendance
+            'attendanceSummary'    => $attendanceSummary,
+            'termSettings'         => $termSettings,  // ← term settings
         ]);
     }
 
