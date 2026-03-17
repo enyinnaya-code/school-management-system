@@ -59,19 +59,29 @@
                                         </div>
                                     </div>
 
-                                    {{-- ── Term Info ────────────────────────── --}}
+                                    {{-- ── Term Info (4 columns — last column is attendance) ── --}}
                                     <div style="display:table; width:100%; margin:10px 0; border-bottom:1px solid #000; padding-bottom:8px;">
-                                        <div style="display:table-cell; width:33.33%; font-size:12px;">
+                                        <div style="display:table-cell; width:25%; font-size:12px; vertical-align:top;">
                                             <div><strong>Term:</strong> {{ $currentTerm->name }}</div>
                                             <div><strong>Session:</strong> {{ $currentSession->name }}</div>
                                         </div>
-                                        <div style="display:table-cell; width:33.33%; font-size:12px; text-align:center;">
+                                        <div style="display:table-cell; width:25%; font-size:12px; vertical-align:top;">
                                             <div><strong>Class:</strong> {{ $class->name }}</div>
                                             <div><strong>Class Teacher:</strong> {{ $classTeacher?->name ?? 'Not Assigned' }}</div>
                                         </div>
-                                        <div style="display:table-cell; width:33.33%; font-size:12px; text-align:right;">
+                                        <div style="display:table-cell; width:25%; font-size:12px; vertical-align:top;">
                                             <div><strong>No. in Class:</strong> {{ $totalStudentsInClass }}</div>
                                             <div><strong>Position:</strong> <strong>{{ $formattedPosition }}</strong></div>
+                                        </div>
+                                        <div style="display:table-cell; width:25%; font-size:12px; vertical-align:top; text-align:right;">
+                                            <div>
+                                                <strong>Times Present:</strong>
+                                                {{ $attendanceSummary->present ?? '-' }} / {{ $attendanceSummary->total_days ?? '-' }}
+                                            </div>
+                                            <div>
+                                                <strong>Times Absent:</strong>
+                                                {{ $attendanceSummary->absent ?? '-' }}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -276,12 +286,25 @@
                                                 </div>
                                                 @endif
                                             </div>
+
+                                            {{-- ── Signature ─────────────────────────────────── --}}
+                                            <div style="margin-top:15px; text-align:center; border:1px solid #000; padding:10px;">
+                                                <div style="font-weight:bold; font-size:13px;">
+                                                    @if(isset($isPrimary) && $isPrimary)
+                                                        HEAD MASTER/MISTRESS SIGNATURE & STAMP
+                                                    @else
+                                                        PRINCIPAL'S SIGNATURE & STAMP
+                                                    @endif
+                                                </div>
+                                                <div style="height:40px; margin-top:10px; border-bottom:1px solid #000;"></div>
+                                            </div>
+
                                         </div>{{-- /left --}}
 
                                         {{-- Right: Skills ────────────────────────────────── --}}
                                         <div style="display:table-cell; width:35%; vertical-align:top; border-left:1px solid #000; padding-left:10px;">
 
-                                            {{-- Affective Skills — all 13 traits --}}
+                                            {{-- Affective Skills --}}
                                             <div style="margin-bottom:15px;">
                                                 <div style="font-weight:bold; background:#f0f0f0; padding:4px; border:1px solid #000; text-align:center;">
                                                     AFFECTIVE SKILLS
@@ -303,7 +326,7 @@
                                                 </table>
                                             </div>
 
-                                            {{-- Psychomotor Skills — all 7 traits --}}
+                                            {{-- Psychomotor Skills --}}
                                             <div>
                                                 <div style="font-weight:bold; background:#f0f0f0; padding:4px; border:1px solid #000; text-align:center;">
                                                     PSYCHOMOTOR SKILLS
@@ -326,25 +349,31 @@
                                                 3 - Good | 2 - Fair | 1 - Poor
                                             </div>
 
-                                            {{-- Signature --}}
-                                            <div style="margin-top:15px; text-align:center; border:1px solid #000; padding:10px;">
-                                                <div style="font-weight:bold; font-size:13px;">
-                                                    @if(isset($isPrimary) && $isPrimary)
-                                                        HEAD MASTER/MISTRESS SIGNATURE & STAMP
-                                                    @else
-                                                        PRINCIPAL'S SIGNATURE & STAMP
-                                                    @endif
-                                                </div>
-                                                <div style="height:40px; margin-top:10px; border-bottom:1px solid #000;"></div>
-                                            </div>
-
                                         </div>{{-- /right --}}
                                     </div>{{-- /main-content --}}
 
-                                    <div style="margin-top:20px; padding-top:10px; border-top:1px solid #000; font-size:13px; text-align:center;">
-                                        <strong>Next Term Begins:</strong> ____________________ |
-                                        <strong>Next Term Fees Payable By:</strong> ____________________
+                                    {{-- ── Footer: Resumption Date & Fees ──────────────────── --}}
+                                    <div style="margin-top:20px; padding-top:10px; border-top:2px solid #000;">
+                                        <div style="display:table; width:100%; font-size:13px;">
+                                            <div style="display:table-cell; width:50%; vertical-align:top; padding-right:10px;">
+                                                <strong>Next Term Resumption Date:</strong><br>
+                                                <span style="font-size:14px;">
+                                                    {{ $currentTerm->resumption_date
+                                                        ? \Carbon\Carbon::parse($currentTerm->resumption_date)->format('l, d F Y')
+                                                        : '____________________________' }}
+                                                </span>
+                                            </div>
+                                            <div style="display:table-cell; width:50%; vertical-align:top; text-align:right;">
+                                                <strong>Next Term School Fees Payable By:</strong><br>
+                                                <span style="font-size:14px;">
+                                                    {{ $currentTerm->fees_due_date
+                                                        ? \Carbon\Carbon::parse($currentTerm->fees_due_date)->format('l, d F Y')
+                                                        : '____________________________' }}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
+
                                     @endif {{-- end nursery/primary/secondary split --}}
 
                                 </div>{{-- /container --}}

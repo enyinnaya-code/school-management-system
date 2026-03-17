@@ -23,7 +23,6 @@ class ParentReportCardController extends Controller
 {
     // ──────────────────────────────────────────────────────────────────────────
     // Helper: check if a student is blocked for a given session + term.
-    // Returns the restriction model (truthy) or null (falsy).
     // ──────────────────────────────────────────────────────────────────────────
     private function getBlock(int $studentId, int $sessionId, int $termId): ?ResultAccessRestriction
     {
@@ -69,7 +68,6 @@ class ParentReportCardController extends Controller
         }
 
         // ── Block check BEFORE pin validation ────────────────────────────────
-        // Prevents a blocked student's PIN from being consumed or bypassed.
         $block = $this->getBlock($student->id, $request->session_id, $request->term_id);
         if ($block) {
             $reason = $block->reason ?: 'This ward has been restricted from accessing their result.';
@@ -136,11 +134,9 @@ class ParentReportCardController extends Controller
         }
 
         // ── Block check ───────────────────────────────────────────────────────
-        // Catches cases where the block was applied AFTER the PIN was verified
-        // (e.g. admin blocked mid-session) or the session was carried over.
         $block = $this->getBlock($student->id, $access['session_id'], $access['term_id']);
         if ($block) {
-            session()->forget('parent_verified_report'); // clear cached access
+            session()->forget('parent_verified_report');
             $reason = $block->reason ?: 'This ward has been restricted from accessing their result.';
             return redirect()->route('parents.wards.reportcards')
                 ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
@@ -219,6 +215,18 @@ class ParentReportCardController extends Controller
             ->where('template_id', $sheetTemplate->id)
             ->first();
 
+        // ── Attendance (nursery uses same query) ──────────────────────────────
+        $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $student->id)
+            ->where('class_id', $class->id)
+            ->where('session_id', $session->id)
+            ->where('session_term', $term->id)
+            ->selectRaw("
+                COUNT(*) as total_days,
+                SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
+                SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
+            ")
+            ->first();
+
         return view('parents.wards.report_card_view', [
             'student'        => $student,
             'class'          => $class,
@@ -247,6 +255,7 @@ class ParentReportCardController extends Controller
             'teacherRemark'        => '',
             'principalRemark'      => '',
             'headmasterRemark'     => '',
+            'attendanceSummary'    => $attendanceSummary,   // ← attendance
         ]);
     }
 
@@ -306,6 +315,18 @@ class ParentReportCardController extends Controller
             ->where('term_id', $term->id)
             ->first();
 
+        // ── Attendance ────────────────────────────────────────────────────────
+        $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $student->id)
+            ->where('class_id', $class->id)
+            ->where('session_id', $session->id)
+            ->where('session_term', $term->id)
+            ->selectRaw("
+                COUNT(*) as total_days,
+                SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
+                SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
+            ")
+            ->first();
+
         return view('parents.wards.report_card_view', [
             'student'              => $student,
             'class'                => $class,
@@ -325,6 +346,7 @@ class ParentReportCardController extends Controller
             'teacherRemark'        => $remark?->teacher_remark    ?? '',
             'headmasterRemark'     => $remark?->headmaster_remark ?? '',
             'principalRemark'      => '',
+            'attendanceSummary'    => $attendanceSummary,   // ← attendance
 
             'isPrimary'     => true,
             'isNursery'     => false,
@@ -393,6 +415,18 @@ class ParentReportCardController extends Controller
             ->where('term_id', $term->id)
             ->first();
 
+        // ── Attendance ────────────────────────────────────────────────────────
+        $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $student->id)
+            ->where('class_id', $class->id)
+            ->where('session_id', $session->id)
+            ->where('session_term', $term->id)
+            ->selectRaw("
+                COUNT(*) as total_days,
+                SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
+                SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
+            ")
+            ->first();
+
         return view('parents.wards.report_card_view', [
             'student'              => $student,
             'class'                => $class,
@@ -412,6 +446,7 @@ class ParentReportCardController extends Controller
             'teacherRemark'        => $remark?->teacher_remark   ?? '',
             'principalRemark'      => $remark?->principal_remark ?? '',
             'headmasterRemark'     => '',
+            'attendanceSummary'    => $attendanceSummary,   // ← attendance
 
             'isPrimary'     => false,
             'isNursery'     => false,
