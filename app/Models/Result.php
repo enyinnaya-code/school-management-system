@@ -22,6 +22,12 @@ class Result extends Model
         'grade',
         'comment',
         'uploaded_by',
+        'first_half_obtainable',
+        'first_half_obtained',
+        'second_half_obtainable',
+        'second_half_obtained',
+        'final_obtainable',
+        'final_obtained',
     ];
 
     // Relationships (optional but useful)
@@ -41,7 +47,7 @@ class Result extends Model
     }
 
 
-      public function session()
+    public function session()
     {
         return $this->belongsTo(Session::class, 'session_id');
     }
@@ -50,5 +56,4 @@ class Result extends Model
     {
         return $this->belongsTo(Term::class, 'term_id');
     }
-    
 }
