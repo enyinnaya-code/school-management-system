@@ -879,7 +879,6 @@ class ResultsController extends Controller
             ->where('term_id', $currentTerm->id)
             ->first();
 
-        // Default ratings structure
         $defaultAffective = [
             'punctuality'          => null,
             'politeness'           => null,
@@ -909,15 +908,15 @@ class ResultsController extends Controller
         $affectiveRatings   = array_merge($defaultAffective,   $remark?->affective_ratings   ?? []);
         $psychomotorRatings = array_merge($defaultPsychomotor, $remark?->psychomotor_ratings ?? []);
 
-        $teacherRemark     = $remark?->teacher_remark     ?? '';
-        $principalRemark   = $remark?->principal_remark   ?? '';
-        $headmasterRemark  = $remark?->headmaster_remark  ?? '';
+        $teacherRemark    = $remark?->teacher_remark    ?? '';
+        $principalRemark  = $remark?->principal_remark  ?? '';
+        $headmasterRemark = $remark?->headmaster_remark ?? '';
 
         // ── Watermark flag ────────────────────────────────────────────────────────
         $isTeacherOrAdmin = in_array(Auth::user()->user_type, [1, 2, 3]);
         $showWatermark    = $isTeacherOrAdmin;
 
-        // ── Total students in class (same for both) ───────────────────────────────
+        // ── Total students in class ───────────────────────────────────────────────
         $classStudentIds      = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
         $totalStudentsInClass = $classStudentIds->count();
 
@@ -926,19 +925,16 @@ class ResultsController extends Controller
         // ══════════════════════════════════════════════════════════════════════════
         if ($isPrimary) {
 
-            // All subjects for this class
             $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
                 $q->where('school_classes.id', $class->id);
             })->orderBy('course_name')->get();
 
-            // This student's primary results
             $studentPrimaryResults = \App\Models\PrimarySchoolResult::where('student_id', $studentId)
                 ->where('session_id', $currentSession->id)
                 ->where('term_id', $currentTerm->id)
                 ->get()
                 ->keyBy('course_id');
 
-            // Build results array for the view
             $results = $allSubjects->map(function ($subject) use ($studentPrimaryResults) {
                 $r = $studentPrimaryResults->get($subject->id);
                 return [
@@ -953,13 +949,11 @@ class ResultsController extends Controller
                 ];
             });
 
-            // Overall totals for primary (sum of final_obtained across subjects)
             $overallTotal   = $results->sum('final_obtained');
             $subjectCount   = $allSubjects->count();
             $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
             $overallGrade   = $this->calculateGrade($overallAverage);
 
-            // Position: rank students by sum of final_obtained
             $allStudentTotals = \App\Models\PrimarySchoolResult::where('session_id', $currentSession->id)
                 ->where('term_id', $currentTerm->id)
                 ->whereIn('student_id', $classStudentIds)
@@ -968,12 +962,12 @@ class ResultsController extends Controller
                 ->orderByDesc('total_score')
                 ->get();
 
-            $studentPosition = $allStudentTotals->search(fn($item) => $item->student_id == $studentId);
-            $studentPosition = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
+            $studentPosition   = $allStudentTotals->search(fn($item) => $item->student_id == $studentId);
+            $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
             $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-            // Generate PDF — use primary-specific view
-            $pdf = Pdf::loadView('primary_student_report_card', [
+            // ↓ FIXED: uses 'student_report_card' (same view), isPrimary = true
+            $pdf = Pdf::loadView('student_report_card', [
                 'student'              => $student,
                 'class'                => $class,
                 'section'              => $section,
@@ -987,13 +981,13 @@ class ResultsController extends Controller
                 'affectiveRatings'     => $affectiveRatings,
                 'psychomotorRatings'   => $psychomotorRatings,
                 'teacherRemark'        => $teacherRemark,
-                'headmasterRemark'     => $headmasterRemark,   // ← Primary uses this
-                'principalRemark'      => '',                  // ← Not used for primary
+                'headmasterRemark'     => $headmasterRemark, // ← primary uses this
+                'principalRemark'      => '',                // ← not used for primary
                 'formattedPosition'    => $formattedPosition,
                 'totalStudentsInClass' => $totalStudentsInClass,
                 'subjectCount'         => $subjectCount,
                 'showWatermark'        => $showWatermark,
-                'isPrimary'            => true,
+                'isPrimary'            => true,              // ← correct
             ])->setPaper('a4', 'portrait');
 
             $filename = strtoupper($student->name) . '_Primary_Report_Card_' . $currentTerm->name . '.pdf';
@@ -1009,19 +1003,16 @@ class ResultsController extends Controller
         // SECONDARY SCHOOL PATH
         // ══════════════════════════════════════════════════════════════════════════
 
-        // All subjects for the class
         $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
 
-        // This student's secondary results
         $studentResults = Result::where('student_id', $studentId)
             ->where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
             ->get()
             ->keyBy('course_id');
 
-        // Build results array
         $results = $allSubjects->map(function ($subject) use ($studentResults) {
             $result = $studentResults->get($subject->id);
             return [
@@ -1035,13 +1026,11 @@ class ResultsController extends Controller
             ];
         });
 
-        // Calculations
         $overallTotal   = $results->sum('total');
         $subjectCount   = $allSubjects->count();
         $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
         $overallGrade   = $this->calculateGrade($overallAverage);
 
-        // Position: rank by sum of total across subjects
         $studentsScores = Result::where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
             ->whereIn('student_id', $classStudentIds)
@@ -1055,7 +1044,7 @@ class ResultsController extends Controller
         $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-        // Generate PDF — use secondary view
+        // ↓ FIXED: isPrimary = false, principalRemark = actual value
         $pdf = Pdf::loadView('student_report_card', [
             'student'              => $student,
             'class'                => $class,
@@ -1070,13 +1059,13 @@ class ResultsController extends Controller
             'affectiveRatings'     => $affectiveRatings,
             'psychomotorRatings'   => $psychomotorRatings,
             'teacherRemark'        => $teacherRemark,
-            'principalRemark'      => $principalRemark,    // ← Secondary uses this
-            'headmasterRemark'     => '',                  // ← Not used for secondary
+            'principalRemark'      => $principalRemark,  // ← secondary uses this
+            'headmasterRemark'     => '',                // ← not used for secondary
             'formattedPosition'    => $formattedPosition,
             'totalStudentsInClass' => $totalStudentsInClass,
             'subjectCount'         => $subjectCount,
             'showWatermark'        => $showWatermark,
-            'isPrimary'            => false,
+            'isPrimary'            => false,             // ← correct
         ])->setPaper('a4', 'portrait');
 
         $filename = strtoupper($student->name) . '_Report_Card_' . $currentTerm->name . '.pdf';
