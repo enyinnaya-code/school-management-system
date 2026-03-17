@@ -139,34 +139,41 @@
 
                                             @else
                                             {{-- ════════════════════════════════════════════════════
-                                                 SECONDARY: CA / Exam / Total / Grade table
+                                                 SECONDARY: 1st Half / 2nd Half / Total / Grade
                                                  ════════════════════════════════════════════════════ --}}
                                             <table style="width: 100%; border-collapse: collapse;">
                                                 <thead>
                                                     <tr style="background-color: #f0f0f0;">
-                                                        <th style="border: 1px solid #000; padding: 5px; width: 25%; text-align:left;">SUBJECTS</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">1st CA (10)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">2nd CA (10)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">Mid Term (20)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">Exam (60)</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">TOTAL</th>
-                                                        <th style="border: 1px solid #000; padding: 5px;">GRADE</th>
+                                                        <th rowspan="2" style="border: 1px solid #000; padding: 5px; text-align:left; width:22%; vertical-align:middle;">SUBJECTS</th>
+                                                        <th colspan="2" style="border: 1px solid #000; padding: 4px; font-size:10px; text-align:center;">1st Half (Max 30)</th>
+                                                        <th colspan="2" style="border: 1px solid #000; padding: 4px; font-size:10px; text-align:center;">2nd Half (Max 70)</th>
+                                                        <th colspan="2" style="border: 1px solid #000; padding: 4px; font-size:10px; text-align:center;">Total (Max 100)</th>
+                                                        <th rowspan="2" style="border: 1px solid #000; padding: 4px; font-size:10px; text-align:center; vertical-align:middle;">Grade</th>
+                                                    </tr>
+                                                    <tr style="background-color: #f8f8f8;">
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtained</th>
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtained</th>
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtainable</th>
+                                                        <th style="border: 1px solid #000; padding: 3px; font-size:9px; text-align:center;">Obtained</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @forelse($results as $result)
                                                     <tr>
                                                         <td style="border: 1px solid #000; padding: 5px; text-align: left;">{{ $result['course_name'] }}</td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">{{ $result['first_ca'] > 0 ? $result['first_ca'] : '-' }}</td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">{{ $result['second_ca'] > 0 ? $result['second_ca'] : '-' }}</td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">{{ $result['mid_term_test'] > 0 ? $result['mid_term_test'] : '-' }}</td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;">{{ $result['examination'] > 0 ? $result['examination'] : '-' }}</td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;"><strong>{{ $result['total'] > 0 ? $result['total'] : '-' }}</strong></td>
-                                                        <td style="border: 1px solid #000; padding: 5px; text-align: center;"><strong>{{ $result['grade'] }}</strong></td>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">{{ $result['first_half_obtainable'] }}</td>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">{{ $result['first_half_obtained'] > 0 ? $result['first_half_obtained'] : '-' }}</td>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">{{ $result['second_half_obtainable'] }}</td>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">{{ $result['second_half_obtained'] > 0 ? $result['second_half_obtained'] : '-' }}</td>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;">{{ $result['final_obtainable'] }}</td>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;"><strong>{{ $result['final_obtained'] > 0 ? $result['final_obtained'] : '-' }}</strong></td>
+                                                        <td style="border: 1px solid #000; padding: 4px; text-align: center;"><strong>{{ $result['grade'] }}</strong></td>
                                                     </tr>
                                                     @empty
                                                     <tr>
-                                                        <td colspan="7" style="text-align:center; padding: 10px;">No subjects offered.</td>
+                                                        <td colspan="8" style="text-align:center; padding: 10px;">No subjects offered.</td>
                                                     </tr>
                                                     @endforelse
                                                 </tbody>
