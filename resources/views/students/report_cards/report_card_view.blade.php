@@ -57,19 +57,29 @@
                                         </div>
                                     </div>
 
-                                    {{-- ── Term Info ────────────────────────────────────────── --}}
+                                    {{-- ── Term Info (4 columns — last column is attendance) ── --}}
                                     <div style="display: table; width: 100%; margin: 10px 0; border-bottom: 1px solid #000; padding-bottom: 8px;">
-                                        <div style="display: table-cell; width: 33.33%; font-size: 12px;">
+                                        <div style="display: table-cell; width: 25%; font-size: 12px; vertical-align: top;">
                                             <div><strong>Term:</strong> {{ $currentTerm->name }}</div>
                                             <div><strong>Session:</strong> {{ $currentSession->name }}</div>
                                         </div>
-                                        <div style="display: table-cell; width: 33.33%; font-size: 12px; text-align: center;">
+                                        <div style="display: table-cell; width: 25%; font-size: 12px; vertical-align: top;">
                                             <div><strong>Class:</strong> {{ $class->name }}</div>
                                             <div><strong>Class Teacher:</strong> {{ $classTeacher?->name ?? 'Not Assigned' }}</div>
                                         </div>
-                                        <div style="display: table-cell; width: 33.33%; font-size: 12px; text-align: right;">
+                                        <div style="display: table-cell; width: 25%; font-size: 12px; vertical-align: top;">
                                             <div><strong>No. in Class:</strong> {{ $totalStudentsInClass }}</div>
                                             <div><strong>Position:</strong> <strong>{{ $formattedPosition }}</strong></div>
+                                        </div>
+                                        <div style="display: table-cell; width: 25%; font-size: 12px; vertical-align: top; text-align: right;">
+                                            <div>
+                                                <strong>Times Present:</strong>
+                                                {{ $attendanceSummary->present ?? '-' }} / {{ $attendanceSummary->total_days ?? '-' }}
+                                            </div>
+                                            <div>
+                                                <strong>Times Absent:</strong>
+                                                {{ $attendanceSummary->absent ?? '-' }}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -221,12 +231,12 @@
                                                 </div>
                                                 @endif
                                             </div>
-                                        </div>
+                                        </div>{{-- /left --}}
 
                                         {{-- Right: Skills ───────────────────────────────────────── --}}
                                         <div style="display: table-cell; width: 35%; vertical-align: top; border-left: 1px solid #000; padding-left: 10px;">
 
-                                            {{-- Affective Skills — all 13 traits --}}
+                                            {{-- Affective Skills --}}
                                             <div style="margin-bottom: 15px;">
                                                 <div style="font-weight: bold; background-color: #f0f0f0; padding: 4px; border: 1px solid #000; text-align: center;">
                                                     AFFECTIVE SKILLS
@@ -268,7 +278,6 @@
                                                         <td style="padding: 3px; border-right: 1px solid #000;">Attitude to Work</td>
                                                         <td style="padding: 3px; text-align: center;">{{ $affectiveRatings['attitude_to_work'] ?? '-' }}</td>
                                                     </tr>
-                                                    {{-- Newly added --}}
                                                     <tr>
                                                         <td style="padding: 3px; border-right: 1px solid #000;">Helping Others</td>
                                                         <td style="padding: 3px; text-align: center;">{{ $affectiveRatings['helping_other'] ?? '-' }}</td>
@@ -288,7 +297,7 @@
                                                 </table>
                                             </div>
 
-                                            {{-- Psychomotor Skills — all 7 traits --}}
+                                            {{-- Psychomotor Skills --}}
                                             <div>
                                                 <div style="font-weight: bold; background-color: #f0f0f0; padding: 4px; border: 1px solid #000; text-align: center;">
                                                     PSYCHOMOTOR SKILLS
@@ -314,7 +323,6 @@
                                                         <td style="padding: 3px; border-right: 1px solid #000;">Drawing & Painting</td>
                                                         <td style="padding: 3px; text-align: center;">{{ $psychomotorRatings['drawing_painting'] ?? '-' }}</td>
                                                     </tr>
-                                                    {{-- Newly added --}}
                                                     <tr>
                                                         <td style="padding: 3px; border-right: 1px solid #000;">Games</td>
                                                         <td style="padding: 3px; text-align: center;">{{ $psychomotorRatings['games'] ?? '-' }}</td>

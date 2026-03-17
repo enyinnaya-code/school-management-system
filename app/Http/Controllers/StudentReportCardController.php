@@ -324,6 +324,18 @@ class StudentReportCardController extends Controller
         $principalRemark  = $remark?->principal_remark  ?? '';
         $headmasterRemark = $remark?->headmaster_remark ?? '';
 
+        // ── Attendance summary for this student, this term ────────────────────
+        $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $student->id)
+            ->where('class_id', $class->id)
+            ->where('session_id', $session->id)
+            ->where('session_term', $term->id)
+            ->selectRaw("
+            COUNT(*) as total_days,
+            SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
+            SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
+        ")
+            ->first();
+
         // ══════════════════════════════════════════════════════════════════════
         // PRIMARY PATH
         // ══════════════════════════════════════════════════════════════════════
@@ -385,6 +397,7 @@ class StudentReportCardController extends Controller
                 'totalStudentsInClass' => $totalStudentsInClass,
                 'subjectCount'         => $subjectCount,
                 'isPrimary'            => true,
+                'attendanceSummary'    => $attendanceSummary,  // ← attendance
             ]);
         }
 
@@ -450,6 +463,7 @@ class StudentReportCardController extends Controller
             'totalStudentsInClass' => $totalStudentsInClass,
             'subjectCount'         => $subjectCount,
             'isPrimary'            => false,
+            'attendanceSummary'    => $attendanceSummary,  // ← attendance
         ]);
     }
 
