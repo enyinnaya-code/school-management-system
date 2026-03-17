@@ -41,6 +41,7 @@ class ResultAccessController extends Controller
         $search          = $request->input('search', '');
         $filterSectionId = $request->input('section_id', '');
         $filterClassId   = $request->input('class_id', '');
+        $filterStatus    = $request->input('status', ''); // 'blocked', 'active', or ''
         $perPage         = (int) $request->input('per_page', 20);
         $perPage         = in_array($perPage, [10, 20, 50, 100]) ? $perPage : 20;
 
@@ -72,6 +73,19 @@ class ResultAccessController extends Controller
             $studentsQuery->whereHas('class', fn($q) => $q->where('section_id', $filterSectionId));
         }
 
+        // Status filter — blocked/active requires knowing blocked IDs first
+        if ($filterStatus === 'blocked' && $selectedSession && $selectedTerm) {
+            $blockedStudentIds = ResultAccessRestriction::where('session_id', $selectedSession->id)
+                ->where('term_id', $selectedTerm->id)
+                ->pluck('student_id');
+            $studentsQuery->whereIn('id', $blockedStudentIds);
+        } elseif ($filterStatus === 'active' && $selectedSession && $selectedTerm) {
+            $blockedStudentIds = ResultAccessRestriction::where('session_id', $selectedSession->id)
+                ->where('term_id', $selectedTerm->id)
+                ->pluck('student_id');
+            $studentsQuery->whereNotIn('id', $blockedStudentIds);
+        }
+
         $students = $studentsQuery->paginate($perPage)->withQueryString();
 
         // ── Blocked students ──────────────────────────────────────────────────
@@ -96,7 +110,7 @@ class ResultAccessController extends Controller
             'sessions', 'selectedSession', 'terms', 'selectedTerm',
             'students', 'blockedIds', 'blockedReasons', 'termSettings',
             'sections', 'classes',
-            'search', 'filterSectionId', 'filterClassId', 'perPage'
+            'search', 'filterSectionId', 'filterClassId', 'filterStatus', 'perPage'
         ));
     }
 
