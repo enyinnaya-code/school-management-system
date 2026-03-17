@@ -300,7 +300,7 @@
           <li><a class="nav-link" href="{{ route('students.promotion.history') }}">Promotion History</a></li>
           @endif
           @if(in_array(Auth::user()->user_type, [1, 2]))
-          <li><a class="nav-link" href="{{ route('results.settings.index') }}">Result Access & Term Settings</a></li>
+          <li><a class="nav-link" href="{{ route('results.settings.index') }}">Result Access Settings</a></li>
           @endif
         </ul>
       </li>
