@@ -39,6 +39,7 @@ use App\Http\Controllers\ParentReportCardController;
 use App\Http\Controllers\CounsellorController;
 use App\Http\Controllers\ResultSheetController;
 use App\Http\Controllers\ResultSettingsController;
+use App\Http\Controllers\ResultAccessController;
 
 
 
@@ -241,23 +242,23 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-        // Result Settings
-Route::prefix('results/settings')->name('results.settings.')->middleware(['auth'])->group(function () {
+    // Result Settings
+    Route::prefix('results/settings')->name('results.settings.')->middleware(['auth'])->group(function () {
 
-    // Primary Result Class
-    Route::get('/primary-result-class', [ResultSettingsController::class, 'primaryResultClass'])
-        ->name('primaryResultClass');
-    Route::post('/primary-result-class', [ResultSettingsController::class, 'savePrimaryResultClass'])
-        ->name('savePrimaryResultClass');
-    Route::get('/get-classes/{sectionId}', [ResultSettingsController::class, 'getClassesBySection'])
-        ->name('getClassesBySection');
+        // Primary Result Class
+        Route::get('/primary-result-class', [ResultSettingsController::class, 'primaryResultClass'])
+            ->name('primaryResultClass');
+        Route::post('/primary-result-class', [ResultSettingsController::class, 'savePrimaryResultClass'])
+            ->name('savePrimaryResultClass');
+        Route::get('/get-classes/{sectionId}', [ResultSettingsController::class, 'getClassesBySection'])
+            ->name('getClassesBySection');
 
-    // Custom Subject Number
-    Route::get('/custom-subject-no', [ResultSettingsController::class, 'customSubjectNo'])
-        ->name('customSubjectNo');
-    Route::post('/custom-subject-no', [ResultSettingsController::class, 'saveCustomSubjectNo'])
-        ->name('saveCustomSubjectNo');
-});
+        // Custom Subject Number
+        Route::get('/custom-subject-no', [ResultSettingsController::class, 'customSubjectNo'])
+            ->name('customSubjectNo');
+        Route::post('/custom-subject-no', [ResultSettingsController::class, 'saveCustomSubjectNo'])
+            ->name('saveCustomSubjectNo');
+    });
 
     // Announcement routes
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
@@ -357,6 +358,17 @@ Route::prefix('results/settings')->name('results.settings.')->middleware(['auth'
     Route::post('/library/physical/return/{id}', [PhysicalLibraryController::class, 'returnBook'])->name('physical_library.return');
     Route::post('/library/physical/undo-return/{id}', [PhysicalLibraryController::class, 'undoReturn'])->name('physical_library.undo_return');
 
+    Route::get('/results/settings', [ResultAccessController::class, 'index'])
+        ->name('results.settings.index');
+
+    Route::post('/results/settings/toggle-block', [ResultAccessController::class, 'toggleBlock'])
+        ->name('results.settings.toggleBlock');
+
+    Route::post('/results/settings/bulk-block', [ResultAccessController::class, 'bulkBlock'])
+        ->name('results.settings.bulkBlock');
+
+    Route::post('/results/settings/term-settings', [ResultAccessController::class, 'saveTermSettings'])
+        ->name('results.settings.saveTermSettings');
 
     // e-Library routes
     Route::get('/library/e-library/add-resource', [ELibraryController::class, 'createResource'])->name('e_library.add_resource');
@@ -406,8 +418,8 @@ Route::prefix('results/settings')->name('results.settings.')->middleware(['auth'
     Route::post('/save-result', [ResultsController::class, 'saveResult'])->name('results.saveResult');
 
     Route::post('/results/primary-student/{studentId}/save', [ResultsController::class, 'savePrimaryStudentResults'])
-    ->name('results.savePrimaryStudent')
-    ->middleware('auth');
+        ->name('results.savePrimaryStudent')
+        ->middleware('auth');
 
     // Class Promotion Routes
     Route::get('/students/promote', [StudentController::class, 'promoteForm'])->name('students.promote');

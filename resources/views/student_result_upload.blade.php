@@ -69,6 +69,9 @@
                                                 <th colspan="2" style="background:#fef9c3;">
                                                     Total <span class="badge badge-warning text-dark ml-1">Max: 100</span>
                                                 </th>
+                                                <th rowspan="2" class="align-middle text-center" style="min-width:70px; background:#f3e8ff;">
+                                                    Grade
+                                                </th>
                                                 <th rowspan="2" class="align-middle" style="min-width:160px;">Comment</th>
                                             </tr>
                                             <tr class="text-center small">
@@ -81,6 +84,7 @@
                                                 {{-- Total --}}
                                                 <th style="background:#fefce8; min-width:90px;">Obtainable</th>
                                                 <th style="background:#fefce8; min-width:90px;">Obtained</th>
+                                                {{-- Grade and Comment span from rowspan above --}}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -142,6 +146,17 @@
                                                                placeholder="Auto"
                                                                readonly
                                                                style="background:#fffde7; cursor:not-allowed; font-weight:600;">
+                                                    </td>
+
+                                                    {{-- Live Grade --}}
+                                                    <td class="text-center" style="background:#f5f3ff;">
+                                                        <input type="hidden"
+                                                               name="results[{{ $subject->id }}][grade]"
+                                                               class="grade-hidden-input"
+                                                               value="{{ $existing?->grade ?? '' }}">
+                                                        <strong class="live-grade" style="font-size:15px;">
+                                                            {{ $existing?->grade ?? '—' }}
+                                                        </strong>
                                                     </td>
 
                                                     {{-- Comment --}}
@@ -216,6 +231,20 @@ input[type=number] { -moz-appearance: textfield; }
 <script>
 $(function () {
 
+    function calculateGrade(total) {
+        if (total >= 70) return 'A';
+        if (total >= 60) return 'B';
+        if (total >= 50) return 'C';
+        if (total >= 45) return 'D';
+        if (total >= 40) return 'E';
+        return 'F';
+    }
+
+    function gradeColor(grade) {
+        var map = { 'A': '#16a34a', 'B': '#2563eb', 'C': '#0891b2', 'D': '#d97706', 'E': '#6b7280', 'F': '#dc2626' };
+        return map[grade] || '#374151';
+    }
+
     function recalcRow($row) {
         var firstVal  = $row.find('.first-half-input').val();
         var secondVal = $row.find('.second-half-input').val();
@@ -223,16 +252,24 @@ $(function () {
         var first  = firstVal  !== '' ? parseFloat(firstVal)  : null;
         var second = secondVal !== '' ? parseFloat(secondVal) : null;
 
-        var $final = $row.find('.final-obtained-input');
+        var $final       = $row.find('.final-obtained-input');
+        var $gradeSpan   = $row.find('.live-grade');
+        var $gradeHidden = $row.find('.grade-hidden-input');
 
         if (first === null && second === null) {
             $final.val('');
+            $gradeSpan.text('—').css('color', '#374151');
+            $gradeHidden.val('');
             return;
         }
 
         var total = (first ?? 0) + (second ?? 0);
         total = Math.round(total * 10) / 10;
         $final.val(total.toFixed(1));
+
+        var grade = calculateGrade(total);
+        $gradeSpan.text(grade).css('color', gradeColor(grade));
+        $gradeHidden.val(grade);
     }
 
     // Inline validation + recalc on input
