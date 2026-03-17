@@ -353,7 +353,6 @@ class ResultsController extends Controller
         $class   = SchoolClass::findOrFail($student->class_id);
         $user    = Auth::user();
 
-        // Security check for non-admin users
         if (!in_array($user->user_type, [1, 2])) {
             if (!$this->isTeacherAssignedToClass($user->id, $class->id)) {
                 abort(403, 'You are not assigned to this class.');
@@ -368,29 +367,35 @@ class ResultsController extends Controller
         }
 
         $request->validate([
-            'results'                    => 'nullable|array',
-            'results.*.first_ca'         => 'nullable|numeric|min:0|max:10',
-            'results.*.second_ca'        => 'nullable|numeric|min:0|max:10',
-            'results.*.mid_term_test'    => 'nullable|numeric|min:0|max:20',
-            'results.*.examination'      => 'nullable|numeric|min:0|max:60',
-            'results.*.comment'          => 'nullable|string|max:500',
+            'results'                          => 'nullable|array',
+            'results.*.first_half_obtained'    => 'nullable|numeric|min:0|max:30',
+            'results.*.second_half_obtained'   => 'nullable|numeric|min:0|max:70',
+            'results.*.final_obtained'         => 'nullable|numeric|min:0|max:100',
+            'results.*.comment'                => 'nullable|string|max:500',
+            // Hidden obtainable fields (overridden server-side anyway)
+            'results.*.first_half_obtainable'  => 'nullable|numeric',
+            'results.*.second_half_obtainable' => 'nullable|numeric',
+            'results.*.final_obtainable'       => 'nullable|numeric',
         ]);
 
         foreach ($request->input('results', []) as $course_id => $data) {
 
-            $firstCa    = isset($data['first_ca'])      && $data['first_ca']      !== '' ? (float) $data['first_ca']      : null;
-            $secondCa   = isset($data['second_ca'])     && $data['second_ca']     !== '' ? (float) $data['second_ca']     : null;
-            $midTerm    = isset($data['mid_term_test'])  && $data['mid_term_test']  !== '' ? (float) $data['mid_term_test']  : null;
-            $exam       = isset($data['examination'])   && $data['examination']   !== '' ? (float) $data['examination']   : null;
+            $firstObtained  = isset($data['first_half_obtained'])  && $data['first_half_obtained']  !== ''
+                ? (float) $data['first_half_obtained']  : null;
+            $secondObtained = isset($data['second_half_obtained']) && $data['second_half_obtained'] !== ''
+                ? (float) $data['second_half_obtained'] : null;
 
-            // Skip entirely if all score columns are null (nothing entered for this subject)
-            if (is_null($firstCa) && is_null($secondCa) && is_null($midTerm) && is_null($exam)) {
+            // Skip entirely if both halves are blank
+            if ($firstObtained === null && $secondObtained === null) {
                 continue;
             }
 
-            // Calculate total using 0 for any null component so partial entry still works
-            $total = ($firstCa ?? 0) + ($secondCa ?? 0) + ($midTerm ?? 0) + ($exam ?? 0);
-            $grade = $this->calculateGrade($total);
+            // Auto-calculate final = first + second
+            $finalObtained = round(($firstObtained ?? 0) + ($secondObtained ?? 0), 2);
+            $finalObtained = min($finalObtained, 100);
+
+            // Grade is based on the final total out of 100
+            $grade = $this->calculateGrade($finalObtained);
 
             Result::updateOrCreate(
                 [
@@ -400,19 +405,27 @@ class ResultsController extends Controller
                     'term_id'    => $currentTerm->id,
                 ],
                 [
-                    'first_ca'      => $firstCa,
-                    'second_ca'     => $secondCa,
-                    'mid_term_test' => $midTerm,
-                    'examination'   => $exam,
-                    'total'         => $total,
-                    'grade'         => $grade,
-                    'comment'       => $data['comment'] ?? null,
-                    'uploaded_by'   => Auth::id(),
+                    // Fixed obtainable values — always server-side
+                    'first_half_obtainable'  => 30,
+                    'second_half_obtainable' => 70,
+                    'final_obtainable'       => 100,
+
+                    // Obtained values
+                    'first_half_obtained'    => $firstObtained,
+                    'second_half_obtained'   => $secondObtained,
+                    'final_obtained'         => $finalObtained,
+
+                    // total column kept in sync for any existing queries that use it
+                    'total'                  => $finalObtained,
+                    'grade'                  => $grade,
+
+                    'comment'                => $data['comment'] ?? null,
+                    'uploaded_by'            => Auth::id(),
                 ]
             );
         }
 
-        return redirect()->back()->with('success', 'Results saved successfully (updated where already existing).');
+        return redirect()->back()->with('success', 'Results saved successfully.');
     }
 
     private function calculateGrade($total)
