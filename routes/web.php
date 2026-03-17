@@ -370,6 +370,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/results/settings/term-settings', [ResultAccessController::class, 'saveTermSettings'])
         ->name('results.settings.saveTermSettings');
 
+    Route::post('/results/settings/bulk-unblock', [ResultAccessController::class, 'bulkUnblock'])
+        ->name('results.settings.bulkUnblock');
+
     // e-Library routes
     Route::get('/library/e-library/add-resource', [ELibraryController::class, 'createResource'])->name('e_library.add_resource');
     Route::post('/library/e-library/add-resource', [ELibraryController::class, 'storeResource'])->name('e_library.store_resource');
