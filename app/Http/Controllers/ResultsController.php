@@ -550,25 +550,25 @@ class ResultsController extends Controller
         // ══════════════════════════════════════════════════════════════════════════
         // PRIMARY PATH — fetch from primary_school_results
         // ══════════════════════════════════════════════════════════════════════════
+        // ── PRIMARY PATH ──────────────────────────────────────────────────────────
         if ($isPrimary) {
             $results = \App\Models\PrimarySchoolResult::where('session_id', $selectedSession->id)
                 ->where('term_id', $selectedTerm->id)
                 ->whereIn('student_id', $studentIds)
                 ->whereIn('course_id', $subjectIds)
                 ->get()
-                ->groupBy('student_id');
+                ->groupBy(['student_id', 'course_id']); // ← group by BOTH
 
             $studentSummaries = $students->map(function ($student) use ($results, $subjects) {
                 $studentResults = $results->get($student->id, collect());
 
-                $totalScore         = 0;
-                $subjectsWithScores = 0;
+                $totalScore = 0;
 
                 foreach ($subjects as $subject) {
-                    $result = $studentResults->firstWhere('course_id', $subject->id);
+                    // studentResults is now keyed by course_id → collection of rows
+                    $result = $studentResults->get($subject->id)?->first();
                     if ($result && $result->final_obtained > 0) {
                         $totalScore += $result->final_obtained;
-                        $subjectsWithScores++;
                     }
                 }
 

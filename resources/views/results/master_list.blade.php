@@ -66,7 +66,7 @@
                                 <!-- Master List Table -->
                                 <div class="table-responsive">
                                     <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
-                                        <thead class="">
+                                        <thead>
                                             <tr>
                                                 <th rowspan="2" style="vertical-align: middle;">Pos</th>
                                                 <th rowspan="2" style="vertical-align: middle;">Admission No</th>
@@ -88,23 +88,34 @@
                                             @forelse($sortedStudents as $studentData)
                                             @php
                                                 $student = $studentData['student'];
-                                                $studentResults = $results->get($student->id, collect());
                                             @endphp
                                             <tr>
-                                                <td class="text-center font-weight-bold">{{ $studentData['position'] }}</td>
+                                                <td class="text-center font-weight-bold">{{ $studentData['formatted_position'] }}</td>
                                                 <td>{{ $student->admission_no }}</td>
                                                 <td>{{ strtoupper($student->name) }}</td>
-                                                
+
                                                 @foreach($subjects as $subject)
                                                     @php
-                                                        $result = $studentResults->firstWhere('course_id', $subject->id);
-                                                        $total = $result?->total ?? 0;
+                                                        if (!empty($isPrimary) && $isPrimary) {
+                                                            // Nested: $results[student_id][course_id]->first()
+                                                            $score = $results
+                                                                ->get($student->id, collect())
+                                                                ->get($subject->id, collect())
+                                                                ->first()
+                                                                ?->final_obtained ?? 0;
+                                                        } else {
+                                                            // Flat: $results[student_id]->firstWhere('course_id', ...)
+                                                            $score = $results
+                                                                ->get($student->id, collect())
+                                                                ->firstWhere('course_id', $subject->id)
+                                                                ?->total ?? 0;
+                                                        }
                                                     @endphp
-                                                    <td class="text-center {{ $total == 0 ? 'bg-light' : '' }}">
-                                                        {{ $total > 0 ? $total : '-' }}
+                                                    <td class="text-center {{ $score == 0 ? 'bg-light' : '' }}">
+                                                        {{ $score > 0 ? $score : '-' }}
                                                     </td>
                                                 @endforeach
-                                                
+
                                                 <td class="text-center font-weight-bold">{{ $studentData['total_score'] }}</td>
                                                 <td class="text-center font-weight-bold">{{ $studentData['average'] }}</td>
                                                 <td class="text-center font-weight-bold">{{ $studentData['grade'] }}</td>
@@ -146,6 +157,7 @@
                                         </div>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     </div>
@@ -156,7 +168,6 @@
 
     @include('includes.edit_footer')
 
-    <!-- Print Styles -->
     <style>
         @media print {
             .main-sidebar, .navbar, .card-header-action, .loader, footer, .no-print {
