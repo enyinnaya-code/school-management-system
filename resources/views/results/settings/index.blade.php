@@ -363,7 +363,7 @@
     </div>
 </div>
 
-@include('includes.footer')
+@include('includes.new_footer')
 
 {{-- Quick block modal --}}
 <div class="modal fade" id="quickBlockModal" tabindex="-1">
