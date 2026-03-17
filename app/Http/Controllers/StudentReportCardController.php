@@ -21,11 +21,8 @@ class StudentReportCardController extends Controller
 {
     public function index()
     {
-        $student = Auth::user();
-
-        // Show all sessions so student can select — pin validation happens on submit
+        $student  = Auth::user();
         $sessions = Session::orderByDesc('name')->get();
-
         return view('students.report_cards.index', compact('sessions', 'student'));
     }
 
@@ -39,7 +36,6 @@ class StudentReportCardController extends Controller
 
         $student = Auth::user();
 
-        // Find the issued PIN record for this student + session + term
         $issuedPin = IssuedPin::where('student_id', $student->id)
             ->where('session_id', $request->session_id)
             ->where('term_id', $request->term_id)
@@ -51,25 +47,20 @@ class StudentReportCardController extends Controller
 
         $pin = Pin::findOrFail($issuedPin->pin_id);
 
-        // Validate the PIN code
         if ($pin->pin_code !== strtoupper(trim($request->pin))) {
             return back()->with('error', 'Invalid PIN entered. Please try again.');
         }
 
-        // Check if maximum usage (5) has been reached
         if ($pin->usage_count >= 5) {
             return back()->with('error', 'This PIN has been used 5 times and is no longer valid. Please contact the school administration.');
         }
 
-        // Increment usage count
         $pin->increment('usage_count');
 
-        // Optional: Mark as fully used when it reaches 5
         if ($pin->usage_count == 5) {
             $pin->update(['is_used' => true]);
         }
 
-        // Grant access by storing in session
         session([
             'verified_report_access' => [
                 'session_id' => $request->session_id,
@@ -78,7 +69,6 @@ class StudentReportCardController extends Controller
             ]
         ]);
 
-        // ── Detect if this student's class uses a custom result sheet ──────────
         $class = SchoolClass::find($student->class_id);
 
         $usesResultSheet = false;
@@ -108,7 +98,6 @@ class StudentReportCardController extends Controller
         $student = Auth::user();
         $access  = session('verified_report_access');
 
-        // Security checks
         if (
             !$access ||
             !isset($access['session_id'], $access['term_id']) ||
@@ -121,7 +110,6 @@ class StudentReportCardController extends Controller
         $sessionId = $access['session_id'];
         $termId    = $access['term_id'];
 
-        // Final check: does student actually have issued PIN for this combo?
         $hasValidPin = IssuedPin::where('student_id', $student->id)
             ->where('session_id', $sessionId)
             ->where('term_id', $termId)
@@ -137,7 +125,6 @@ class StudentReportCardController extends Controller
         $term    = Term::findOrFail($termId);
         $class   = SchoolClass::findOrFail($student->class_id);
 
-        // ── Check if the student's class uses a custom result sheet template ──
         $sheetTemplate = DB::table('result_sheet_templates')
             ->where('term_id', $term->id)
             ->where('is_active', 1)
@@ -148,19 +135,13 @@ class StudentReportCardController extends Controller
             });
 
         if ($sheetTemplate) {
-            // ── Custom result sheet flow ──────────────────────────────────────
             return $this->showResultSheet($student, $class, $session, $term, $sheetTemplate);
         }
 
-        // ── Standard numeric result card flow (unchanged) ────────────────────
         return $this->showStandardReport($student, $class, $session, $term);
     }
 
 
-    /**
-     * Entry point for the result-sheet route (students.reportcards.sheet).
-     * Performs the same access-guard as showReport(), then renders the sheet view.
-     */
     public function showSheet()
     {
         $student = Auth::user();
@@ -202,7 +183,6 @@ class StudentReportCardController extends Controller
                 return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
             });
 
-        // Safety fallback: if template somehow gone, drop to standard view
         if (!$sheetTemplate) {
             return redirect()->route('students.reportcards.show');
         }
@@ -211,9 +191,6 @@ class StudentReportCardController extends Controller
     }
 
 
-    /**
-     * Render the custom skill/result sheet for the student.
-     */
     private function showResultSheet($student, $class, $session, $term, $sheetTemplate)
     {
         $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
@@ -222,7 +199,6 @@ class StudentReportCardController extends Controller
         $service  = new ResultSheetService();
         $subjects = $service->loadTemplateStructure($sheetTemplate->id);
 
-        // Collect all item IDs across subjects, subcategories
         $allItemIds = collect($subjects)->flatMap(function ($subject) {
             $ids = collect($subject->items)->pluck('id');
             foreach ($subject->subcategories as $sub) {
@@ -231,7 +207,6 @@ class StudentReportCardController extends Controller
             return $ids;
         });
 
-        // Fetch this student's ratings for this session + term
         $ratings = DB::table('result_sheet_ratings')
             ->where('student_id', $student->id)
             ->where('session_id', $session->id)
@@ -241,7 +216,6 @@ class StudentReportCardController extends Controller
             ->mapWithKeys(fn($row) => [(int) $row->item_id => trim($row->rating_value)])
             ->toArray();
 
-        // Fetch footer data (remark, reopening date, etc.)
         $footerData = DB::table('result_sheet_footer_data')
             ->where('student_id', $student->id)
             ->where('session_id', $session->id)
@@ -266,13 +240,107 @@ class StudentReportCardController extends Controller
 
 
     /**
-     * Standard numeric report card (original logic extracted into its own method).
+     * Standard report — handles BOTH primary and secondary automatically.
      */
     private function showStandardReport($student, $class, $session, $term)
     {
+        // ── Detect primary class ──────────────────────────────────────────────
+        $isPrimary = DB::table('primary_result_classes')
+            ->where('school_class_id', $class->id)
+            ->exists();
+
         $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
+
+        $classStudents        = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
+        $totalStudentsInClass = $classStudents->count();
+
+        $classTeacher = User::where('is_form_teacher', true)
+            ->where('form_class_id', $class->id)
+            ->first();
+
+        $remark = StudentRemark::where('student_id', $student->id)
+            ->where('class_id', $class->id)
+            ->where('session_id', $session->id)
+            ->where('term_id', $term->id)
+            ->first();
+
+        $affectiveRatings   = array_merge($this->defaultRatings('affective'),   $remark?->affective_ratings   ?? []);
+        $psychomotorRatings = array_merge($this->defaultRatings('psychomotor'), $remark?->psychomotor_ratings ?? []);
+
+        $teacherRemark    = $remark?->teacher_remark    ?? '';
+        $principalRemark  = $remark?->principal_remark  ?? '';
+        $headmasterRemark = $remark?->headmaster_remark ?? '';
+
+        // ══════════════════════════════════════════════════════════════════════
+        // PRIMARY PATH
+        // ══════════════════════════════════════════════════════════════════════
+        if ($isPrimary) {
+
+            $studentPrimaryResults = \App\Models\PrimarySchoolResult::where('student_id', $student->id)
+                ->where('session_id', $session->id)
+                ->where('term_id', $term->id)
+                ->get()
+                ->keyBy('course_id');
+
+            $results = $allSubjects->map(function ($subject) use ($studentPrimaryResults) {
+                $r = $studentPrimaryResults->get($subject->id);
+                return [
+                    'course_name'            => $subject->course_name,
+                    'first_half_obtainable'  => $r?->first_half_obtainable  ?? 30,
+                    'first_half_obtained'    => $r?->first_half_obtained    ?? 0,
+                    'second_half_obtainable' => $r?->second_half_obtainable ?? 70,
+                    'second_half_obtained'   => $r?->second_half_obtained   ?? 0,
+                    'final_obtainable'       => $r?->final_obtainable       ?? 100,
+                    'final_obtained'         => $r?->final_obtained         ?? 0,
+                    'teacher_remark'         => $r?->teacher_remark         ?? '',
+                ];
+            });
+
+            $overallTotal   = $results->sum('final_obtained');
+            $subjectCount   = $allSubjects->count();
+            $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
+            $overallGrade   = $this->calculateGrade($overallAverage);
+
+            // Position ranked by sum of final_obtained
+            $allStudentTotals = \App\Models\PrimarySchoolResult::where('session_id', $session->id)
+                ->where('term_id', $term->id)
+                ->whereIn('student_id', $classStudents)
+                ->select('student_id', DB::raw('SUM(final_obtained) as total_score'))
+                ->groupBy('student_id')
+                ->orderByDesc('total_score')
+                ->get();
+
+            $studentPosition   = $allStudentTotals->search(fn($item) => $item->student_id == $student->id);
+            $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
+            $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
+
+            return view('students.report_cards.report_card_view', [
+                'student'              => $student,
+                'class'                => $class,
+                'results'              => $results,
+                'overallTotal'         => $overallTotal,
+                'overallAverage'       => $overallAverage,
+                'overallGrade'         => $overallGrade,
+                'currentSession'       => $session,
+                'currentTerm'          => $term,
+                'classTeacher'         => $classTeacher,
+                'affectiveRatings'     => $affectiveRatings,
+                'psychomotorRatings'   => $psychomotorRatings,
+                'teacherRemark'        => $teacherRemark,
+                'headmasterRemark'     => $headmasterRemark, // ← primary
+                'principalRemark'      => '',
+                'formattedPosition'    => $formattedPosition,
+                'totalStudentsInClass' => $totalStudentsInClass,
+                'subjectCount'         => $subjectCount,
+                'isPrimary'            => true,
+            ]);
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // SECONDARY PATH
+        // ══════════════════════════════════════════════════════════════════════
 
         $studentResults = Result::where('student_id', $student->id)
             ->where('session_id', $session->id)
@@ -284,12 +352,12 @@ class StudentReportCardController extends Controller
             $result = $studentResults->get($subject->id);
             return [
                 'course_name'   => $subject->course_name,
-                'first_ca'      => $result?->first_ca ?? 0,
-                'second_ca'     => $result?->second_ca ?? 0,
+                'first_ca'      => $result?->first_ca      ?? 0,
+                'second_ca'     => $result?->second_ca     ?? 0,
                 'mid_term_test' => $result?->mid_term_test ?? 0,
-                'examination'   => $result?->examination ?? 0,
-                'total'         => $result?->total ?? 0,
-                'grade'         => $result?->grade ?? '-',
+                'examination'   => $result?->examination   ?? 0,
+                'total'         => $result?->total         ?? 0,
+                'grade'         => $result?->grade         ?? '-',
             ];
         });
 
@@ -297,12 +365,6 @@ class StudentReportCardController extends Controller
         $subjectCount   = $allSubjects->count();
         $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
         $overallGrade   = $this->calculateGrade($overallAverage);
-
-        $classStudents = User::where('user_type', 4)
-            ->where('class_id', $class->id)
-            ->pluck('id');
-
-        $totalStudentsInClass = $classStudents->count();
 
         $studentsScores = Result::where('session_id', $session->id)
             ->where('term_id', $term->id)
@@ -317,22 +379,6 @@ class StudentReportCardController extends Controller
         $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-        $classTeacher = User::where('is_form_teacher', true)
-            ->where('form_class_id', $class->id)
-            ->first();
-
-        $remark = StudentRemark::where('student_id', $student->id)
-            ->where('class_id', $class->id)
-            ->where('session_id', $session->id)
-            ->where('term_id', $term->id)
-            ->first();
-
-        $affectiveRatings   = array_merge($this->defaultRatings('affective'),   $remark?->affective_ratings ?? []);
-        $psychomotorRatings = array_merge($this->defaultRatings('psychomotor'), $remark?->psychomotor_ratings ?? []);
-
-        $teacherRemark   = $remark?->teacher_remark ?? '';
-        $principalRemark = $remark?->principal_remark ?? '';
-
         return view('students.report_cards.report_card_view', [
             'student'              => $student,
             'class'                => $class,
@@ -346,10 +392,12 @@ class StudentReportCardController extends Controller
             'affectiveRatings'     => $affectiveRatings,
             'psychomotorRatings'   => $psychomotorRatings,
             'teacherRemark'        => $teacherRemark,
-            'principalRemark'      => $principalRemark,
+            'principalRemark'      => $principalRemark, // ← secondary
+            'headmasterRemark'     => '',
             'formattedPosition'    => $formattedPosition,
             'totalStudentsInClass' => $totalStudentsInClass,
             'subjectCount'         => $subjectCount,
+            'isPrimary'            => false,
         ]);
     }
 
@@ -377,30 +425,44 @@ class StudentReportCardController extends Controller
 
     private function defaultRatings($type)
     {
-        return $type === 'affective' ? [
-            'punctuality'      => null,
-            'politeness'       => null,
-            'neatness'         => null,
-            'honesty'          => null,
-            'leadership_skill' => null,
-            'cooperation'      => null,
-            'attentiveness'    => null,
-            'perseverance'     => null,
-            'attitude_to_work' => null,
-        ] : [
+        if ($type === 'affective') {
+            return [
+                // original
+                'punctuality'          => null,
+                'politeness'           => null,
+                'neatness'             => null,
+                'honesty'              => null,
+                'leadership_skill'     => null,
+                'cooperation'          => null,
+                'attentiveness'        => null,
+                'perseverance'         => null,
+                'attitude_to_work'     => null,
+                // newly added
+                'helping_other'        => null,
+                'emotional_stability'  => null,
+                'health'               => null,
+                'speaking_handwriting' => null,
+            ];
+        }
+
+        // psychomotor
+        return [
+            // original
             'handwriting'      => null,
             'verbal_fluency'   => null,
             'sports'           => null,
             'handling_tools'   => null,
             'drawing_painting' => null,
+            // newly added
+            'games'            => null,
+            'musical_skills'   => null,
         ];
     }
 
 
     public function issuedPins()
     {
-        $student = Auth::user();
-
+        $student    = Auth::user();
         $issuedPins = IssuedPin::where('student_id', $student->id)
             ->with(['session', 'term', 'section', 'schoolClass', 'pin'])
             ->orderByDesc('created_at')
