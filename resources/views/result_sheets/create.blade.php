@@ -1,5 +1,8 @@
 @include('includes.head')
 
+{{-- SortableJS for drag-and-drop subject reordering --}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+
 <body>
 <div class="loader"></div>
 <div id="app">
@@ -31,7 +34,7 @@
                             <form method="POST" action="{{ route('result_sheets.store') }}" id="mainForm">
                                 @csrf
 
-                                {{-- ══ STEP 1: Basic Info ══ --}}
+                                {{-- ══ STEP 1 ══ --}}
                                 <div class="card mb-4 border-left border-primary" style="border-left-width:4px!important">
                                     <div class="card-header bg-primary text-white py-2">
                                         <i class="fas fa-info-circle mr-1"></i> Step 1 — Basic Information
@@ -58,11 +61,8 @@
                                             </div>
                                         </div>
 
-                                        {{-- Rating Columns --}}
                                         <div class="form-group mb-0">
-                                            <label class="font-weight-bold">
-                                                Rating Columns <span class="text-danger">*</span>
-                                            </label>
+                                            <label class="font-weight-bold">Rating Columns <span class="text-danger">*</span></label>
                                             <small class="text-muted d-block mb-2">
                                                 These become the column headers on the printed sheet
                                                 (e.g. "Not Yet", "Good", "V. Good", "Excellent").
@@ -74,16 +74,14 @@
                                                         class="form-control form-control-sm"
                                                         value="{{ $col }}" placeholder="Column">
                                                     <div class="input-group-append">
-                                                        <button type="button"
-                                                            class="btn btn-sm btn-outline-danger remove-rating-col">
+                                                        <button type="button" class="btn btn-sm btn-outline-danger remove-rating-col">
                                                             <i class="fas fa-times"></i>
                                                         </button>
                                                     </div>
                                                 </div>
                                                 @endforeach
                                             </div>
-                                            <button type="button" id="addRatingCol"
-                                                class="btn btn-sm btn-outline-primary mt-2">
+                                            <button type="button" id="addRatingCol" class="btn btn-sm btn-outline-primary mt-2">
                                                 <i class="fas fa-plus"></i> Add Column
                                             </button>
                                             @error('rating_columns')
@@ -93,7 +91,7 @@
                                     </div>
                                 </div>
 
-                                {{-- ══ STEP 2: Section → Classes → Term ══ --}}
+                                {{-- ══ STEP 2 ══ --}}
                                 <div class="card mb-4 border-left border-success" style="border-left-width:4px!important">
                                     <div class="card-header bg-success text-white py-2">
                                         <i class="fas fa-school mr-1"></i> Step 2 — Section, Classes &amp; Term
@@ -117,13 +115,10 @@
                                                 </div>
                                             </div>
                                             <div class="col-md-4">
-                                                {{-- ── TERM: now a plain name dropdown, not session-specific ── --}}
                                                 <div class="form-group">
                                                     <label class="font-weight-bold">
                                                         Term <span class="text-danger">*</span>
-                                                        <small class="text-muted font-weight-normal ml-1">
-                                                            (applies to all sessions)
-                                                        </small>
+                                                        <small class="text-muted font-weight-normal ml-1">(applies to all sessions)</small>
                                                     </label>
                                                     <select name="term_name" id="termSelect"
                                                         class="form-control @error('term_name') is-invalid @enderror">
@@ -132,25 +127,20 @@
                                                     @error('term_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                                     <small class="text-muted">
                                                         <i class="fas fa-info-circle"></i>
-                                                        This template will work for the selected term across
-                                                        <strong>every</strong> academic session.
+                                                        Works for the selected term across <strong>every</strong> academic session.
                                                     </small>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div class="form-group">
-                                            <label class="font-weight-bold">
-                                                Applicable Classes <span class="text-danger">*</span>
-                                            </label>
+                                            <label class="font-weight-bold">Applicable Classes <span class="text-danger">*</span></label>
                                             <small class="text-muted d-block mb-2">
-                                                Select the classes this sheet applies to.
-                                                Subjects will be fetched from the selected classes.
+                                                Select the classes this sheet applies to. Subjects will be fetched from these classes.
                                             </small>
                                             <div id="classesContainer">
                                                 <span class="text-muted small">
-                                                    <i class="fas fa-info-circle"></i>
-                                                    Select a section above to load classes.
+                                                    <i class="fas fa-info-circle"></i> Select a section above to load classes.
                                                 </span>
                                             </div>
                                             @error('applicable_classes')
@@ -164,27 +154,34 @@
                                     </div>
                                 </div>
 
-                                {{-- ══ STEP 3: Subjects → Subtopics → Items ══ --}}
+                                {{-- ══ STEP 3: Subjects (sortable) ══ --}}
                                 <div class="card mb-4 border-left border-warning"
                                      style="border-left-width:4px!important; display:none"
                                      id="subjectsCard">
-                                    <div class="card-header bg-warning py-2">
-                                        <i class="fas fa-book mr-1"></i>
-                                        Step 3 — Build Sheet Structure
-                                        <small class="ml-2 text-dark font-italic">
-                                            Click a subject to add sub-topics and skill items
-                                        </small>
+                                    <div class="card-header bg-warning py-2 d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="fas fa-book mr-1"></i>
+                                            <strong>Step 3 — Build Sheet Structure</strong>
+                                            <small class="ml-2 text-dark font-italic">
+                                                Drag <i class="fas fa-grip-vertical"></i> to reorder · Click a subject to edit it
+                                            </small>
+                                        </span>
+                                        <span class="badge badge-dark" id="subjectCountBadge">0 subjects</span>
                                     </div>
                                     <div class="card-body">
-                                        <div id="availableSubjectsArea" class="mb-3">
-                                            <p class="text-muted">No subjects loaded yet.</p>
+
+                                        {{-- ── SORTABLE SUBJECT LIST ── --}}
+                                        <div id="sortableSubjectList" class="mb-3">
+                                            {{-- rows injected by JS --}}
                                         </div>
+
+                                        {{-- ── BUILDER PANEL (shown when a subject is selected) ── --}}
                                         <div id="subjectBuilderArea"></div>
                                         <input type="hidden" name="subjects_json" id="subjectsJson" value="[]">
                                     </div>
                                 </div>
 
-                                {{-- ══ STEP 4: Footer Fields ══ --}}
+                                {{-- ══ STEP 4 ══ --}}
                                 <div class="card mb-4 border-left border-info" style="border-left-width:4px!important">
                                     <div class="card-header bg-info text-white py-2">
                                         <i class="fas fa-signature mr-1"></i> Step 4 — Footer Fields on Printed Sheet
@@ -227,32 +224,118 @@
 @include('includes.edit_footer')
 
 <style>
-.subject-pill {
-    cursor:pointer; border-radius:20px; padding:5px 16px;
-    font-size:.85rem; border:2px solid #dee2e6; background:#fff;
-    transition:all .2s; user-select:none; display:inline-block;
+/* ── Sortable subject rows ── */
+#sortableSubjectList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
-.subject-pill:hover { border-color:#007bff; }
-.subject-pill.active { background:#007bff; color:#fff; border-color:#007bff; }
-.subject-pill.has-data { border-color:#28a745; }
-.subject-pill.active.has-data { background:#28a745; border-color:#28a745; }
-.subject-block { border-left:4px solid #ffc107 !important; }
-.sub-cat-block { border-left:3px solid #17a2b8 !important; }
+.subject-row {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    gap: 10px;
+    cursor: default;
+    transition: border-color .15s, box-shadow .15s;
+    user-select: none;
+}
+.subject-row:hover { border-color: #adb5bd; box-shadow: 0 2px 6px rgba(0,0,0,.07); }
+.subject-row.active { border-color: #007bff; background: #e8f0fe; }
+.subject-row.has-data { border-color: #28a745; }
+.subject-row.active.has-data { border-color: #1a7a35; background: #e6f4ea; }
+.subject-row.sortable-ghost { opacity: .4; background: #f0f4ff; }
+.subject-row.sortable-drag  { box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+
+.drag-handle {
+    cursor: grab;
+    color: #adb5bd;
+    font-size: 1rem;
+    padding: 2px 4px;
+    flex-shrink: 0;
+}
+.drag-handle:active { cursor: grabbing; }
+
+.subject-row-number {
+    font-weight: 700;
+    font-size: .82rem;
+    color: #6c757d;
+    min-width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.subject-row-name {
+    flex: 1;
+    font-size: .92rem;
+    font-weight: 500;
+}
+.subject-row-meta {
+    font-size: .78rem;
+    color: #6c757d;
+    flex-shrink: 0;
+}
+.subject-row-actions { display: flex; gap: 5px; flex-shrink: 0; }
+
+/* ── Builder ── */
+.subject-block { border-left: 4px solid #ffc107 !important; }
+.sub-cat-block { border-left: 3px solid #17a2b8 !important; }
 .item-row-ui {
-    display:flex; align-items:center; background:#f8f9fa;
-    border:1px solid #dee2e6; border-radius:4px;
-    padding:4px 8px; margin-bottom:4px; gap:8px;
+    display: flex; align-items: center; background: #f8f9fa;
+    border: 1px solid #dee2e6; border-radius: 4px;
+    padding: 4px 8px; margin-bottom: 4px; gap: 8px;
 }
-.item-row-ui span { flex:1; font-size:.85rem; }
-.btn-xs { padding:2px 6px; font-size:.75rem; }
+.item-row-ui span { flex: 1; font-size: .85rem; }
+.btn-xs { padding: 2px 6px; font-size: .75rem; }
 </style>
 
 <script>
 // ── DATA STORE ────────────────────────────────────────────────────────────
-const store = { subjects: {}, activeSubjectId: null };
+// subjects: keyed by courseId string
+// subjectOrder: array of courseId strings — THE authoritative render order
+const store = {
+    subjects:     {},
+    subjectOrder: [],
+    activeId:     null,
+};
 
-// ── 1. RATING COLUMNS ─────────────────────────────────────────────────────
-document.getElementById('addRatingCol').addEventListener('click', () => {
+let sortableInstance = null;
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+    loadTermNames();
+
+    document.getElementById('addRatingCol').addEventListener('click', addRatingColRow);
+    document.getElementById('ratingColumnsContainer').addEventListener('click', removeRatingColHandler);
+    document.getElementById('sectionSelect').addEventListener('change', onSectionChange);
+    document.getElementById('loadSubjectsBtn').addEventListener('click', loadSubjectsFromClasses);
+    document.getElementById('mainForm').addEventListener('submit', validateForm);
+
+    // Init Sortable on the (empty) list right away
+    initSortable();
+});
+
+// ── SORTABLE ──────────────────────────────────────────────────────────────
+function initSortable() {
+    const el = document.getElementById('sortableSubjectList');
+    sortableInstance = Sortable.create(el, {
+        animation:  150,
+        handle:     '.drag-handle',
+        ghostClass: 'sortable-ghost',
+        dragClass:  'sortable-drag',
+        onEnd() {
+            // Read the new DOM order back into store.subjectOrder
+            store.subjectOrder = [...el.querySelectorAll('.subject-row')]
+                .map(row => row.dataset.courseId);
+            refreshOrderNumbers();
+            syncJson();
+        },
+    });
+}
+
+// ── RATING COLUMNS ────────────────────────────────────────────────────────
+function addRatingColRow() {
     const row = document.createElement('div');
     row.className = 'input-group rating-col-row mb-1';
     row.style.width = '185px';
@@ -264,52 +347,43 @@ document.getElementById('addRatingCol').addEventListener('click', () => {
             </button>
         </div>`;
     document.getElementById('ratingColumnsContainer').appendChild(row);
-});
-document.getElementById('ratingColumnsContainer').addEventListener('click', e => {
+}
+function removeRatingColHandler(e) {
     if (e.target.closest('.remove-rating-col')) {
         if (document.querySelectorAll('.rating-col-row').length > 2)
             e.target.closest('.rating-col-row').remove();
         else alert('You need at least 2 rating columns.');
     }
-});
+}
 
-// ── 2. LOAD TERM NAMES ON PAGE LOAD (not section-dependent) ───────────────
-document.addEventListener('DOMContentLoaded', function () {
-    loadTermNames();
-});
-
+// ── TERM NAMES ────────────────────────────────────────────────────────────
 function loadTermNames() {
     const sel = document.getElementById('termSelect');
     fetch('/api/terms-by-section')
         .then(r => r.json())
         .then(data => {
-            const terms = data.terms || [];
+            const terms  = data.terms || [];
             const oldVal = '{{ old("term_name") }}';
             let opts = '<option value="">-- Select Term --</option>';
             terms.forEach(t => {
-                const selected = (oldVal && t.name === oldVal) || t.is_current ? 'selected' : '';
-                opts += `<option value="${t.name}" ${selected}>
-                    ${t.name}${t.is_current ? ' (Current)' : ''}
-                </option>`;
+                const sel = (oldVal && t.name === oldVal) || t.is_current ? 'selected' : '';
+                opts += `<option value="${t.name}" ${sel}>${t.name}${t.is_current ? ' (Current)' : ''}</option>`;
             });
             sel.innerHTML = opts;
         })
-        .catch(() => {
-            sel.innerHTML = '<option value="">Could not load terms</option>';
-        });
+        .catch(() => { sel.innerHTML = '<option value="">Could not load terms</option>'; });
 }
 
-// ── 3. SECTION → CLASSES ──────────────────────────────────────────────────
-document.getElementById('sectionSelect').addEventListener('change', function () {
+// ── SECTION → CLASSES ─────────────────────────────────────────────────────
+function onSectionChange() {
     const sectionId = this.value;
-
     document.getElementById('classesContainer').innerHTML =
         '<span class="text-muted small"><i class="fas fa-spinner fa-spin"></i> Loading classes...</span>';
     document.getElementById('loadSubjectsBtn').disabled = true;
     document.getElementById('subjectsCard').style.display = 'none';
-    document.getElementById('availableSubjectsArea').innerHTML = '<p class="text-muted">No subjects loaded yet.</p>';
     document.getElementById('subjectBuilderArea').innerHTML = '';
-    store.subjects = {}; store.activeSubjectId = null;
+    store.subjects = {}; store.subjectOrder = []; store.activeId = null;
+    renderSortableList();
 
     if (!sectionId) {
         document.getElementById('classesContainer').innerHTML =
@@ -339,105 +413,151 @@ document.getElementById('sectionSelect').addEventListener('change', function () 
             });
             html += '</div>';
             document.getElementById('classesContainer').innerHTML = html;
-
             document.getElementById('classesContainer').addEventListener('change', () => {
                 document.getElementById('loadSubjectsBtn').disabled =
-                    document.querySelectorAll('.class-checkbox:checked').length === 0;
+                    !document.querySelectorAll('.class-checkbox:checked').length;
             });
         });
-});
+}
 
-// ── 4. LOAD SUBJECTS ──────────────────────────────────────────────────────
-document.getElementById('loadSubjectsBtn').addEventListener('click', () => {
+// ── LOAD SUBJECTS ─────────────────────────────────────────────────────────
+function loadSubjectsFromClasses() {
     const classIds = [...document.querySelectorAll('.class-checkbox:checked')].map(c => c.value);
     if (!classIds.length) return;
-    document.getElementById('availableSubjectsArea').innerHTML =
-        '<span class="text-muted"><i class="fas fa-spinner fa-spin"></i> Loading subjects...</span>';
+
     document.getElementById('subjectsCard').style.display = '';
+    document.getElementById('sortableSubjectList').innerHTML =
+        '<span class="text-muted small"><i class="fas fa-spinner fa-spin"></i> Loading subjects...</span>';
 
     fetch(`/api/subjects-by-classes?class_ids=${classIds.join(',')}`)
         .then(r => r.json())
         .then(courses => {
             if (!courses.length) {
-                document.getElementById('availableSubjectsArea').innerHTML =
+                document.getElementById('sortableSubjectList').innerHTML =
                     '<span class="text-muted">No subjects found for the selected classes.</span>';
                 return;
             }
             courses.forEach(c => {
-                if (!store.subjects[c.id])
-                    store.subjects[c.id] = { course_id: c.id, course_name: c.course_name, subtopics: [] };
+                const key = String(c.id);
+                if (!store.subjects[key]) {
+                    store.subjects[key] = { course_id: key, course_name: c.course_name, subtopics: [] };
+                    store.subjectOrder.push(key); // add new subjects at end
+                }
             });
-            renderPills(courses);
+            renderSortableList();
+            syncJson();
         });
-});
+}
 
-// ── 5. SUBJECT PILLS ──────────────────────────────────────────────────────
-function renderPills(courses) {
-    const area = document.getElementById('availableSubjectsArea');
-    area.innerHTML = `
-        <div class="mb-2 font-weight-bold text-muted small text-uppercase">
-            Click a subject to build its sheet structure:
-        </div>
-        <div class="d-flex flex-wrap" style="gap:8px" id="pillsRow"></div>`;
-    courses.forEach(c => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'subject-pill';
-        btn.dataset.courseId = c.id;
-        btn.textContent = c.course_name;
-        refreshPillState(btn, c.id);
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.subject-pill').forEach(p => p.classList.remove('active'));
-            btn.classList.add('active');
-            store.activeSubjectId = c.id;
-            renderBuilder(c.id, c.course_name);
-        });
-        document.getElementById('pillsRow').appendChild(btn);
+// ── RENDER SORTABLE LIST ──────────────────────────────────────────────────
+function renderSortableList() {
+    const list = document.getElementById('sortableSubjectList');
+    list.innerHTML = '';
+
+    if (!store.subjectOrder.length) {
+        const badge = document.getElementById('subjectCountBadge');
+        if (badge) badge.textContent = '0 subjects';
+        return;
+    }
+
+    store.subjectOrder.forEach((id, idx) => {
+        const subj = store.subjects[id];
+        if (!subj) return;
+        const hasData = subj.subtopics.some(st => st.name || st.items.length);
+        const isActive = store.activeId === id;
+        const itemCount = subj.subtopics.reduce((n, st) => n + st.items.length, 0);
+
+        const row = document.createElement('div');
+        row.className = 'subject-row'
+            + (isActive ? ' active' : '')
+            + (hasData  ? ' has-data' : '');
+        row.dataset.courseId = id;
+
+        row.innerHTML = `
+            <span class="drag-handle" title="Drag to reorder">
+                <i class="fas fa-grip-vertical"></i>
+            </span>
+            <span class="subject-row-number">${idx + 1}.</span>
+            <span class="subject-row-name">${escHtml(subj.course_name)}</span>
+            <span class="subject-row-meta">
+                ${subj.subtopics.length} sub-topic(s) · ${itemCount} item(s)
+                ${hasData ? '<i class="fas fa-check-circle text-success ml-1" title="Has data"></i>' : ''}
+            </span>
+            <div class="subject-row-actions">
+                <button type="button" class="btn btn-xs ${isActive ? 'btn-primary' : 'btn-outline-primary'}"
+                    onclick="selectSubject('${id}')" title="Edit this subject">
+                    <i class="fas fa-${isActive ? 'pencil-alt' : 'edit'}"></i>
+                    ${isActive ? ' Editing' : ' Edit'}
+                </button>
+            </div>`;
+
+        list.appendChild(row);
     });
+
+    const badge = document.getElementById('subjectCountBadge');
+    if (badge) badge.textContent = store.subjectOrder.length + ' subject(s)';
+
+    // Re-init Sortable after re-render (element reference changed)
+    if (sortableInstance) sortableInstance.destroy();
+    initSortable();
 }
 
-function refreshPillState(btn, courseId) {
-    const subj = store.subjects[courseId];
-    const has = subj && subj.subtopics.some(st => st.name || st.items.length);
-    btn.classList.toggle('has-data', !!has);
+function refreshOrderNumbers() {
+    document.querySelectorAll('.subject-row').forEach((row, idx) => {
+        const numEl = row.querySelector('.subject-row-number');
+        if (numEl) numEl.textContent = (idx + 1) + '.';
+    });
+    const badge = document.getElementById('subjectCountBadge');
+    if (badge) badge.textContent = store.subjectOrder.length + ' subject(s)';
 }
 
-// ── 6. SUBJECT BUILDER ────────────────────────────────────────────────────
+// ── SELECT SUBJECT → OPEN BUILDER ─────────────────────────────────────────
+function selectSubject(courseId) {
+    store.activeId = courseId;
+    renderSortableList(); // refresh active state on rows
+    renderBuilder(courseId, store.subjects[courseId].course_name);
+    // Scroll to builder
+    document.getElementById('subjectBuilderArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── BUILDER ───────────────────────────────────────────────────────────────
 function renderBuilder(courseId, courseName) {
+    courseId = String(courseId);
     const area = document.getElementById('subjectBuilderArea');
     area.innerHTML = `
-        <div class="card subject-block mb-3">
+        <div class="card subject-block mb-3 mt-3">
             <div class="card-header py-2 d-flex justify-content-between align-items-center">
                 <span class="font-weight-bold">
                     <i class="fas fa-book-open mr-1 text-warning"></i>
-                    <em>${escHtml(courseName)}</em>
+                    Editing: <em>${escHtml(courseName)}</em>
                 </span>
                 <small class="text-muted">Add sub-topics, then type skill statements under each</small>
             </div>
             <div class="card-body">
                 <div id="subtopicsArea_${courseId}"></div>
                 <button type="button" class="btn btn-sm btn-outline-info mt-2"
-                    onclick="addSubtopic(${courseId})">
+                    onclick="addSubtopic('${courseId}')">
                     <i class="fas fa-plus"></i> Add Sub-topic
                     <span class="text-muted">(e.g. (a) Oral English)</span>
                 </button>
             </div>
         </div>`;
-
     store.subjects[courseId].subtopics.forEach((_, idx) => renderSubtopicDOM(courseId, idx));
 }
 
-// ── 7. SUBTOPIC DOM ───────────────────────────────────────────────────────
+// ── SUBTOPIC DOM ──────────────────────────────────────────────────────────
 function nextLabel(courseId) {
-    const subtopics = store.subjects[courseId].subtopics;
-    if (!subtopics.length) return '(a)';
-    const last = [...subtopics].reverse().find(st => /^\([a-z]\)$/i.test(st.label?.trim()));
-    if (!last) return `(${String.fromCharCode(97 + subtopics.length)})`;
+    courseId = String(courseId);
+    const subs = store.subjects[courseId].subtopics;
+    if (!subs.length) return '(a)';
+    const last = [...subs].reverse().find(st => /^\([a-z]\)$/i.test(st.label?.trim()));
+    if (!last) return `(${String.fromCharCode(97 + subs.length)})`;
     const char = last.label.trim().replace(/[()]/g, '');
     return `(${String.fromCharCode(char.charCodeAt(0) + 1)})`;
 }
 
 function addSubtopic(courseId) {
+    courseId = String(courseId);
     store.subjects[courseId].subtopics.push({ label: nextLabel(courseId), name: '', items: [] });
     const idx = store.subjects[courseId].subtopics.length - 1;
     renderSubtopicDOM(courseId, idx);
@@ -445,6 +565,7 @@ function addSubtopic(courseId) {
 }
 
 function renderSubtopicDOM(courseId, stIdx) {
+    courseId = String(courseId);
     const container = document.getElementById(`subtopicsArea_${courseId}`);
     const st  = store.subjects[courseId].subtopics[stIdx];
     const old = document.getElementById(`st_${courseId}_${stIdx}`);
@@ -468,7 +589,7 @@ function renderSubtopicDOM(courseId, stIdx) {
                     oninput="fieldChange(this.dataset.course, this.dataset.idx, this.dataset.field, this.value)">
             </div>
             <button type="button" class="btn btn-xs btn-outline-danger"
-                onclick="removeSubtopic(${courseId}, ${stIdx})">
+                onclick="removeSubtopic('${courseId}', ${stIdx})">
                 <i class="fas fa-trash-alt"></i>
             </button>
         </div>
@@ -480,10 +601,10 @@ function renderSubtopicDOM(courseId, stIdx) {
                 <input type="text" class="form-control form-control-sm"
                     placeholder="Type skill/competency text then press Enter or click Add"
                     id="newItem_${courseId}_${stIdx}"
-                    onkeydown="if(event.key==='Enter'){event.preventDefault();addItem(${courseId},${stIdx});}">
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();addItem('${courseId}',${stIdx});}">
                 <div class="input-group-append">
                     <button type="button" class="btn btn-sm btn-success"
-                        onclick="addItem(${courseId},${stIdx})">
+                        onclick="addItem('${courseId}',${stIdx})">
                         <i class="fas fa-plus"></i> Add
                     </button>
                 </div>
@@ -498,28 +619,28 @@ function itemHtml(courseId, stIdx, iIdx, text) {
             <i class="fas fa-minus text-muted" style="font-size:.7rem"></i>
             <span>${escHtml(text)}</span>
             <button type="button" class="btn btn-xs btn-outline-danger"
-                onclick="removeItem(${courseId},${stIdx},${iIdx})">
+                onclick="removeItem('${courseId}',${stIdx},${iIdx})">
                 <i class="fas fa-times"></i>
             </button>
         </div>`;
 }
 
-// ── 8. MUTATIONS ──────────────────────────────────────────────────────────
+// ── MUTATIONS ─────────────────────────────────────────────────────────────
 function fieldChange(courseId, stIdx, field, val) {
     courseId = String(courseId);
     stIdx    = parseInt(stIdx, 10);
     store.subjects[courseId].subtopics[stIdx][field] = val;
     afterChange(courseId);
 }
-
 function removeSubtopic(courseId, stIdx) {
+    courseId = String(courseId);
     if (!confirm('Remove this sub-topic and all its items?')) return;
     store.subjects[courseId].subtopics.splice(stIdx, 1);
     renderBuilder(courseId, store.subjects[courseId].course_name);
     afterChange(courseId);
 }
-
 function addItem(courseId, stIdx) {
+    courseId = String(courseId);
     const input = document.getElementById(`newItem_${courseId}_${stIdx}`);
     const text  = input.value.trim();
     if (!text) { input.focus(); return; }
@@ -530,8 +651,8 @@ function addItem(courseId, stIdx) {
     input.value = ''; input.focus();
     afterChange(courseId);
 }
-
 function removeItem(courseId, stIdx, iIdx) {
+    courseId = String(courseId);
     store.subjects[courseId].subtopics[stIdx].items.splice(iIdx, 1);
     const area = document.getElementById(`itemsArea_${courseId}_${stIdx}`);
     area.innerHTML = store.subjects[courseId].subtopics[stIdx].items
@@ -539,21 +660,34 @@ function removeItem(courseId, stIdx, iIdx) {
     afterChange(courseId);
 }
 
-// ── 9. HELPERS ────────────────────────────────────────────────────────────
+// ── HELPERS ───────────────────────────────────────────────────────────────
 function afterChange(courseId) {
-    const pill = document.querySelector(`.subject-pill[data-course-id="${courseId}"]`);
-    if (pill) refreshPillState(pill, courseId);
+    courseId = String(courseId);
+    // Update the row meta in the sortable list
+    const row = document.querySelector(`.subject-row[data-course-id="${courseId}"]`);
+    if (row) {
+        const subj      = store.subjects[courseId];
+        const hasData   = subj.subtopics.some(st => st.name || st.items.length);
+        const itemCount = subj.subtopics.reduce((n, st) => n + st.items.length, 0);
+        row.classList.toggle('has-data', hasData);
+        const metaEl = row.querySelector('.subject-row-meta');
+        if (metaEl) {
+            metaEl.innerHTML = `${subj.subtopics.length} sub-topic(s) · ${itemCount} item(s)
+                ${hasData ? '<i class="fas fa-check-circle text-success ml-1"></i>' : ''}`;
+        }
+    }
     syncJson();
 }
 
 function syncJson() {
-    const payload = Object.values(store.subjects)
-        .filter(s => s.subtopics.length)
-        .map((s, i) => ({
-            course_id:      s.course_id,
-            course_name:    s.course_name,
+    // Use store.subjectOrder for the authoritative sequence
+    const payload = store.subjectOrder
+        .filter(id => store.subjects[id] && store.subjects[id].subtopics.length)
+        .map((id, i) => ({
+            course_id:      store.subjects[id].course_id,
+            course_name:    store.subjects[id].course_name,
             subject_number: i + 1,
-            subtopics:      s.subtopics,
+            subtopics:      store.subjects[id].subtopics,
         }));
     document.getElementById('subjectsJson').value = JSON.stringify(payload);
 }
@@ -575,8 +709,8 @@ function scrapeBuilderIntoStore() {
     });
 }
 
-// ── 10. FORM SUBMIT VALIDATION ────────────────────────────────────────────
-document.getElementById('mainForm').addEventListener('submit', function (e) {
+// ── VALIDATE & SUBMIT ─────────────────────────────────────────────────────
+function validateForm(e) {
     scrapeBuilderIntoStore();
     syncJson();
 
@@ -592,6 +726,6 @@ document.getElementById('mainForm').addEventListener('submit', function (e) {
         e.preventDefault();
         return alert('Please add at least one subject with sub-topics and items before saving.');
     }
-});
+}
 </script>
 </body>
