@@ -35,18 +35,34 @@ class ResultSheetController extends Controller
             $template->applicable_classes = json_decode($template->applicable_classes ?? '[]');
             $template->rating_columns     = json_decode($template->rating_columns ?? '[]');
             $template->footer_fields      = json_decode($template->footer_fields ?? '{}', true);
-
-            $template->class_names = SchoolClass::whereIn('id', $template->applicable_classes)
+            $template->class_names        = SchoolClass::whereIn('id', $template->applicable_classes)
                 ->pluck('name')->implode(', ');
 
-            // Backfill term_name from term_id if missing
             if (empty($template->term_name) && $template->term_id) {
-                $legacyTerm = Term::find($template->term_id);
-                $template->term_name = $legacyTerm?->name;
+                $template->term_name = Term::find($template->term_id)?->name;
             }
         }
 
         return view('result_sheets.index', compact('templates'));
+    }
+
+    // =====================================================================
+    // HELPER — fetch distinct term names from the terms table
+    // Used by create() and edit()
+    // =====================================================================
+
+    private function fetchTermsForDropdown()
+    {
+        // Query the terms table directly (columns: id, session_id, name, is_current)
+        // Deduplicate by name so "First Term" appears only once even across many sessions
+        return DB::table('terms')
+            ->select('id', 'name')
+            ->whereNotNull('name')
+            ->where('name', '!=', '')
+            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term'), name ASC")
+            ->get()
+            ->unique('name')
+            ->values();
     }
 
     // =====================================================================
@@ -56,17 +72,7 @@ class ResultSheetController extends Controller
     public function create()
     {
         $sections = Section::all();
-
-        // Fetch all terms as id+name for the dropdown
-        // Value submitted will be the term name string
-        $terms = DB::table('terms')
-            ->select('id', 'name')
-            ->whereNotNull('name')
-            ->where('name', '!=', '')
-            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term')")
-            ->get()
-            ->unique('name')   // deduplicate by name so "First Term" only appears once
-            ->values();
+        $terms    = $this->fetchTermsForDropdown();   // ← collection of {id, name}
 
         return view('result_sheets.create', compact('sections', 'terms'));
     }
@@ -145,22 +151,11 @@ class ResultSheetController extends Controller
 
         // Backfill term_name from term_id for legacy rows
         if (empty($template->term_name) && $template->term_id) {
-            $legacyTerm = Term::find($template->term_id);
-            $template->term_name = $legacyTerm?->name;
+            $template->term_name = Term::find($template->term_id)?->name;
         }
 
-        $sections = Section::all();
-
-        // Fetch all terms as id+name objects, deduplicated by name
-        $terms = DB::table('terms')
-            ->select('id', 'name')
-            ->whereNotNull('name')
-            ->where('name', '!=', '')
-            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term')")
-            ->get()
-            ->unique('name')
-            ->values();
-
+        $sections         = Section::all();
+        $terms            = $this->fetchTermsForDropdown();   // ← collection of {id, name}
         $existingSubjects = $this->loadTemplateStructureForEdit($id);
 
         return view('result_sheets.edit', compact(
@@ -179,15 +174,10 @@ class ResultSheetController extends Controller
     {
         $this->resolveTermName($request);
 
-        Log::info('ResultSheet UPDATE called', [
-            'id'                 => $id,
-            'name'               => $request->input('name'),
-            'term_name'          => $request->input('term_name'),
-            'term_id_raw'        => $request->input('term_id'),
-            'section_id'         => $request->input('section_id'),
-            'applicable_classes' => $request->input('applicable_classes'),
-            'rating_columns'     => $request->input('rating_columns'),
-            'subjects_json_len'  => strlen($request->input('subjects_json', '')),
+        Log::info('ResultSheet UPDATE', [
+            'id'        => $id,
+            'term_name' => $request->input('term_name'),
+            'term_id'   => $request->input('term_id'),
         ]);
 
         $request->validate([
@@ -206,7 +196,7 @@ class ResultSheetController extends Controller
 
         if (empty($subjects)) {
             return back()
-                ->withErrors(['subjects_json' => 'subjects_json decoded to empty. Raw: ' . substr($request->subjects_json, 0, 200)])
+                ->withErrors(['subjects_json' => 'No subject data found. Raw: ' . substr($request->subjects_json, 0, 200)])
                 ->withInput();
         }
 
@@ -242,11 +232,7 @@ class ResultSheetController extends Controller
                 $this->saveSubjectsJson($id, $subjects);
             });
         } catch (\Throwable $e) {
-            Log::error('ResultSheet UPDATE failed', [
-                'error' => $e->getMessage(),
-                'line'  => $e->getLine(),
-                'file'  => $e->getFile(),
-            ]);
+            Log::error('ResultSheet UPDATE failed', ['error' => $e->getMessage()]);
             return back()
                 ->withErrors(['update_error' => 'Update failed: ' . $e->getMessage()])
                 ->withInput();
@@ -313,8 +299,7 @@ class ResultSheetController extends Controller
         $template->applicable_classes = json_decode($template->applicable_classes ?? '[]');
 
         if (empty($template->term_name) && $template->term_id) {
-            $legacyTerm = Term::find($template->term_id);
-            $template->term_name = $legacyTerm?->name;
+            $template->term_name = Term::find($template->term_id)?->name;
         }
 
         $term    = $template->term_id ? Term::find($template->term_id) : null;
@@ -328,11 +313,8 @@ class ResultSheetController extends Controller
         $subjects = $service->loadTemplateStructure($templateId);
 
         $students = count($template->applicable_classes)
-            ? User::with('schoolClass')
-                ->where('user_type', 4)
-                ->whereIn('class_id', $template->applicable_classes)
-                ->orderBy('name')
-                ->get()
+            ? User::with('schoolClass')->where('user_type', 4)
+                ->whereIn('class_id', $template->applicable_classes)->orderBy('name')->get()
             : collect();
 
         $ratingCounts    = [];
@@ -375,20 +357,15 @@ class ResultSheetController extends Controller
             $template->term_name = Term::find($template->term_id)?->name;
         }
 
-        $sessions = Session::orderByDesc('name')->get();
-
-        $selectedSessionId = $request->input('session_id');
-        if (!$selectedSessionId) {
-            $currentSession    = Session::where('is_current', true)->first();
-            $selectedSessionId = $currentSession?->id;
-        }
-        $selectedSession = Session::find($selectedSessionId);
+        $sessions          = Session::orderByDesc('name')->get();
+        $selectedSessionId = $request->input('session_id')
+            ?? Session::where('is_current', true)->value('id');
+        $selectedSession   = Session::find($selectedSessionId);
 
         $terms = $selectedSession
             ? Term::where('session_id', $selectedSession->id)
                   ->where('name', $template->term_name)
-                  ->orderBy('name')
-                  ->get()
+                  ->orderBy('name')->get()
             : collect();
 
         $selectedTermId = $request->input('term_id') ?? $terms->first()?->id;
@@ -503,9 +480,9 @@ class ResultSheetController extends Controller
             : collect();
 
         $selectedTerm = Term::find($request->input('term_id')) ?? $terms->first();
+        $service      = new ResultSheetService();
+        $subjects     = $service->loadTemplateStructure($templateId);
 
-        $service    = new ResultSheetService();
-        $subjects   = $service->loadTemplateStructure($templateId);
         $allItemIds = collect($subjects)->flatMap(function ($subject) {
             $ids = collect($subject->items)->pluck('id');
             foreach ($subject->subcategories as $sub) {
@@ -537,17 +514,13 @@ class ResultSheetController extends Controller
     // API HELPERS
     // =====================================================================
 
-    /**
-     * Returns distinct term names for the JS dropdown fallback (still used by create view legacy).
-     * Now also handles NULL names gracefully.
-     */
     public function getTermsBySection(Request $request)
     {
         $rows = DB::table('terms')
             ->select('id', 'name')
             ->whereNotNull('name')
             ->where('name', '!=', '')
-            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term')")
+            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term'), name ASC")
             ->get()
             ->unique('name')
             ->values();
@@ -556,9 +529,7 @@ class ResultSheetController extends Controller
             'id'         => $t->id,
             'name'       => $t->name,
             'is_current' => DB::table('terms')
-                ->where('name', $t->name)
-                ->where('is_current', true)
-                ->exists(),
+                ->where('name', $t->name)->where('is_current', true)->exists(),
         ])->values();
 
         return response()->json(['terms' => $terms]);
@@ -588,22 +559,20 @@ class ResultSheetController extends Controller
     // =====================================================================
 
     /**
-     * Resolve term_name before validation.
-     * Accepts either:
-     *   name="term_name"  → string value like "First Term"  (new forms)
-     *   name="term_id"    → numeric ID                      (legacy / cached forms)
+     * Ensure $request->term_name is populated before validation.
+     * Handles both new forms (name="term_name") and legacy cached forms (name="term_id").
      */
     private function resolveTermName(Request $request): void
     {
         if (!empty($request->input('term_name'))) {
-            return;
+            return; // already set — nothing to do
         }
 
         $termId = $request->input('term_id');
         if ($termId && is_numeric($termId)) {
-            $term = Term::find($termId);
-            if ($term && !empty($term->name)) {
-                $request->merge(['term_name' => $term->name]);
+            $name = DB::table('terms')->where('id', $termId)->value('name');
+            if ($name) {
+                $request->merge(['term_name' => $name]);
             }
         }
     }
