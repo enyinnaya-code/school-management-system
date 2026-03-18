@@ -65,6 +65,10 @@ class ResultSheetController extends Controller
 
     public function store(Request $request)
     {
+        // ── Resolve term_name from either field ───────────────────────────
+        // Handles both new views (term_name) and any legacy form posting term_id
+        $this->resolveTermName($request);
+
         $request->validate([
             'name'                 => 'required|string|max:255',
             'description'          => 'nullable|string',
@@ -129,7 +133,7 @@ class ResultSheetController extends Controller
         $template->rating_columns     = json_decode($template->rating_columns ?? '[]');
         $template->footer_fields      = json_decode($template->footer_fields ?? '{}', true);
 
-        // Backfill term_name for legacy rows
+        // Backfill term_name for legacy rows that only have term_id
         if (empty($template->term_name) && $template->term_id) {
             $legacyTerm = Term::find($template->term_id);
             $template->term_name = $legacyTerm?->name;
@@ -158,10 +162,16 @@ class ResultSheetController extends Controller
 
     public function update(Request $request, $id)
     {
+        // ── Resolve term_name from either field ───────────────────────────
+        // If the form posts term_id (numeric) instead of term_name (string),
+        // look up the name and merge it so validation always finds term_name.
+        $this->resolveTermName($request);
+
         Log::info('ResultSheet UPDATE called', [
             'id'                 => $id,
             'name'               => $request->input('name'),
             'term_name'          => $request->input('term_name'),
+            'term_id_raw'        => $request->input('term_id'),
             'section_id'         => $request->input('section_id'),
             'applicable_classes' => $request->input('applicable_classes'),
             'rating_columns'     => $request->input('rating_columns'),
@@ -291,15 +301,12 @@ class ResultSheetController extends Controller
         $template->footer_fields      = json_decode($template->footer_fields ?? '{}', true);
         $template->applicable_classes = json_decode($template->applicable_classes ?? '[]');
 
-        // ── Resolve term_name ─────────────────────────────────────────────
-        // New templates: term_name is stored directly.
-        // Legacy templates: term_id still set, term_name is null — backfill it.
+        // Backfill term_name for legacy rows
         if (empty($template->term_name) && $template->term_id) {
             $legacyTerm = Term::find($template->term_id);
             $template->term_name = $legacyTerm?->name;
         }
 
-        // Pass $term only for legacy backward compatibility in the view fallback
         $term    = $template->term_id ? Term::find($template->term_id) : null;
         $session = Session::where('is_current', true)->first();
 
@@ -591,6 +598,35 @@ class ResultSheetController extends Controller
     // =====================================================================
     // PRIVATE HELPERS
     // =====================================================================
+
+    /**
+     * Normalise term input before validation.
+     *
+     * Forms post either:
+     *   name="term_name"  → value is already a string like "First Term"  ✓
+     *   name="term_id"    → value is a numeric ID (legacy view or cached page)
+     *
+     * This helper ensures $request->term_name is always a string so that
+     * the 'required|string' validation rule always passes when a term was
+     * actually selected, regardless of which field name the form used.
+     */
+    private function resolveTermName(Request $request): void
+    {
+        // Already has a proper term_name string — nothing to do
+        if (!empty($request->input('term_name'))) {
+            return;
+        }
+
+        // Fallback: term_id was posted (numeric) — look up the name
+        $termId = $request->input('term_id');
+        if ($termId && is_numeric($termId)) {
+            $term = Term::find($termId);
+            if ($term) {
+                // Merge into the request so validation sees term_name
+                $request->merge(['term_name' => $term->name]);
+            }
+        }
+    }
 
     private function saveSubjectsJson(int $templateId, array $subjects): void
     {
