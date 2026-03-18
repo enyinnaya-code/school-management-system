@@ -26,9 +26,6 @@
                                 <a href="{{ route('result_sheets.edit', $template->id) }}" class="btn btn-sm btn-primary">
                                     <i class="fas fa-edit"></i> Edit
                                 </a>
-                                {{-- <a href="{{ route('result_sheets.rate', $template->id) }}" class="btn btn-sm btn-warning">
-                                    <i class="fas fa-star"></i> Rate Students
-                                </a> --}}
                                 <a href="{{ route('result_sheets.index') }}" class="btn btn-sm btn-secondary">
                                     <i class="fas fa-arrow-left"></i> Back
                                 </a>
@@ -40,7 +37,6 @@
                                 <p class="text-muted mb-3">{{ $template->description }}</p>
                             @endif
 
-                            {{-- Meta info row --}}
                             <div class="row">
                                 <div class="col-md-3 col-6 mb-3">
                                     <div class="border rounded p-3 h-100">
@@ -52,23 +48,28 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                {{-- Term now shows the name + "All Sessions" note --}}
                                 <div class="col-md-3 col-6 mb-3">
                                     <div class="border rounded p-3 h-100">
                                         <div class="text-muted small text-uppercase font-weight-bold mb-1">
-                                            <i class="fas fa-calendar mr-1"></i> Term / Session
+                                            <i class="fas fa-calendar mr-1"></i> Term
                                         </div>
                                         <div class="font-weight-bold">
-                                            @if($term)
-                                                {{ $term->name }}
-                                                @if($session)
-                                                    <br><small class="text-muted font-weight-normal">{{ $session->name }}</small>
-                                                @endif
+                                            @if($template->term_name)
+                                                {{ $template->term_name }}
+                                                <br>
+                                                <small class="text-muted font-weight-normal">
+                                                    <i class="fas fa-infinity" style="font-size:.7rem"></i>
+                                                    Applies to all sessions
+                                                </small>
                                             @else
                                                 <span class="text-muted">—</span>
                                             @endif
                                         </div>
                                     </div>
                                 </div>
+
                                 <div class="col-md-3 col-6 mb-3">
                                     <div class="border rounded p-3 h-100">
                                         <div class="text-muted small text-uppercase font-weight-bold mb-1">
@@ -83,6 +84,7 @@
                                         </div>
                                     </div>
                                 </div>
+
                                 <div class="col-md-3 col-6 mb-3">
                                     <div class="border rounded p-3 h-100">
                                         <div class="text-muted small text-uppercase font-weight-bold mb-1">
@@ -180,77 +182,6 @@
                             @endforelse
                         </div>
                     </div>
-
-                    {{-- ── STUDENTS IN APPLICABLE CLASSES ── --}}
-                    {{-- <div class="card mb-4">
-                        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
-                            <span>
-                                <i class="fas fa-user-graduate mr-1"></i>
-                                <strong>Students</strong>
-                                <span class="badge badge-secondary ml-1">{{ $students->count() }}</span>
-                            </span>
-                            @if($session && $term)
-                            <small class="text-muted">
-                                Showing ratings for
-                                <strong>{{ $term->name }}</strong>
-                                — {{ $session->name }}
-                            </small>
-                            @endif
-                        </div>
-                        <div class="card-body p-0">
-                            @if($students->count())
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover mb-0">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Student Name</th>
-                                            <th>Class</th>
-                                            <th>Items Rated</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($students as $i => $student)
-                                        <tr>
-                                            <td>{{ $i + 1 }}</td>
-                                            <td>{{ $student->name }}</td>
-                                            <td>{{ $student->schoolClass->name ?? '—' }}</td>
-                                            <td>
-                                                @php
-                                                    $rated = $ratingCounts[$student->id] ?? 0;
-                                                @endphp
-                                                @if($rated > 0)
-                                                    <span class="badge badge-success">{{ $rated }} rated</span>
-                                                @else
-                                                    <span class="badge badge-light border text-muted">Not rated</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <div class="d-flex" style="gap:4px">
-                                                    <a href="{{ route('result_sheets.rate', $template->id) }}?student_id={{ $student->id }}{{ $session ? '&session_id='.$session->id : '' }}{{ $term ? '&term_id='.$term->id : '' }}{{ $student->class_id ? '&class_id='.$student->class_id : '' }}"
-                                                       class="btn btn-xs btn-warning" title="Rate this student">
-                                                        <i class="fas fa-star"></i> Rate
-                                                    </a>
-                                                    <a href="{{ route('result_sheets.print', [$template->id, $student->id]) }}{{ $session ? '?session_id='.$session->id : '' }}{{ $term ? ($session ? '&' : '?').'term_id='.$term->id : '' }}"
-                                                       class="btn btn-xs btn-outline-primary" title="Print result sheet" target="_blank">
-                                                        <i class="fas fa-print"></i> Print
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            @else
-                            <div class="text-center py-4 text-muted">
-                                <i class="fas fa-users fa-2x mb-2 d-block"></i>
-                                No students found in the applicable classes.
-                            </div>
-                            @endif
-                        </div>
-                    </div> --}}
 
                 </div>
             </section>

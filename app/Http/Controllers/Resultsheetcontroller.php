@@ -14,8 +14,6 @@ use App\Models\Course;
 use Illuminate\Support\Facades\Log;
 use App\Services\ResultSheetService;
 
-
-
 class ResultSheetController extends Controller
 {
     // =====================================================================
@@ -26,10 +24,8 @@ class ResultSheetController extends Controller
     {
         $templates = DB::table('result_sheet_templates as t')
             ->leftJoin('sections as s', 't.section_id', '=', 's.id')
-            ->leftJoin('terms as tr', 't.term_id', '=', 'tr.id')
-            ->leftJoin('school_sessions as se', 'tr.session_id', '=', 'se.id')
             ->leftJoin('users as u', 't.created_by', '=', 'u.id')
-            ->selectRaw('t.*, s.section_name, u.name as creator_name, tr.name as term_name, se.name as session_name')
+            ->selectRaw('t.*, s.section_name, u.name as creator_name')  // ← removed term/session joins
             ->orderByDesc('t.created_at')
             ->paginate(15);
 
@@ -40,7 +36,6 @@ class ResultSheetController extends Controller
             $template->rating_columns     = json_decode($template->rating_columns ?? '[]');
             $template->footer_fields      = json_decode($template->footer_fields ?? '{}', true);
 
-            // Get class names
             $template->class_names = SchoolClass::whereIn('id', $template->applicable_classes)
                 ->pluck('name')->implode(', ');
         }
@@ -68,7 +63,7 @@ class ResultSheetController extends Controller
             'name'                 => 'required|string|max:255',
             'description'          => 'nullable|string',
             'section_id'           => 'nullable|exists:sections,id',
-            'term_id'              => 'required|exists:terms,id',
+            'term_name'            => 'required|string|max:100',   // ← term name, not ID
             'applicable_classes'   => 'required|array|min:1',
             'applicable_classes.*' => 'exists:school_classes,id',
             'rating_columns'       => 'required|array|min:2',
@@ -96,7 +91,8 @@ class ResultSheetController extends Controller
                 'name'               => $request->name,
                 'description'        => $request->description,
                 'section_id'         => $request->section_id,
-                'term_id'            => $request->term_id,
+                'term_id'            => null,                      // no longer used
+                'term_name'          => $request->term_name,       // e.g. "First Term"
                 'applicable_classes' => json_encode($request->applicable_classes),
                 'rating_columns'     => json_encode(array_values($request->rating_columns)),
                 'footer_fields'      => json_encode($footerFields),
@@ -129,10 +125,20 @@ class ResultSheetController extends Controller
 
         $sections = Section::all();
 
-        // Load existing subjects structure for pre-filling the JS store
+        // Distinct term names for the dropdown (deduplicated)
+        $termNames = Term::select('name')
+            ->distinct()
+            ->orderBy('name')
+            ->pluck('name');
+
         $existingSubjects = $this->loadTemplateStructureForEdit($id);
 
-        return view('result_sheets.edit', compact('template', 'sections', 'existingSubjects'));
+        return view('result_sheets.edit', compact(
+            'template',
+            'sections',
+            'existingSubjects',
+            'termNames'
+        ));
     }
 
     // =====================================================================
@@ -141,24 +147,22 @@ class ResultSheetController extends Controller
 
     public function update(Request $request, $id)
     {
-        // ── DEBUG: log exactly what arrived ──────────────────────────────
         Log::info('ResultSheet UPDATE called', [
-            'id'                  => $id,
-            'name'                => $request->input('name'),
-            'term_id'             => $request->input('term_id'),
-            'section_id'          => $request->input('section_id'),
-            'applicable_classes'  => $request->input('applicable_classes'),
-            'rating_columns'      => $request->input('rating_columns'),
-            'subjects_json_len'   => strlen($request->input('subjects_json', '')),
-            'subjects_json_raw'   => substr($request->input('subjects_json', ''), 0, 300),
+            'id'                 => $id,
+            'name'               => $request->input('name'),
+            'term_name'          => $request->input('term_name'),
+            'section_id'         => $request->input('section_id'),
+            'applicable_classes' => $request->input('applicable_classes'),
+            'rating_columns'     => $request->input('rating_columns'),
+            'subjects_json_len'  => strlen($request->input('subjects_json', '')),
+            'subjects_json_raw'  => substr($request->input('subjects_json', ''), 0, 300),
         ]);
-        // ─────────────────────────────────────────────────────────────────
 
         $request->validate([
             'name'                 => 'required|string|max:255',
             'description'          => 'nullable|string',
             'section_id'           => 'nullable|exists:sections,id',
-            'term_id'              => 'required|exists:terms,id',
+            'term_name'            => 'required|string|max:100',
             'applicable_classes'   => 'required|array|min:1',
             'applicable_classes.*' => 'exists:school_classes,id',
             'rating_columns'       => 'required|array|min:2',
@@ -192,7 +196,8 @@ class ResultSheetController extends Controller
                     'name'               => $request->name,
                     'description'        => $request->description,
                     'section_id'         => $request->section_id,
-                    'term_id'            => $request->term_id,
+                    'term_id'            => null,
+                    'term_name'          => $request->term_name,
                     'applicable_classes' => json_encode($request->applicable_classes),
                     'rating_columns'     => json_encode(array_values($request->rating_columns)),
                     'footer_fields'      => json_encode($footerFields),
@@ -200,16 +205,10 @@ class ResultSheetController extends Controller
                     'updated_at'         => now(),
                 ]);
 
-                Log::info('ResultSheet template row update result', [
-                    'id'      => $id,
-                    'rows'    => $updated,
-                ]);
+                Log::info('ResultSheet template row update result', ['id' => $id, 'rows' => $updated]);
 
-                // Wipe old subjects/subcategories/items and re-insert
                 $subjectIds = DB::table('result_sheet_subjects')
                     ->where('template_id', $id)->pluck('id');
-
-                Log::info('ResultSheet wiping subjects', ['subject_ids' => $subjectIds]);
 
                 DB::table('result_sheet_items')
                     ->whereIn('subject_id', $subjectIds)->delete();
@@ -219,14 +218,12 @@ class ResultSheetController extends Controller
                     ->where('template_id', $id)->delete();
 
                 $this->saveSubjectsJson($id, $subjects);
-
-                Log::info('ResultSheet saveSubjectsJson done');
             });
         } catch (\Throwable $e) {
             Log::error('ResultSheet UPDATE transaction failed', [
-                'error'   => $e->getMessage(),
-                'line'    => $e->getLine(),
-                'file'    => $e->getFile(),
+                'error' => $e->getMessage(),
+                'line'  => $e->getLine(),
+                'file'  => $e->getFile(),
             ]);
             return back()
                 ->withErrors(['update_error' => 'Update failed: ' . $e->getMessage()])
@@ -276,8 +273,7 @@ class ResultSheetController extends Controller
     }
 
     // =====================================================================
-    // VIEW — template detail page (from manage/index)
-    // Shows structure + all students in applicable classes with rating counts
+    // VIEW
     // =====================================================================
 
     public function viewSheet($templateId)
@@ -294,20 +290,22 @@ class ResultSheetController extends Controller
         $template->footer_fields      = json_decode($template->footer_fields ?? '{}', true);
         $template->applicable_classes = json_decode($template->applicable_classes ?? '[]');
 
-        // Term & session
-        $term    = Term::find($template->term_id);
-        $session = $term ? Session::find($term->session_id) : null;
+        // Resolve term + session from current session matching template's term_name
+        $currentSession = Session::where('is_current', true)->first();
+        $term = $currentSession
+            ? Term::where('session_id', $currentSession->id)
+            ->where('name', $template->term_name)
+            ->first()
+            : null;
+        $session = $currentSession;
 
-        // Applicable classes
         $applicableClasses = count($template->applicable_classes)
             ? SchoolClass::whereIn('id', $template->applicable_classes)->orderBy('name')->get()
             : collect();
 
-        // Load structure
         $service  = new ResultSheetService();
         $subjects = $service->loadTemplateStructure($templateId);
 
-        // All students in those classes
         $students = count($template->applicable_classes)
             ? User::with('schoolClass')
             ->where('user_type', 4)
@@ -316,13 +314,15 @@ class ResultSheetController extends Controller
             ->get()
             : collect();
 
-        // Rating counts per student for this template+term+session
-        $ratingCounts = [];
-        if ($students->count() && $term && $session) {
+        // Rating counts per student — match ALL terms with this name
+        $ratingCounts    = [];
+        $matchingTermIds = Term::where('name', $template->term_name)->pluck('id');
+
+        if ($students->count() && $session && $matchingTermIds->count()) {
             $counts = DB::table('result_sheet_ratings')
                 ->where('template_id', $templateId)
                 ->where('session_id', $session->id)
-                ->where('term_id', $term->id)
+                ->whereIn('term_id', $matchingTermIds)
                 ->whereNotNull('rating_value')
                 ->whereIn('student_id', $students->pluck('id'))
                 ->select('student_id', DB::raw('COUNT(*) as cnt'))
@@ -364,16 +364,18 @@ class ResultSheetController extends Controller
             $selectedSessionId = $currentSession?->id;
         }
         $selectedSession = Session::find($selectedSessionId);
-        $terms           = $selectedSession
-            ? $selectedSession->terms()->orderBy('name')->get()
+
+        // Only show the one term (by name) within the selected session
+        $terms = $selectedSession
+            ? Term::where('session_id', $selectedSession->id)
+            ->where('name', $template->term_name)
+            ->orderBy('name')
+            ->get()
             : collect();
 
-        $selectedTermId = $request->input('term_id');
-        if (!$selectedTermId && $selectedSession) {
-            $currentTerm    = $terms->where('is_current', true)->first();
-            $selectedTermId = $currentTerm?->id ?? $terms->first()?->id;
-        }
-        $selectedTerm = Term::find($selectedTermId);
+        $selectedTermId = $request->input('term_id')
+            ?? $terms->first()?->id;
+        $selectedTerm   = Term::find($selectedTermId);
 
         $applicableClassIds = $template->applicable_classes;
         $classes = count($applicableClassIds)
@@ -490,16 +492,20 @@ class ResultSheetController extends Controller
         $sessions        = Session::orderByDesc('name')->get();
         $selectedSession = Session::find($request->input('session_id'))
             ?? Session::where('is_current', true)->first();
-        $terms           = $selectedSession
-            ? $selectedSession->terms()->orderBy('name')->get()
+
+        // Only the term matching template's term_name within the selected session
+        $terms = $selectedSession
+            ? Term::where('session_id', $selectedSession->id)
+            ->where('name', $template->term_name)
+            ->orderBy('name')
+            ->get()
             : collect();
-        $selectedTerm    = Term::find($request->input('term_id'))
-            ?? $terms->where('is_current', true)->first()
+
+        $selectedTerm = Term::find($request->input('term_id'))
             ?? $terms->first();
 
         $service  = new ResultSheetService();
-        $subjects = $service->loadTemplateStructure($templateId); // ← CORRECT
-        $termIds    = $terms->pluck('id');
+        $subjects = $service->loadTemplateStructure($templateId);
 
         $allItemIds = collect($subjects)->flatMap(function ($subject) {
             $ids = collect($subject->items)->pluck('id');
@@ -509,6 +515,9 @@ class ResultSheetController extends Controller
             return $ids;
         });
 
+        // Fetch ratings for ALL terms matching this name in the session
+        // (so multi-term display works if needed)
+        $termIds    = $terms->pluck('id');
         $ratingsRaw = DB::table('result_sheet_ratings')
             ->where('student_id', $studentId)
             ->where('session_id', $selectedSession?->id)
@@ -539,17 +548,21 @@ class ResultSheetController extends Controller
     // API HELPERS
     // =====================================================================
 
+    /**
+     * Returns distinct term names (not session-specific).
+     * Used by both create and edit dropdowns.
+     */
     public function getTermsBySection(Request $request)
     {
-        $terms = Term::with('session')
-            ->get()
-            ->map(fn($t) => [
-                'id'         => $t->id,
-                'name'       => ($t->session->name ?? '') . ' — ' . $t->name,
-                'is_current' => (bool) $t->is_current,
-            ])
-            ->sortByDesc('is_current')
-            ->values();
+        $termNames = Term::select('name')
+            ->distinct()
+            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term')")
+            ->pluck('name');
+
+        $terms = $termNames->map(fn($name) => [
+            'name'       => $name,
+            'is_current' => Term::where('name', $name)->where('is_current', true)->exists(),
+        ])->values();
 
         return response()->json(['terms' => $terms]);
     }
@@ -577,9 +590,6 @@ class ResultSheetController extends Controller
     // PRIVATE HELPERS
     // =====================================================================
 
-    /**
-     * Insert subjects, subcategories, items from the decoded subjects_json array.
-     */
     private function saveSubjectsJson(int $templateId, array $subjects): void
     {
         foreach ($subjects as $sortOrder => $subjectData) {
@@ -617,15 +627,6 @@ class ResultSheetController extends Controller
         }
     }
 
-    /**
-     * Load structure for display/rating.
-     */
-  
-
-    /**
-     * Load structure shaped for the JS store (edit form pre-fill).
-     * Returns array compatible with store.subjects in the blade JS.
-     */
     private function loadTemplateStructureForEdit(int $templateId): array
     {
         $subjects = DB::table('result_sheet_subjects')

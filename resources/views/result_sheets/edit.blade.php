@@ -1,245 +1,317 @@
 @include('includes.head')
 
 <body>
-<div class="loader"></div>
-<div id="app">
-    <div class="main-wrapper main-wrapper-1">
-        <div class="navbar-bg"></div>
-        @include('includes.right_top_nav')
-        @include('includes.side_nav')
+    <div class="loader"></div>
+    <div id="app">
+        <div class="main-wrapper main-wrapper-1">
+            <div class="navbar-bg"></div>
+            @include('includes.right_top_nav')
+            @include('includes.side_nav')
 
-        <div class="main-content pt-5 mt-5">
-            <section class="section mb-5 pb-1 px-0">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h4><i class="fas fa-edit mr-2"></i>Edit Result Sheet — <em>{{ $template->name }}</em></h4>
-                            <a href="{{ route('result_sheets.index') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Back
-                            </a>
-                        </div>
+            <div class="main-content pt-5 mt-5">
+                <section class="section mb-5 pb-1 px-0">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h4><i class="fas fa-edit mr-2"></i>Edit Result Sheet — <em>{{ $template->name }}</em>
+                                </h4>
+                                <a href="{{ route('result_sheets.index') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Back
+                                </a>
+                            </div>
 
-                        <div class="card-body">
-                            @if($errors->any())
+                            <div class="card-body">
+                                @if($errors->any())
                                 <div class="alert alert-danger">
                                     <ul class="mb-0">
                                         @foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach
                                     </ul>
                                 </div>
-                            @endif
+                                @endif
 
-                            <form method="POST" action="{{ route('result_sheets.update', $template->id) }}" id="mainForm">
-                                @csrf @method('PUT')
+                                <form method="POST" action="{{ route('result_sheets.update', $template->id) }}"
+                                    id="mainForm">
+                                    @csrf @method('PUT')
 
-                                {{-- ══ STEP 1 ══ --}}
-                                <div class="card mb-4 border-left border-primary" style="border-left-width:4px!important">
-                                    <div class="card-header bg-primary text-white py-2">
-                                        <i class="fas fa-info-circle mr-1"></i> Step 1 — Basic Information
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Template Name <span class="text-danger">*</span></label>
-                                                    <input type="text" name="name"
-                                                        class="form-control @error('name') is-invalid @enderror"
-                                                        value="{{ old('name', $template->name) }}">
-                                                    @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    {{-- ══ STEP 1 ══ --}}
+                                    <div class="card mb-4 border-left border-primary"
+                                        style="border-left-width:4px!important">
+                                        <div class="card-header bg-primary text-white py-2">
+                                            <i class="fas fa-info-circle mr-1"></i> Step 1 — Basic Information
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold">Template Name <span
+                                                                class="text-danger">*</span></label>
+                                                        <input type="text" name="name"
+                                                            class="form-control @error('name') is-invalid @enderror"
+                                                            value="{{ old('name', $template->name) }}">
+                                                        @error('name')<div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold">Description</label>
+                                                        <input type="text" name="description" class="form-control"
+                                                            value="{{ old('description', $template->description) }}">
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Description</label>
-                                                    <input type="text" name="description" class="form-control"
-                                                        value="{{ old('description', $template->description) }}">
+
+                                            <div class="form-group mb-0">
+                                                <label class="font-weight-bold">Rating Columns <span
+                                                        class="text-danger">*</span></label>
+                                                <small class="text-muted d-block mb-2">
+                                                    These become the column headers on the printed sheet.
+                                                </small>
+                                                <div id="ratingColumnsContainer" class="d-flex flex-wrap"
+                                                    style="gap:8px">
+                                                    @foreach(old('rating_columns', $template->rating_columns) as $col)
+                                                    <div class="input-group rating-col-row mb-1" style="width:185px">
+                                                        <input type="text" name="rating_columns[]"
+                                                            class="form-control form-control-sm" value="{{ $col }}"
+                                                            placeholder="Column">
+                                                        <div class="input-group-append">
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-outline-danger remove-rating-col">
+                                                                <i class="fas fa-times"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    @endforeach
                                                 </div>
+                                                <button type="button" id="addRatingCol"
+                                                    class="btn btn-sm btn-outline-primary mt-2">
+                                                    <i class="fas fa-plus"></i> Add Column
+                                                </button>
                                             </div>
                                         </div>
+                                    </div>
 
-                                        <div class="form-group mb-0">
-                                            <label class="font-weight-bold">Rating Columns <span class="text-danger">*</span></label>
-                                            <small class="text-muted d-block mb-2">
-                                                These become the column headers on the printed sheet.
-                                            </small>
-                                            <div id="ratingColumnsContainer" class="d-flex flex-wrap" style="gap:8px">
-                                                @foreach(old('rating_columns', $template->rating_columns) as $col)
-                                                <div class="input-group rating-col-row mb-1" style="width:185px">
-                                                    <input type="text" name="rating_columns[]"
-                                                        class="form-control form-control-sm"
-                                                        value="{{ $col }}" placeholder="Column">
-                                                    <div class="input-group-append">
-                                                        <button type="button" class="btn btn-sm btn-outline-danger remove-rating-col">
-                                                            <i class="fas fa-times"></i>
-                                                        </button>
+                                    {{-- ══ STEP 2 ══ --}}
+                                    <div class="card mb-4 border-left border-success"
+                                        style="border-left-width:4px!important">
+                                        <div class="card-header bg-success text-white py-2">
+                                            <i class="fas fa-school mr-1"></i> Step 2 — Section, Classes &amp; Term
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold">Section <span
+                                                                class="text-danger">*</span></label>
+                                                        <select name="section_id" id="sectionSelect"
+                                                            class="form-control @error('section_id') is-invalid @enderror">
+                                                            <option value="">-- Select Section --</option>
+                                                            @foreach($sections as $section)
+                                                            <option value="{{ $section->id }}" {{ old('section_id',
+                                                                $template->section_id) == $section->id ? 'selected' : ''
+                                                                }}>
+                                                                {{ $section->section_name }}
+                                                            </option>
+                                                            @endforeach
+                                                        </select>
+                                                        @error('section_id')<div class="invalid-feedback">{{ $message }}
+                                                        </div>@enderror
                                                     </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    {{-- ── TERM: plain name dropdown, not session-specific ── --}}
+                                                    <div class="form-group">
+                                                        <label class="font-weight-bold">
+                                                            Term <span class="text-danger">*</span>
+                                                            <small class="text-muted font-weight-normal ml-1">
+                                                                (applies to all sessions)
+                                                            </small>
+                                                        </label>
+                                                        <select name="term_name" id="termSelect"
+                                                            class="form-control @error('term_name') is-invalid @enderror">
+                                                            <option value="">-- Loading Terms --</option>
+                                                        </select>
+                                                        @error('term_name')<div class="invalid-feedback">{{ $message }}
+                                                        </div>@enderror
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-info-circle"></i>
+                                                            This template will work for the selected term across
+                                                            <strong>every</strong> academic session.
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="font-weight-bold">Applicable Classes <span
+                                                        class="text-danger">*</span></label>
+                                                <small class="text-muted d-block mb-2">
+                                                    Subjects will be re-fetched when you reload below.
+                                                </small>
+                                                <div id="classesContainer">
+                                                    <span class="text-muted small">
+                                                        <i class="fas fa-spinner fa-spin"></i> Loading classes...
+                                                    </span>
+                                                </div>
+                                                @error('applicable_classes')
+                                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+
+                                            <button type="button" id="loadSubjectsBtn" class="btn btn-success" disabled>
+                                                <i class="fas fa-sync"></i> Reload Subjects for Selected Classes
+                                            </button>
+                                            <small class="text-muted ml-2">
+                                                (existing structure is pre-loaded below — only reload if you changed
+                                                classes)
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    {{-- ══ STEP 3 ══ --}}
+                                    <div class="card mb-4 border-left border-warning"
+                                        style="border-left-width:4px!important" id="subjectsCard">
+                                        <div class="card-header bg-warning py-2">
+                                            <i class="fas fa-book mr-1"></i>
+                                            Step 3 — Build Sheet Structure
+                                            <small class="ml-2 text-dark font-italic">
+                                                Click a subject to edit its sub-topics and skill items
+                                            </small>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="availableSubjectsArea" class="mb-3">
+                                                <p class="text-muted small">
+                                                    <i class="fas fa-info-circle"></i>
+                                                    Pre-loaded from saved template. Click a pill to edit.
+                                                </p>
+                                            </div>
+                                            <div id="subjectBuilderArea"></div>
+                                            <input type="hidden" name="subjects_json" id="subjectsJson" value="[]">
+                                        </div>
+                                    </div>
+
+                                    {{-- ══ STEP 4 ══ --}}
+                                    <div class="card mb-4 border-left border-info"
+                                        style="border-left-width:4px!important">
+                                        <div class="card-header bg-info text-white py-2">
+                                            <i class="fas fa-signature mr-1"></i> Step 4 — Footer Fields
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mt-1 d-flex flex-wrap" style="gap:16px">
+                                                @php
+                                                $ff = $template->footer_fields ?? [];
+                                                $footerDefs = [
+                                                'footer_remark' => 'Remark',
+                                                'footer_class_teacher' => "Class Teacher's Signature",
+                                                'footer_headmistress' => "Headmistress' Signature",
+                                                'footer_reopening' => 'Re-Opening Date',
+                                                ];
+                                                @endphp
+                                                @foreach($footerDefs as $fname => $flabel)
+                                                <div class="custom-control custom-switch">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="{{ $fname }}" name="{{ $fname }}" value="1" {{ ($ff[$fname]
+                                                        ?? true) ? 'checked' : '' }}>
+                                                    <label class="custom-control-label" for="{{ $fname }}">{{ $flabel
+                                                        }}</label>
                                                 </div>
                                                 @endforeach
                                             </div>
-                                            <button type="button" id="addRatingCol" class="btn btn-sm btn-outline-primary mt-2">
-                                                <i class="fas fa-plus"></i> Add Column
-                                            </button>
                                         </div>
                                     </div>
-                                </div>
 
-                                {{-- ══ STEP 2 ══ --}}
-                                <div class="card mb-4 border-left border-success" style="border-left-width:4px!important">
-                                    <div class="card-header bg-success text-white py-2">
-                                        <i class="fas fa-school mr-1"></i> Step 2 — Section, Classes &amp; Term
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-4">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Section <span class="text-danger">*</span></label>
-                                                    <select name="section_id" id="sectionSelect"
-                                                        class="form-control @error('section_id') is-invalid @enderror">
-                                                        <option value="">-- Select Section --</option>
-                                                        @foreach($sections as $section)
-                                                            <option value="{{ $section->id }}"
-                                                                {{ old('section_id', $template->section_id) == $section->id ? 'selected' : '' }}>
-                                                                {{ $section->section_name }}
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
-                                                    @error('section_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Term <span class="text-danger">*</span></label>
-                                                    <select name="term_id" id="termSelect"
-                                                        class="form-control @error('term_id') is-invalid @enderror">
-                                                        {{-- Will be populated by JS; show current selection as fallback --}}
-                                                        <option value="{{ $template->term_id }}" selected>
-                                                            Loading current term...
-                                                        </option>
-                                                    </select>
-                                                    @error('term_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="font-weight-bold">Applicable Classes <span class="text-danger">*</span></label>
-                                            <small class="text-muted d-block mb-2">
-                                                Subjects will be re-fetched when you reload below.
-                                            </small>
-                                            <div id="classesContainer">
-                                                <span class="text-muted small">
-                                                    <i class="fas fa-spinner fa-spin"></i> Loading classes...
-                                                </span>
-                                            </div>
-                                            @error('applicable_classes')
-                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-
-                                        <button type="button" id="loadSubjectsBtn" class="btn btn-success" disabled>
-                                            <i class="fas fa-sync"></i> Reload Subjects for Selected Classes
+                                    <div class="form-group mt-3">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-save"></i> Save Changes
                                         </button>
-                                        <small class="text-muted ml-2">
-                                            (existing structure is pre-loaded below — only reload if you changed classes)
-                                        </small>
+                                        <a href="{{ route('result_sheets.index') }}"
+                                            class="btn btn-secondary btn-lg ml-2">Cancel</a>
                                     </div>
-                                </div>
 
-                                {{-- ══ STEP 3 ══ --}}
-                                <div class="card mb-4 border-left border-warning" style="border-left-width:4px!important"
-                                     id="subjectsCard">
-                                    <div class="card-header bg-warning py-2">
-                                        <i class="fas fa-book mr-1"></i>
-                                        Step 3 — Build Sheet Structure
-                                        <small class="ml-2 text-dark font-italic">
-                                            Click a subject to edit its sub-topics and skill items
-                                        </small>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="availableSubjectsArea" class="mb-3">
-                                            <p class="text-muted small">
-                                                <i class="fas fa-info-circle"></i>
-                                                Pre-loaded from saved template. Click a pill to edit.
-                                            </p>
-                                        </div>
-                                        <div id="subjectBuilderArea"></div>
-                                        <input type="hidden" name="subjects_json" id="subjectsJson" value="[]">
-                                    </div>
-                                </div>
-
-                                {{-- ══ STEP 4 ══ --}}
-                                <div class="card mb-4 border-left border-info" style="border-left-width:4px!important">
-                                    <div class="card-header bg-info text-white py-2">
-                                        <i class="fas fa-signature mr-1"></i> Step 4 — Footer Fields
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="mt-1 d-flex flex-wrap" style="gap:16px">
-                                            @php
-                                                $ff = $template->footer_fields ?? [];
-                                                $footerDefs = [
-                                                    'footer_remark'        => 'Remark',
-                                                    'footer_class_teacher' => "Class Teacher's Signature",
-                                                    'footer_headmistress'  => "Headmistress' Signature",
-                                                    'footer_reopening'     => 'Re-Opening Date',
-                                                ];
-                                            @endphp
-                                            @foreach($footerDefs as $fname => $flabel)
-                                            <div class="custom-control custom-switch">
-                                                <input type="checkbox" class="custom-control-input"
-                                                    id="{{ $fname }}" name="{{ $fname }}" value="1"
-                                                    {{ ($ff[$fname] ?? true) ? 'checked' : '' }}>
-                                                <label class="custom-control-label" for="{{ $fname }}">{{ $flabel }}</label>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-group mt-3">
-                                    <button type="submit" class="btn btn-primary btn-lg">
-                                        <i class="fas fa-save"></i> Save Changes
-                                    </button>
-                                    <a href="{{ route('result_sheets.index') }}" class="btn btn-secondary btn-lg ml-2">Cancel</a>
-                                    {{-- <button type="button" class="btn btn-outline-info btn-lg ml-2"
-                                        onclick="syncJson(); const v=document.getElementById('subjectsJson').value; alert('subjects_json ('+JSON.parse(v||'[]').length+' subjects):\n\n'+v.substring(0,500))">
-                                        <i class="fas fa-bug"></i> Debug: Check subjects_json
-                                    </button> --}}
-                                </div>
-
-                            </form>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            </div>
         </div>
     </div>
-</div>
 
-@include('includes.edit_footer')
+    @include('includes.edit_footer')
 
-<style>
-.subject-pill { cursor:pointer; border-radius:20px; padding:5px 16px; font-size:.85rem; border:2px solid #dee2e6; background:#fff; transition:all .2s; user-select:none; display:inline-block; }
-.subject-pill:hover { border-color:#007bff; }
-.subject-pill.active { background:#007bff; color:#fff; border-color:#007bff; }
-.subject-pill.has-data { border-color:#28a745; }
-.subject-pill.active.has-data { background:#28a745; border-color:#28a745; }
-.subject-block { border-left:4px solid #ffc107 !important; }
-.sub-cat-block { border-left:3px solid #17a2b8 !important; }
-.item-row-ui { display:flex; align-items:center; background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px; padding:4px 8px; margin-bottom:4px; gap:8px; }
-.item-row-ui span { flex:1; font-size:.85rem; }
-.btn-xs { padding:2px 6px; font-size:.75rem; }
-</style>
+    <style>
+        .subject-pill {
+            cursor: pointer;
+            border-radius: 20px;
+            padding: 5px 16px;
+            font-size: .85rem;
+            border: 2px solid #dee2e6;
+            background: #fff;
+            transition: all .2s;
+            user-select: none;
+            display: inline-block;
+        }
 
-<script>
-// ── PRE-LOAD EXISTING DATA FROM SERVER ───────────────────────────────────
-const existingData = @json($existingSubjects);
-const currentTermId = {{ $template->term_id ?? 'null' }};
+        .subject-pill:hover {
+            border-color: #007bff;
+        }
+
+        .subject-pill.active {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+
+        .subject-pill.has-data {
+            border-color: #28a745;
+        }
+
+        .subject-pill.active.has-data {
+            background: #28a745;
+            border-color: #28a745;
+        }
+
+        .subject-block {
+            border-left: 4px solid #ffc107 !important;
+        }
+
+        .sub-cat-block {
+            border-left: 3px solid #17a2b8 !important;
+        }
+
+        .item-row-ui {
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 4px 8px;
+            margin-bottom: 4px;
+            gap: 8px;
+        }
+
+        .item-row-ui span {
+            flex: 1;
+            font-size: .85rem;
+        }
+
+        .btn-xs {
+            padding: 2px 6px;
+            font-size: .75rem;
+        }
+    </style>
+
+    <script>
+        // ── PRE-LOAD EXISTING DATA FROM SERVER ───────────────────────────────────
+const existingData     = @json($existingSubjects);
+const currentTermName  = @json(old('term_name', $template->term_name ?? ''));
 const currentSectionId = {{ $template->section_id ?? 'null' }};
-const currentClassIds = @json($template->applicable_classes);
+const currentClassIds  = @json($template->applicable_classes);
 
 // ── DATA STORE ────────────────────────────────────────────────────────────
 const store = { subjects: {}, activeSubjectId: null };
 
-// Pre-populate store from existing data — always use STRING keys
+// Pre-populate store from existing data
 existingData.forEach(s => {
     const key = String(s.course_id || ('existing_' + s.subject_number));
     store.subjects[key] = {
@@ -255,8 +327,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('addRatingCol').addEventListener('click', addRatingColRow);
     document.getElementById('ratingColumnsContainer').addEventListener('click', removeRatingColHandler);
 
-    // Load terms immediately (not section-dependent for edit)
-    loadTerms(currentSectionId);
+    // Load all distinct term names immediately
+    loadTermNames();
 
     // Load classes for pre-selected section
     if (currentSectionId) {
@@ -265,7 +337,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Section change
     document.getElementById('sectionSelect').addEventListener('change', function () {
-        loadTerms(this.value);
         loadClasses(this.value, []);
         resetSubjectArea();
     });
@@ -273,10 +344,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Load subjects btn
     document.getElementById('loadSubjectsBtn').addEventListener('click', loadSubjectsFromClasses);
 
-    // Render existing subject pills immediately and auto-open first one
+    // Render existing subject pills and auto-open first one
     if (existingData.length) {
         renderPillsFromStore();
-        // Auto-click the first pill so the builder is visible on load
         setTimeout(() => {
             const firstPill = document.querySelector('.subject-pill');
             if (firstPill) firstPill.click();
@@ -285,7 +355,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     syncJson();
 
-    // Form submit validation
     document.getElementById('mainForm').addEventListener('submit', validateForm);
 });
 
@@ -311,18 +380,17 @@ function removeRatingColHandler(e) {
     }
 }
 
-// ── TERMS ─────────────────────────────────────────────────────────────────
-function loadTerms(sectionId) {
+// ── TERMS (distinct names only, not session-specific) ─────────────────────
+function loadTermNames() {
     const sel = document.getElementById('termSelect');
-    sel.innerHTML = '<option value="">Loading...</option>';
-    fetch(`/api/terms-by-section?section_id=${sectionId || ''}`)
+    fetch('/api/terms-by-section')
         .then(r => r.json())
         .then(data => {
             const terms = data.terms || [];
             let opts = '<option value="">-- Select Term --</option>';
             terms.forEach(t => {
-                const selected = t.id == currentTermId ? 'selected' : '';
-                opts += `<option value="${t.id}" ${selected}>${t.name}</option>`;
+                const selected = (t.name === currentTermName) ? 'selected' : '';
+                opts += `<option value="${t.name}" ${selected}>${t.name}</option>`;
             });
             sel.innerHTML = opts;
         })
@@ -332,6 +400,11 @@ function loadTerms(sectionId) {
 // ── CLASSES ───────────────────────────────────────────────────────────────
 function loadClasses(sectionId, preChecked) {
     const container = document.getElementById('classesContainer');
+    if (!sectionId) {
+        container.innerHTML = '<span class="text-muted small">Select a section above.</span>';
+        document.getElementById('loadSubjectsBtn').disabled = true;
+        return;
+    }
     container.innerHTML = '<span class="text-muted small"><i class="fas fa-spinner fa-spin"></i> Loading...</span>';
     document.getElementById('loadSubjectsBtn').disabled = true;
 
@@ -345,7 +418,7 @@ function loadClasses(sectionId, preChecked) {
             }
             let html = '<div class="row">';
             classes.forEach(cls => {
-                const checked = preChecked.includes(cls.id) || preChecked.includes(String(cls.id)) ? 'checked' : '';
+                const checked = (preChecked.includes(cls.id) || preChecked.includes(String(cls.id))) ? 'checked' : '';
                 html += `
                 <div class="col-md-3 col-6">
                     <div class="custom-control custom-checkbox mb-1">
@@ -440,7 +513,8 @@ function renderBuilder(courseId, courseName) {
             </div>
             <div class="card-body">
                 <div id="subtopicsArea_${courseId}"></div>
-                <button type="button" class="btn btn-sm btn-outline-info mt-2" onclick="addSubtopic('${courseId}')">
+                <button type="button" class="btn btn-sm btn-outline-info mt-2"
+                    onclick="addSubtopic('${courseId}')">
                     <i class="fas fa-plus"></i> Add Sub-topic
                     <span class="text-muted">(e.g. (a) Oral English)</span>
                 </button>
@@ -490,7 +564,7 @@ function renderSubtopicDOM(courseId, stIdx) {
                     oninput="fieldChange(this.dataset.course, this.dataset.idx, this.dataset.field, this.value)">
             </div>
             <button type="button" class="btn btn-xs btn-outline-danger"
-                onclick="removeSubtopic('${courseId}',${stIdx})">
+                onclick="removeSubtopic('${courseId}', ${stIdx})">
                 <i class="fas fa-trash-alt"></i>
             </button>
         </div>
@@ -528,11 +602,10 @@ function itemHtml(courseId, stIdx, iIdx, text) {
 // ── MUTATIONS ─────────────────────────────────────────────────────────────
 function fieldChange(courseId, stIdx, field, val) {
     courseId = String(courseId);
-    stIdx    = parseInt(stIdx, 10);   // ← THIS was the silent killer
+    stIdx    = parseInt(stIdx, 10);
     store.subjects[courseId].subtopics[stIdx][field] = val;
     afterChange(courseId);
 }
-
 function removeSubtopic(courseId, stIdx) {
     courseId = String(courseId);
     if (!confirm('Remove this sub-topic and all its items?')) return;
@@ -578,15 +651,13 @@ function syncJson() {
             subtopics:      s.subtopics,
         }));
     document.getElementById('subjectsJson').value = JSON.stringify(payload);
-    console.log('syncJson payload:', payload.length, 'subjects');
 }
 function escHtml(str) {
     return String(str || '')
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function scrapeBuilderIntoStore() {
-    // Use data attributes — no guessing by input position
     document.querySelectorAll('.st-label-input, .st-name-input').forEach(input => {
         const courseId = String(input.dataset.course);
         const stIdx    = parseInt(input.dataset.idx, 10);
@@ -596,11 +667,8 @@ function scrapeBuilderIntoStore() {
         }
     });
 }
-
 function validateForm(e) {
-    // Scrape DOM values into store first (catches any missed oninput events)
     scrapeBuilderIntoStore();
-    // Then sync to hidden field
     syncJson();
 
     if (!document.getElementById('termSelect').value) {
@@ -609,13 +677,12 @@ function validateForm(e) {
     if (!document.querySelectorAll('.class-checkbox:checked').length) {
         e.preventDefault(); return alert('Please select at least one class.');
     }
-    const raw = document.getElementById('subjectsJson').value || '[]';
     let payload = [];
-    try { payload = JSON.parse(raw); } catch(err) { payload = []; }
+    try { payload = JSON.parse(document.getElementById('subjectsJson').value || '[]'); } catch (_) {}
     if (!payload.length) {
         e.preventDefault();
         return alert('No subject data found. Please click a subject pill to confirm your structure is loaded.');
     }
 }
-</script>
+    </script>
 </body>

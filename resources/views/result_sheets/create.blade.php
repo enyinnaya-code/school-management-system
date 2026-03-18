@@ -117,13 +117,24 @@
                                                 </div>
                                             </div>
                                             <div class="col-md-4">
+                                                {{-- ── TERM: now a plain name dropdown, not session-specific ── --}}
                                                 <div class="form-group">
-                                                    <label class="font-weight-bold">Term <span class="text-danger">*</span></label>
-                                                    <select name="term_id" id="termSelect"
-                                                        class="form-control @error('term_id') is-invalid @enderror" disabled>
-                                                        <option value="">-- Select Section First --</option>
+                                                    <label class="font-weight-bold">
+                                                        Term <span class="text-danger">*</span>
+                                                        <small class="text-muted font-weight-normal ml-1">
+                                                            (applies to all sessions)
+                                                        </small>
+                                                    </label>
+                                                    <select name="term_name" id="termSelect"
+                                                        class="form-control @error('term_name') is-invalid @enderror">
+                                                        <option value="">-- Select Term --</option>
                                                     </select>
-                                                    @error('term_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                                    @error('term_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle"></i>
+                                                        This template will work for the selected term across
+                                                        <strong>every</strong> academic session.
+                                                    </small>
                                                 </div>
                                             </div>
                                         </div>
@@ -154,7 +165,8 @@
                                 </div>
 
                                 {{-- ══ STEP 3: Subjects → Subtopics → Items ══ --}}
-                                <div class="card mb-4 border-left border-warning" style="border-left-width:4px!important; display:none"
+                                <div class="card mb-4 border-left border-warning"
+                                     style="border-left-width:4px!important; display:none"
                                      id="subjectsCard">
                                     <div class="card-header bg-warning py-2">
                                         <i class="fas fa-book mr-1"></i>
@@ -261,15 +273,38 @@ document.getElementById('ratingColumnsContainer').addEventListener('click', e =>
     }
 });
 
-// ── 2. SECTION → CLASSES + TERMS ─────────────────────────────────────────
+// ── 2. LOAD TERM NAMES ON PAGE LOAD (not section-dependent) ───────────────
+document.addEventListener('DOMContentLoaded', function () {
+    loadTermNames();
+});
+
+function loadTermNames() {
+    const sel = document.getElementById('termSelect');
+    fetch('/api/terms-by-section')
+        .then(r => r.json())
+        .then(data => {
+            const terms = data.terms || [];
+            const oldVal = '{{ old("term_name") }}';
+            let opts = '<option value="">-- Select Term --</option>';
+            terms.forEach(t => {
+                const selected = (oldVal && t.name === oldVal) || t.is_current ? 'selected' : '';
+                opts += `<option value="${t.name}" ${selected}>
+                    ${t.name}${t.is_current ? ' (Current)' : ''}
+                </option>`;
+            });
+            sel.innerHTML = opts;
+        })
+        .catch(() => {
+            sel.innerHTML = '<option value="">Could not load terms</option>';
+        });
+}
+
+// ── 3. SECTION → CLASSES ──────────────────────────────────────────────────
 document.getElementById('sectionSelect').addEventListener('change', function () {
     const sectionId = this.value;
 
-    // Reset downstream
     document.getElementById('classesContainer').innerHTML =
         '<span class="text-muted small"><i class="fas fa-spinner fa-spin"></i> Loading classes...</span>';
-    document.getElementById('termSelect').innerHTML = '<option value="">Loading...</option>';
-    document.getElementById('termSelect').disabled = true;
     document.getElementById('loadSubjectsBtn').disabled = true;
     document.getElementById('subjectsCard').style.display = 'none';
     document.getElementById('availableSubjectsArea').innerHTML = '<p class="text-muted">No subjects loaded yet.</p>';
@@ -279,11 +314,9 @@ document.getElementById('sectionSelect').addEventListener('change', function () 
     if (!sectionId) {
         document.getElementById('classesContainer').innerHTML =
             '<span class="text-muted small"><i class="fas fa-info-circle"></i> Select a section above.</span>';
-        document.getElementById('termSelect').innerHTML = '<option value="">-- Select Section First --</option>';
         return;
     }
 
-    // Fetch classes in this section
     fetch(`/api/sections/${sectionId}/classes`)
         .then(r => r.json())
         .then(data => {
@@ -308,32 +341,13 @@ document.getElementById('sectionSelect').addEventListener('change', function () 
             document.getElementById('classesContainer').innerHTML = html;
 
             document.getElementById('classesContainer').addEventListener('change', () => {
-                const any = document.querySelectorAll('.class-checkbox:checked').length > 0;
-                document.getElementById('loadSubjectsBtn').disabled = !any;
+                document.getElementById('loadSubjectsBtn').disabled =
+                    document.querySelectorAll('.class-checkbox:checked').length === 0;
             });
-        });
-
-    // Fetch terms for this section via sessions
-    fetch(`/api/terms-by-section?section_id=${sectionId}`)
-        .then(r => r.json())
-        .then(data => {
-            const terms = data.terms || data;
-            let opts = '<option value="">-- Select Term --</option>';
-            terms.forEach(t => {
-                opts += `<option value="${t.id}" ${t.is_current ? 'selected' : ''}>
-                    ${t.name}${t.is_current ? ' (Current)' : ''}
-                </option>`;
-            });
-            document.getElementById('termSelect').innerHTML = opts;
-            document.getElementById('termSelect').disabled = false;
-        })
-        .catch(() => {
-            document.getElementById('termSelect').innerHTML =
-                '<option value="">Could not load terms</option>';
         });
 });
 
-// ── 3. LOAD SUBJECTS ──────────────────────────────────────────────────────
+// ── 4. LOAD SUBJECTS ──────────────────────────────────────────────────────
 document.getElementById('loadSubjectsBtn').addEventListener('click', () => {
     const classIds = [...document.querySelectorAll('.class-checkbox:checked')].map(c => c.value);
     if (!classIds.length) return;
@@ -351,13 +365,13 @@ document.getElementById('loadSubjectsBtn').addEventListener('click', () => {
             }
             courses.forEach(c => {
                 if (!store.subjects[c.id])
-                    store.subjects[c.id] = { course_id:c.id, course_name:c.course_name, subtopics:[] };
+                    store.subjects[c.id] = { course_id: c.id, course_name: c.course_name, subtopics: [] };
             });
             renderPills(courses);
         });
 });
 
-// ── 4. SUBJECT PILLS ──────────────────────────────────────────────────────
+// ── 5. SUBJECT PILLS ──────────────────────────────────────────────────────
 function renderPills(courses) {
     const area = document.getElementById('availableSubjectsArea');
     area.innerHTML = `
@@ -388,7 +402,7 @@ function refreshPillState(btn, courseId) {
     btn.classList.toggle('has-data', !!has);
 }
 
-// ── 5. SUBJECT BUILDER ────────────────────────────────────────────────────
+// ── 6. SUBJECT BUILDER ────────────────────────────────────────────────────
 function renderBuilder(courseId, courseName) {
     const area = document.getElementById('subjectBuilderArea');
     area.innerHTML = `
@@ -410,25 +424,21 @@ function renderBuilder(courseId, courseName) {
             </div>
         </div>`;
 
-    // Re-render existing subtopics from store
     store.subjects[courseId].subtopics.forEach((_, idx) => renderSubtopicDOM(courseId, idx));
 }
 
-// ── 6. SUBTOPIC DOM ───────────────────────────────────────────────────────
+// ── 7. SUBTOPIC DOM ───────────────────────────────────────────────────────
 function nextLabel(courseId) {
     const subtopics = store.subjects[courseId].subtopics;
     if (!subtopics.length) return '(a)';
-    // Find the last label that matches pattern (a), (b) etc.
     const last = [...subtopics].reverse().find(st => /^\([a-z]\)$/i.test(st.label?.trim()));
     if (!last) return `(${String.fromCharCode(97 + subtopics.length)})`;
     const char = last.label.trim().replace(/[()]/g, '');
-    const next = String.fromCharCode(char.charCodeAt(0) + 1);
-    return `(${next})`;
+    return `(${String.fromCharCode(char.charCodeAt(0) + 1)})`;
 }
 
 function addSubtopic(courseId) {
-    const label = nextLabel(courseId);
-    store.subjects[courseId].subtopics.push({ label, name:'', items:[] });
+    store.subjects[courseId].subtopics.push({ label: nextLabel(courseId), name: '', items: [] });
     const idx = store.subjects[courseId].subtopics.length - 1;
     renderSubtopicDOM(courseId, idx);
     afterChange(courseId);
@@ -436,7 +446,7 @@ function addSubtopic(courseId) {
 
 function renderSubtopicDOM(courseId, stIdx) {
     const container = document.getElementById(`subtopicsArea_${courseId}`);
-    const st = store.subjects[courseId].subtopics[stIdx];
+    const st  = store.subjects[courseId].subtopics[stIdx];
     const old = document.getElementById(`st_${courseId}_${stIdx}`);
     if (old) old.remove();
 
@@ -446,22 +456,25 @@ function renderSubtopicDOM(courseId, stIdx) {
     div.innerHTML = `
         <div class="card-header bg-white py-1 d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center flex-grow-1 mr-2" style="gap:6px">
-                <input type="text" class="form-control form-control-sm" style="width:75px"
+                <input type="text"
+                    class="form-control form-control-sm st-label-input" style="width:75px"
                     placeholder="(a)" value="${escHtml(st.label)}"
-                    oninput="fieldChange(${courseId},${stIdx},'label',this.value)"
-                    title="Label e.g. (a)">
-                <input type="text" class="form-control form-control-sm"
+                    data-course="${courseId}" data-idx="${stIdx}" data-field="label"
+                    oninput="fieldChange(this.dataset.course, this.dataset.idx, this.dataset.field, this.value)">
+                <input type="text"
+                    class="form-control form-control-sm st-name-input"
                     placeholder="Sub-topic name e.g. Oral English" value="${escHtml(st.name)}"
-                    oninput="fieldChange(${courseId},${stIdx},'name',this.value)">
+                    data-course="${courseId}" data-idx="${stIdx}" data-field="name"
+                    oninput="fieldChange(this.dataset.course, this.dataset.idx, this.dataset.field, this.value)">
             </div>
             <button type="button" class="btn btn-xs btn-outline-danger"
-                onclick="removeSubtopic(${courseId},${stIdx})">
+                onclick="removeSubtopic(${courseId}, ${stIdx})">
                 <i class="fas fa-trash-alt"></i>
             </button>
         </div>
         <div class="card-body py-2">
             <div id="itemsArea_${courseId}_${stIdx}">
-                ${st.items.map((item,i) => itemHtml(courseId,stIdx,i,item)).join('')}
+                ${st.items.map((item, i) => itemHtml(courseId, stIdx, i, item)).join('')}
             </div>
             <div class="input-group mt-2" style="max-width:640px">
                 <input type="text" class="form-control form-control-sm"
@@ -491,8 +504,10 @@ function itemHtml(courseId, stIdx, iIdx, text) {
         </div>`;
 }
 
-// ── 7. MUTATIONS ──────────────────────────────────────────────────────────
+// ── 8. MUTATIONS ──────────────────────────────────────────────────────────
 function fieldChange(courseId, stIdx, field, val) {
+    courseId = String(courseId);
+    stIdx    = parseInt(stIdx, 10);
     store.subjects[courseId].subtopics[stIdx][field] = val;
     afterChange(courseId);
 }
@@ -524,7 +539,7 @@ function removeItem(courseId, stIdx, iIdx) {
     afterChange(courseId);
 }
 
-// ── 8. HELPERS ────────────────────────────────────────────────────────────
+// ── 9. HELPERS ────────────────────────────────────────────────────────────
 function afterChange(courseId) {
     const pill = document.querySelector(`.subject-pill[data-course-id="${courseId}"]`);
     if (pill) refreshPillState(pill, courseId);
@@ -545,19 +560,34 @@ function syncJson() {
 
 function escHtml(str) {
     return String(str || '')
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ── 9. FORM SUBMIT VALIDATION ─────────────────────────────────────────────
+function scrapeBuilderIntoStore() {
+    document.querySelectorAll('.st-label-input, .st-name-input').forEach(input => {
+        const courseId = String(input.dataset.course);
+        const stIdx    = parseInt(input.dataset.idx, 10);
+        const field    = input.dataset.field;
+        if (store.subjects[courseId] && store.subjects[courseId].subtopics[stIdx] !== undefined) {
+            store.subjects[courseId].subtopics[stIdx][field] = input.value;
+        }
+    });
+}
+
+// ── 10. FORM SUBMIT VALIDATION ────────────────────────────────────────────
 document.getElementById('mainForm').addEventListener('submit', function (e) {
+    scrapeBuilderIntoStore();
+    syncJson();
+
     if (!document.getElementById('termSelect').value) {
         e.preventDefault(); return alert('Please select a term.');
     }
     if (!document.querySelectorAll('.class-checkbox:checked').length) {
         e.preventDefault(); return alert('Please select at least one class.');
     }
-    const payload = JSON.parse(document.getElementById('subjectsJson').value || '[]');
+    let payload = [];
+    try { payload = JSON.parse(document.getElementById('subjectsJson').value || '[]'); } catch (_) {}
     if (!payload.length) {
         e.preventDefault();
         return alert('Please add at least one subject with sub-topics and items before saving.');
