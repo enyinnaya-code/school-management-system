@@ -148,7 +148,7 @@ class ResultSheetController extends Controller
 
         $termNames = Term::select('name')
             ->distinct()
-            ->orderBy('name')
+            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term')")
             ->pluck('name');
 
         $existingSubjects = $this->loadTemplateStructureForEdit($id);
