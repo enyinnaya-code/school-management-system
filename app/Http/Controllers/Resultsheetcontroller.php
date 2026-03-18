@@ -53,14 +53,21 @@ class ResultSheetController extends Controller
 
     private function fetchTermsForDropdown()
     {
-        // Query the terms table directly (columns: id, session_id, name, is_current)
-        // Deduplicate by name so "First Term" appears only once even across many sessions
-        return DB::table('terms')
+        $currentSessionId = DB::table('school_sessions')
+            ->where('is_current', true)
+            ->value('id');
+
+        $query = DB::table('terms')
             ->select('id', 'name')
             ->whereNotNull('name')
             ->where('name', '!=', '')
-            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term'), name ASC")
-            ->get()
+            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term'), name ASC");
+
+        if ($currentSessionId) {
+            $query->where('session_id', $currentSessionId);
+        }
+
+        return $query->get()
             ->unique('name')
             ->values();
     }
@@ -314,7 +321,7 @@ class ResultSheetController extends Controller
 
         $students = count($template->applicable_classes)
             ? User::with('schoolClass')->where('user_type', 4)
-                ->whereIn('class_id', $template->applicable_classes)->orderBy('name')->get()
+            ->whereIn('class_id', $template->applicable_classes)->orderBy('name')->get()
             : collect();
 
         $ratingCounts    = [];
@@ -336,8 +343,13 @@ class ResultSheetController extends Controller
         }
 
         return view('result_sheets.view', compact(
-            'template', 'term', 'session', 'applicableClasses',
-            'subjects', 'students', 'ratingCounts'
+            'template',
+            'term',
+            'session',
+            'applicableClasses',
+            'subjects',
+            'students',
+            'ratingCounts'
         ));
     }
 
@@ -364,8 +376,8 @@ class ResultSheetController extends Controller
 
         $terms = $selectedSession
             ? Term::where('session_id', $selectedSession->id)
-                  ->where('name', $template->term_name)
-                  ->orderBy('name')->get()
+            ->where('name', $template->term_name)
+            ->orderBy('name')->get()
             : collect();
 
         $selectedTermId = $request->input('term_id') ?? $terms->first()?->id;
@@ -412,9 +424,17 @@ class ResultSheetController extends Controller
         }
 
         return view('result_sheets.rate', compact(
-            'template', 'subjects', 'sessions', 'selectedSession',
-            'terms', 'selectedTerm', 'classes', 'selectedClass',
-            'students', 'selectedStudent', 'existingRatings'
+            'template',
+            'subjects',
+            'sessions',
+            'selectedSession',
+            'terms',
+            'selectedTerm',
+            'classes',
+            'selectedClass',
+            'students',
+            'selectedStudent',
+            'existingRatings'
         ));
     }
 
@@ -439,10 +459,19 @@ class ResultSheetController extends Controller
         DB::transaction(function () use ($ratings, $studentId, $sessionId, $termId, $templateId) {
             foreach ($ratings as $itemId => $value) {
                 DB::table('result_sheet_ratings')->updateOrInsert(
-                    ['item_id' => $itemId, 'student_id' => $studentId,
-                     'session_id' => $sessionId, 'term_id' => $termId],
-                    ['template_id' => $templateId, 'rating_value' => $value ?: null,
-                     'rated_by' => Auth::id(), 'updated_at' => now(), 'created_at' => now()]
+                    [
+                        'item_id' => $itemId,
+                        'student_id' => $studentId,
+                        'session_id' => $sessionId,
+                        'term_id' => $termId
+                    ],
+                    [
+                        'template_id' => $templateId,
+                        'rating_value' => $value ?: null,
+                        'rated_by' => Auth::id(),
+                        'updated_at' => now(),
+                        'created_at' => now()
+                    ]
                 );
             }
         });
@@ -475,8 +504,8 @@ class ResultSheetController extends Controller
 
         $terms = $selectedSession
             ? Term::where('session_id', $selectedSession->id)
-                  ->where('name', $template->term_name)
-                  ->orderBy('name')->get()
+            ->where('name', $template->term_name)
+            ->orderBy('name')->get()
             : collect();
 
         $selectedTerm = Term::find($request->input('term_id')) ?? $terms->first();
@@ -505,8 +534,16 @@ class ResultSheetController extends Controller
         }
 
         return view('result_sheets.print', compact(
-            'template', 'student', 'class', 'section', 'subjects',
-            'sessions', 'selectedSession', 'terms', 'selectedTerm', 'ratings'
+            'template',
+            'student',
+            'class',
+            'section',
+            'subjects',
+            'sessions',
+            'selectedSession',
+            'terms',
+            'selectedTerm',
+            'ratings'
         ));
     }
 
