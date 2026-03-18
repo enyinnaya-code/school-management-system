@@ -51,26 +51,10 @@ class ResultSheetController extends Controller
     // Used by create() and edit()
     // =====================================================================
 
-    private function fetchTermsForDropdown()
-    {
-        $currentSessionId = DB::table('school_sessions')
-            ->where('is_current', true)
-            ->value('id');
-
-        $query = DB::table('terms')
-            ->select('id', 'name')
-            ->whereNotNull('name')
-            ->where('name', '!=', '')
-            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term'), name ASC");
-
-        if ($currentSessionId) {
-            $query->where('session_id', $currentSessionId);
-        }
-
-        return $query->get()
-            ->unique('name')
-            ->values();
-    }
+   private function fetchTermsForDropdown(): array
+{
+    return ['First Term', 'Second Term', 'Third Term'];
+}
 
     // =====================================================================
     // CREATE

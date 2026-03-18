@@ -120,50 +120,29 @@
                                                     $terms is a collection of {id, name} objects, deduplicated by name.
                                                     The submitted value is term_name (the string), not the ID.
                                                 --}}
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">
-                                                        Term <span class="text-danger">*</span>
-                                                        <small class="text-muted font-weight-normal ml-1">(applies to all sessions)</small>
-                                                    </label>
-
-                                                    @php $savedTermName = old('term_name', ''); @endphp
-
-                                                    @if(isset($terms) && $terms->count() > 0)
-                                                        <select name="term_name" id="termSelect"
-                                                            class="form-control @error('term_name') is-invalid @enderror">
-                                                            <option value="">-- Select Term --</option>
-                                                            @foreach($terms as $term)
-                                                                <option value="{{ $term->name }}"
-                                                                    {{ $savedTermName === $term->name ? 'selected' : '' }}>
-                                                                    {{ $term->name }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                    @else
-                                                        {{-- Fallback if terms table has no names --}}
-                                                        <select name="term_name" id="termSelect"
-                                                            class="form-control @error('term_name') is-invalid @enderror">
-                                                            <option value="">-- Select Term --</option>
-                                                            @foreach(['First Term', 'Second Term', 'Third Term'] as $ft)
-                                                                <option value="{{ $ft }}" {{ $savedTermName === $ft ? 'selected' : '' }}>
-                                                                    {{ $ft }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <small class="text-warning d-block mt-1">
-                                                            <i class="fas fa-exclamation-triangle"></i>
-                                                            No term names found in database — using defaults.
-                                                        </small>
-                                                    @endif
-
-                                                    @error('term_name')
-                                                        <div class="invalid-feedback">{{ $message }}</div>
-                                                    @enderror
-                                                    <small class="text-muted">
-                                                        <i class="fas fa-info-circle"></i>
-                                                        Works for the selected term across <strong>every</strong> academic session.
-                                                    </small>
-                                                </div>
+                                               <div class="form-group">
+    <label class="font-weight-bold">
+        Term <span class="text-danger">*</span>
+        <small class="text-muted font-weight-normal ml-1">(applies to all sessions)</small>
+    </label>
+    @php $savedTermName = old('term_name', ''); @endphp
+    <select name="term_name" id="termSelect"
+        class="form-control @error('term_name') is-invalid @enderror">
+        <option value="">-- Select Term --</option>
+        @foreach($terms as $termName)
+            <option value="{{ $termName }}" {{ $savedTermName === $termName ? 'selected' : '' }}>
+                {{ $termName }}
+            </option>
+        @endforeach
+    </select>
+    @error('term_name')
+        <div class="invalid-feedback">{{ $message }}</div>
+    @enderror
+    <small class="text-muted">
+        <i class="fas fa-info-circle"></i>
+        Works for the selected term across <strong>every</strong> academic session.
+    </small>
+</div>
                                             </div>
                                         </div>
 
