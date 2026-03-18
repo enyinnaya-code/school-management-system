@@ -55,8 +55,13 @@ class ResultSheetController extends Controller
 
     public function create()
     {
-        $sections = Section::all();
-        return view('result_sheets.create', compact('sections'));
+        $sections  = Section::all();
+        $termNames = Term::select('name')
+            ->distinct()
+            ->orderByRaw("FIELD(name, 'First Term', 'Second Term', 'Third Term')")
+            ->pluck('name');
+
+        return view('result_sheets.create', compact('sections', 'termNames'));
     }
 
     // =====================================================================
