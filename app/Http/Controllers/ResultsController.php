@@ -135,13 +135,30 @@ class ResultsController extends Controller
         }
 
         // ── NURSERY: Custom result sheet template ─────────────────────────────
+        // ── NURSERY: Custom result sheet template ─────────────────────────────
         $sheetTemplate = DB::table('result_sheet_templates')
             ->where('is_active', 1)
             ->get()
-            ->first(function ($t) use ($class) {
+            ->first(function ($t) use ($class, $currentTerm) {
                 $classes = json_decode($t->applicable_classes ?? '[]', true);
-                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+                $classMatches = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+
+                // Also match by term_name against the current term's name
+                $termMatches = !empty($t->term_name) && $t->term_name === $currentTerm->name;
+
+                return $classMatches && $termMatches;
             });
+
+        // Fallback: if no term-specific template found, try any active template for this class
+        if (!$sheetTemplate) {
+            $sheetTemplate = DB::table('result_sheet_templates')
+                ->where('is_active', 1)
+                ->get()
+                ->first(function ($t) use ($class) {
+                    $classes = json_decode($t->applicable_classes ?? '[]', true);
+                    return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+                });
+        }
 
         if ($sheetTemplate) {
             $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
