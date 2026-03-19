@@ -1279,8 +1279,8 @@ class ResultsController extends Controller
         }
 
         // ── Results matrix ───────────────────────────────────────────────────────
-        $resultsMatrix  = collect();
-        $ratingsMatrix  = collect(); // nursery only
+        $resultsMatrix  = []; // [student_id][course_id] = result
+        $ratingsMatrix  = []; // [student_id][item_id]   = rating_value  (nursery only)
 
         if ($isNursery) {
             // Collect all item IDs from template
