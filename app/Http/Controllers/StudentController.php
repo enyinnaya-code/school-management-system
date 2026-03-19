@@ -306,7 +306,45 @@ class StudentController extends Controller
         return redirect()->route('students.create')->with('success', 'Student added successfully.');
     }
 
-   public function profile
+     public function profile($id)
+    {
+        $authUser = Auth::user();
+
+        if ($authUser->user_type == 4 && $authUser->id != $id) {
+            abort(403, 'You are not authorized to view this profile.');
+        }
+
+        if ($authUser->user_type == 5) {
+            $isOwnProfile  = $authUser->id == $id;
+            $isLinkedChild = $authUser->students()->where('users.id', $id)->exists();
+
+            if (!$isOwnProfile && !$isLinkedChild) {
+                abort(403, 'You are not authorized to view this profile.');
+            }
+        }
+
+        if ($authUser->user_type == 3) {
+            $isOwnProfile      = $authUser->id == $id;
+            $assignedClassIds  = $authUser->classes()->pluck('school_classes.id')->toArray();
+            $isAssignedStudent = User::where('id', $id)
+                ->where('user_type', 4)
+                ->whereIn('class_id', $assignedClassIds)
+                ->exists();
+
+            if (!$isOwnProfile && !$isAssignedStudent) {
+                abort(403, 'You are not authorized to view this profile.');
+            }
+        }
+
+        $user = User::with([
+            'class.section',
+            'classes.section',
+            'courses.section',
+            'students.class.section',
+        ])->findOrFail($id);
+
+        return view('profile', compact('user'));
+    }
 
     public function performance($id, Request $request)
     {
