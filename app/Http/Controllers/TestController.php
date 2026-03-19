@@ -481,6 +481,14 @@ class TestController extends Controller
             return redirect()->back()->with('error', 'You do not have a class assigned.');
         }
 
+        // Students can only take tests assigned to their class
+        if ($user->user_type == 4) {
+            $isClassAssigned = $test->classes()->where('school_classes.id', $user->class_id)->exists();
+            if (!$isClassAssigned) {
+                abort(403, 'You are not eligible to take this test.');
+            }
+        }
+
         $scheduledDate = Carbon::parse($test->scheduled_date)->toDateString();
         $today = Carbon::today()->toDateString();
 
@@ -493,23 +501,14 @@ class TestController extends Controller
             ->where('test_id', $test->id)
             ->first();
 
-        // ── GUARD 1: Already submitted ─────────────────────────────────────────
         if ($existingExam && $existingExam->is_submited == 1) {
             return redirect()->route('tests.start')
                 ->with('error', 'You have already submitted this test and cannot retake it.');
         }
 
-        // ── GUARD 2: Test not yet started / not scheduled for today ───────────
         if (!$test->is_approved) {
             return redirect()->route('tests.start')
                 ->with('error', 'This test is not available.');
-        }
-
-        // ── GUARD 3: Student's class is not assigned to this test ─────────────
-        $isClassAssigned = $test->classes()->where('school_classes.id', $user->class_id)->exists();
-        if (!$isClassAssigned && !in_array($user->user_type, [1, 2])) {
-            return redirect()->route('tests.start')
-                ->with('error', 'You are not eligible to take this test.');
         }
 
         if (!$existingExam) {
@@ -521,7 +520,6 @@ class TestController extends Controller
                 'duration'   => $test->duration,
             ]);
 
-            // Re-fetch so we have the start_time below
             $existingExam = DB::table('students_exams')
                 ->where('user_id', $user->id)
                 ->where('test_id', $test->id)
@@ -537,8 +535,7 @@ class TestController extends Controller
             ->where('test_id', $test->id)
             ->pluck('student_answer', 'question_id');
 
-        $questions = $this->getShuffledQuestions($test, $user->id);
-
+        $questions     = $this->getShuffledQuestions($test, $user->id);
         $examStartTime = $existingExam->start_time;
 
         return view('take_test', compact('test', 'questions', 'savedAnswers', 'examStartTime'));
@@ -1053,10 +1050,21 @@ class TestController extends Controller
     public function viewPast($testId)
     {
         $user = Auth::user();
-
         $test = Test::with('questions')->findOrFail($testId);
 
-        // Fetch student's answers (this is the correct logic to map question_id => selected_option)
+        // Students can only view their own submitted tests
+        if ($user->user_type == 4) {
+            $submitted = DB::table('students_exams')
+                ->where('user_id', $user->id)
+                ->where('test_id', $testId)
+                ->where('is_submited', 1)
+                ->exists();
+
+            if (!$submitted) {
+                abort(403, 'You are not authorized to view this test.');
+            }
+        }
+
         $studentAnswers = DB::table('test_submissions')
             ->where('user_id', $user->id)
             ->where('test_id', $test->id)
@@ -1070,12 +1078,16 @@ class TestController extends Controller
         $user = Auth::user();
         $test = Test::with(['classes', 'course', 'questions'])->findOrFail($testId);
 
+        // Students have no access at all
+        if ($user->user_type == 4) {
+            abort(403, 'You are not authorized to view this report.');
+        }
+
         // Only the creator or admins can view this
         if (!in_array($user->user_type, [1, 2]) && $test->created_by !== $user->id) {
             abort(403, 'You are not authorized to view this report.');
         }
 
-        // Get all students assigned to the classes of this test
         $allStudents = collect();
         foreach ($test->classes as $class) {
             $classStudents = User::where('class_id', $class->id)
@@ -1090,19 +1102,11 @@ class TestController extends Controller
             $allStudents = $allStudents->merge($classStudents);
         }
 
-        $allStudents = $allStudents->unique('id');
-
-        // Get exam records for this test
-        $examRecords = DB::table('students_exams')
-            ->where('test_id', $testId)
-            ->get()
-            ->keyBy('user_id');
-
-        // Total marks (excluding instructions)
+        $allStudents    = $allStudents->unique('id');
+        $examRecords    = DB::table('students_exams')->where('test_id', $testId)->get()->keyBy('user_id');
         $totalQuestions = $test->questions->where('not_question', '!=', 1)->count();
         $totalMarks     = $test->questions->where('not_question', '!=', 1)->sum('mark');
 
-        // Categorise students
         $didTest    = collect();
         $didNotTest = collect();
 
@@ -1129,13 +1133,11 @@ class TestController extends Controller
             }
         }
 
-        // Sort by score descending and assign positions
         $didTest = $didTest->sortByDesc('score')->values()->map(function ($item, $index) {
             $item['position'] = $index + 1;
             return $item;
         });
 
-        // Summary stats
         $passCount = $didTest->where('is_passed', 1)->count();
         $failCount = $didTest->where('is_passed', 0)->count();
         $avgScore  = $didTest->count() > 0 ? round($didTest->avg('score'), 1) : 0;
@@ -1163,6 +1165,11 @@ class TestController extends Controller
         $test    = Test::with(['questions', 'course'])->findOrFail($testId);
         $student = User::findOrFail($studentId);
 
+        // Students have no access at all
+        if ($user->user_type == 4) {
+            abort(403, 'You are not authorized to view this report.');
+        }
+
         // Only creator or admins
         if (!in_array($user->user_type, [1, 2]) && $test->created_by !== $user->id) {
             abort(403, 'You are not authorized to view this report.');
@@ -1178,13 +1185,11 @@ class TestController extends Controller
                 ->with('error', 'This student has not submitted this test.');
         }
 
-        // Get student's answers
         $studentAnswers = DB::table('test_submissions')
             ->where('user_id', $studentId)
             ->where('test_id', $testId)
             ->pluck('student_answer', 'question_id');
 
-        // Build per-question breakdown
         $questions       = $test->questions->where('not_question', '!=', 1);
         $totalMarks      = $questions->sum('mark');
         $correctCount    = 0;
@@ -1225,7 +1230,6 @@ class TestController extends Controller
 
         $percentage = $totalMarks > 0 ? round(($earnedMarks / $totalMarks) * 100, 1) : 0;
 
-        // Time spent
         $timeSpent = null;
         if ($examRecord->start_time && $examRecord->end_time) {
             $start     = Carbon::parse($examRecord->start_time);
@@ -1233,7 +1237,6 @@ class TestController extends Controller
             $timeSpent = $start->diff($end)->format('%H:%I:%S');
         }
 
-        // Class ranking
         $allExams = DB::table('students_exams')
             ->where('test_id', $testId)
             ->where('is_submited', 1)
@@ -1260,6 +1263,7 @@ class TestController extends Controller
             'totalTakers'
         ));
     }
+
     public function studentAnalytics()
     {
         $user = Auth::user();
