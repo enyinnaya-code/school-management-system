@@ -51,10 +51,10 @@ class ResultSheetController extends Controller
     // Used by create() and edit()
     // =====================================================================
 
-   private function fetchTermsForDropdown(): array
-{
-    return ['First Term', 'Second Term', 'Third Term'];
-}
+    private function fetchTermsForDropdown(): array
+    {
+        return ['First Term', 'Second Term', 'Third Term'];
+    }
 
     // =====================================================================
     // CREATE
@@ -601,10 +601,17 @@ class ResultSheetController extends Controller
     private function saveSubjectsJson(int $templateId, array $subjects): void
     {
         foreach ($subjects as $sortOrder => $subjectData) {
+            // Strip 'existing_' prefix if present, then cast to int or null
+            $courseIdRaw = $subjectData['course_id'] ?? null;
+            $courseId = null;
+
+            if ($courseIdRaw && !str_starts_with((string) $courseIdRaw, 'existing_')) {
+                $courseId = is_numeric($courseIdRaw) ? (int) $courseIdRaw : null;
+            }
+
             $subjectId = DB::table('result_sheet_subjects')->insertGetId([
                 'template_id'    => $templateId,
-                'course_id'      => (!empty($subjectData['course_id']) && $subjectData['course_id'] != 0)
-                    ? $subjectData['course_id'] : null,
+                'course_id'      => $courseId,
                 'subject_number' => $subjectData['subject_number'],
                 'subject_name'   => $subjectData['course_name'],
                 'sort_order'     => $sortOrder,
