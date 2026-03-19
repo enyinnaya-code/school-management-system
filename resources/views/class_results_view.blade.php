@@ -43,11 +43,10 @@
                                                 <select name="session_id" id="session_id" class="form-control"
                                                     onchange="this.form.submit()">
                                                     @foreach($sessions as $session)
-                                                    <option value="{{ $session->id }}" {{ $selectedSession->id ==
-                                                        $session->id ? 'selected' : '' }}>
-                                                        {{ $session->name }} {{ $session->is_current ? '(Current)' : ''
-                                                        }}
-                                                    </option>
+                                                        <option value="{{ $session->id }}"
+                                                            {{ $selectedSession->id == $session->id ? 'selected' : '' }}>
+                                                            {{ $session->name }} {{ $session->is_current ? '(Current)' : '' }}
+                                                        </option>
                                                     @endforeach
                                                 </select>
                                             </div>
@@ -56,10 +55,10 @@
                                                 <select name="term_id" id="term_id" class="form-control"
                                                     onchange="this.form.submit()">
                                                     @foreach($terms as $term)
-                                                    <option value="{{ $term->id }}" {{ $selectedTerm->id == $term->id ?
-                                                        'selected' : '' }}>
-                                                        {{ $term->name }} {{ $term->is_current ? '(Current)' : '' }}
-                                                    </option>
+                                                        <option value="{{ $term->id }}"
+                                                            {{ $selectedTerm->id == $term->id ? 'selected' : '' }}>
+                                                            {{ $term->name }} {{ $term->is_current ? '(Current)' : '' }}
+                                                        </option>
                                                     @endforeach
                                                 </select>
                                             </div>
@@ -86,212 +85,220 @@
                                 <div class="table-responsive">
 
                                     {{-- ══════════════════════════════════════════════════════
-                                    NURSERY: rating columns per subject item
-                                    ══════════════════════════════════════════════════════ --}}
+                                         NURSERY: checkbox columns per subject item
+                                         ══════════════════════════════════════════════════════ --}}
                                     @if($isNursery)
 
-                                    @foreach($subjects as $subject)
-                                    <h6 class="mt-4 mb-1 font-weight-bold">
-                                        ({{ $subject->subject_number }}) {{ $subject->subject_name }}
-                                    </h6>
+                                        @foreach($subjects as $subject)
 
-                                    @foreach($subject->subcategories as $sub)
-                                    @if($sub->name)
-                                    <p class="mb-1 text-muted" style="font-size:12px; padding-left:10px;">
-                                        <em>{{ $sub->name }}</em>
-                                    </p>
-                                    @endif
+                                            <h6 class="mt-4 mb-2 subject-heading">
+                                                ({{ $subject->subject_number }}) {{ $subject->subject_name }}
+                                            </h6>
 
-                                    <table class="table table-bordered table-sm mb-2" style="font-size:12px;">
-                                        <thead class="text-center bg-light">
-                                            <tr>
-                                                <th>S/N</th>
-                                                <th>Student Name</th>
-                                                <th>Adm No</th>
-                                                @foreach($sub->items as $item)
-                                                <th title="{{ $item->item_text }}"
-                                                    style="max-width:80px; white-space:normal; font-size:10px;">
-                                                    {{ Str::limit($item->item_text, 30) }}
-                                                </th>
-                                                @endforeach
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse($students as $index => $student)
-                                            <tr>
-                                                <td>{{ $index + 1 }}</td>
-                                                <td>{{ $student->name }}</td>
-                                                <td>{{ $student->admission_no }}</td>
-                                                @foreach($sub->items as $item)
-                                                @php
-                                                $val = $ratingsMatrix[$student->id][$item->id] ?? null;
-                                                @endphp
-                                                <td class="text-center">
-                                                    @if($val)
-                                                    <span class="badge badge-primary">{{ $val }}</span>
-                                                    @else
-                                                    <span class="text-muted">-</span>
-                                                    @endif
-                                                </td>
-                                                @endforeach
-                                            </tr>
-                                            @empty
-                                            <tr>
-                                                <td colspan="{{ 3 + $sub->items->count() }}" class="text-center">
-                                                    No students found.
-                                                </td>
-                                            </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                    @endforeach
+                                            @foreach($subject->subcategories as $sub)
 
-                                    {{-- Direct items on the subject (no subcategory) --}}
-                                    @if(count($subject->items) > 0)
-                                    <table class="table table-bordered table-sm mb-2" style="font-size:12px;">
-                                        <thead class="text-center bg-light">
-                                            <tr>
-                                                <th>S/N</th>
-                                                <th>Student Name</th>
-                                                <th>Adm No</th>
-                                                @foreach($subject->items as $item)
-                                                <th title="{{ $item->item_text }}"
-                                                    style="max-width:80px; white-space:normal; font-size:10px;">
-                                                    {{ Str::limit($item->item_text, 30) }}
-                                                </th>
-                                                @endforeach
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse($students as $index => $student)
-                                            <tr>
-                                                <td>{{ $index + 1 }}</td>
-                                                <td>{{ $student->name }}</td>
-                                                <td>{{ $student->admission_no }}</td>
-                                                @foreach($subject->items as $item)
-                                                @php
-                                                $val = $ratingsMatrix[$student->id][$item->id] ?? null;
-                                                @endphp
-                                                <td class="text-center">
-                                                    @if($val)
-                                                    <span class="badge badge-primary">{{ $val }}</span>
-                                                    @else
-                                                    <span class="text-muted">-</span>
-                                                    @endif
-                                                </td>
-                                                @endforeach
-                                            </tr>
-                                            @empty
-                                            <tr>
-                                                <td colspan="{{ 3 + count($subject->items) }}" class="text-center">
-                                                    No students found.
-                                                </td>
-                                            </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                    @endif
+                                                @if($sub->name)
+                                                    <p class="mb-1 subcat-heading">
+                                                        <em>{{ $sub->name }}</em>
+                                                    </p>
+                                                @endif
 
-                                    @endforeach
+                                                @if(count($sub->items) > 0)
+                                                    <table class="table table-bordered table-sm mb-3 nursery-table">
+                                                        <thead class="bg-light text-center">
+                                                            <tr>
+                                                                <th style="width:40px;">S/N</th>
+                                                                <th style="text-align:left; min-width:180px;">Item</th>
+                                                                @foreach($sheetTemplate->rating_columns as $col)
+                                                                    <th style="min-width:55px; font-size:10px;">{{ $col }}</th>
+                                                                @endforeach
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach($students as $index => $student)
+                                                                {{-- Student name banner row --}}
+                                                                <tr class="table-secondary student-banner">
+                                                                    <td colspan="{{ 2 + count($sheetTemplate->rating_columns) }}"
+                                                                        style="font-weight:bold; font-size:11px; padding:3px 8px;">
+                                                                        {{ $index + 1 }}. {{ $student->name }}
+                                                                        <span class="text-muted"
+                                                                            style="font-weight:normal; font-size:10px;">
+                                                                            — {{ $student->admission_no }}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                                {{-- One row per item --}}
+                                                                @foreach($sub->items as $itemIdx => $item)
+                                                                    @php
+                                                                        $storedVal = $ratingsMatrix[$student->id][$item->id] ?? null;
+                                                                    @endphp
+                                                                    <tr>
+                                                                        <td class="text-center text-muted"
+                                                                            style="font-size:10px;">{{ $itemIdx + 1 }}</td>
+                                                                        <td style="font-size:11px;">{{ $item->item_text }}</td>
+                                                                        @foreach($sheetTemplate->rating_columns as $col)
+                                                                            <td class="text-center">
+                                                                                @if(trim((string)$storedVal) === trim($col))
+                                                                                    <span class="cb-checked">&#10003;</span>
+                                                                                @else
+                                                                                    <span class="cb-empty"></span>
+                                                                                @endif
+                                                                            </td>
+                                                                        @endforeach
+                                                                    </tr>
+                                                                @endforeach
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                @endif
+
+                                            @endforeach
+
+                                            {{-- Direct items on the subject (no subcategory) --}}
+                                            @if(count($subject->items) > 0)
+                                                <table class="table table-bordered table-sm mb-3 nursery-table">
+                                                    <thead class="bg-light text-center">
+                                                        <tr>
+                                                            <th style="width:40px;">S/N</th>
+                                                            <th style="text-align:left; min-width:180px;">Item</th>
+                                                            @foreach($sheetTemplate->rating_columns as $col)
+                                                                <th style="min-width:55px; font-size:10px;">{{ $col }}</th>
+                                                            @endforeach
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($students as $index => $student)
+                                                            <tr class="table-secondary student-banner">
+                                                                <td colspan="{{ 2 + count($sheetTemplate->rating_columns) }}"
+                                                                    style="font-weight:bold; font-size:11px; padding:3px 8px;">
+                                                                    {{ $index + 1 }}. {{ $student->name }}
+                                                                    <span class="text-muted"
+                                                                        style="font-weight:normal; font-size:10px;">
+                                                                        — {{ $student->admission_no }}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                            @foreach($subject->items as $itemIdx => $item)
+                                                                @php
+                                                                    $storedVal = $ratingsMatrix[$student->id][$item->id] ?? null;
+                                                                @endphp
+                                                                <tr>
+                                                                    <td class="text-center text-muted"
+                                                                        style="font-size:10px;">{{ $itemIdx + 1 }}</td>
+                                                                    <td style="font-size:11px;">{{ $item->item_text }}</td>
+                                                                    @foreach($sheetTemplate->rating_columns as $col)
+                                                                        <td class="text-center">
+                                                                            @if(trim((string)$storedVal) === trim($col))
+                                                                                <span class="cb-checked">&#10003;</span>
+                                                                            @else
+                                                                                <span class="cb-empty"></span>
+                                                                            @endif
+                                                                        </td>
+                                                                    @endforeach
+                                                                </tr>
+                                                            @endforeach
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            @endif
+
+                                        @endforeach
 
                                     {{-- ══════════════════════════════════════════════════════
-                                    PRIMARY & SECONDARY: 1st Half / 2nd Half / Total / Grade
-                                    ══════════════════════════════════════════════════════ --}}
+                                         PRIMARY & SECONDARY: 1st Half / 2nd Half / Total / Grade
+                                         ══════════════════════════════════════════════════════ --}}
                                     @else
 
-                                    <table class="table table-bordered table-striped table-sm mb-4 pb-4">
-                                        <thead class="text-center bg-light">
-                                            <tr>
-                                                <th rowspan="3">S/N</th>
-                                                <th rowspan="3">Student Name</th>
-                                                <th rowspan="3">Adm No</th>
-                                                @foreach($subjects as $subject)
-                                                <th colspan="{{ $isPrimary ? 7 : 8 }}">
-                                                    {{ $subject->course_name }}
-                                                </th>
-                                                @endforeach
-                                            </tr>
-                                            <tr>
-                                                @foreach($subjects as $subject)
-                                                <th colspan="2" style="font-size:10px;">1st Half (Max 30)</th>
-                                                <th colspan="2" style="font-size:10px;">2nd Half (Max 70)</th>
-                                                <th colspan="2" style="font-size:10px;">Total (Max 100)</th>
-                                                @if(!$isPrimary)
-                                                <th rowspan="2" style="font-size:10px; vertical-align:middle;">Grade
-                                                </th>
-                                                @else
-                                                <th rowspan="2" style="font-size:10px; vertical-align:middle;">Remark
-                                                </th>
-                                                @endif
-                                                @endforeach
-                                            </tr>
-                                            <tr>
-                                                @foreach($subjects as $subject)
-                                                <th style="font-size:9px;">Obtainable</th>
-                                                <th style="font-size:9px;">Obtained</th>
-                                                <th style="font-size:9px;">Obtainable</th>
-                                                <th style="font-size:9px;">Obtained</th>
-                                                <th style="font-size:9px;">Obtainable</th>
-                                                <th style="font-size:9px;">Obtained</th>
-                                                @endforeach
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse($students as $index => $student)
-                                            <tr>
-                                                <td>{{ $index + 1 }}</td>
-                                                <td>{{ $student->name }}</td>
-                                                <td>{{ $student->admission_no }}</td>
+                                        <table class="table table-bordered table-striped table-sm mb-4 pb-4">
+                                            <thead class="text-center bg-light">
+                                                <tr>
+                                                    <th rowspan="3">S/N</th>
+                                                    <th rowspan="3">Student Name</th>
+                                                    <th rowspan="3">Adm No</th>
+                                                    @foreach($subjects as $subject)
+                                                        <th colspan="{{ $isPrimary ? 7 : 8 }}">
+                                                            {{ $subject->course_name }}
+                                                        </th>
+                                                    @endforeach
+                                                </tr>
+                                                <tr>
+                                                    @foreach($subjects as $subject)
+                                                        <th colspan="2" style="font-size:10px;">1st Half (Max 30)</th>
+                                                        <th colspan="2" style="font-size:10px;">2nd Half (Max 70)</th>
+                                                        <th colspan="2" style="font-size:10px;">Total (Max 100)</th>
+                                                        @if(!$isPrimary)
+                                                            <th rowspan="2" style="font-size:10px; vertical-align:middle;">Grade</th>
+                                                        @else
+                                                            <th rowspan="2" style="font-size:10px; vertical-align:middle;">Remark</th>
+                                                        @endif
+                                                    @endforeach
+                                                </tr>
+                                                <tr>
+                                                    @foreach($subjects as $subject)
+                                                        <th style="font-size:9px;">Obtainable</th>
+                                                        <th style="font-size:9px;">Obtained</th>
+                                                        <th style="font-size:9px;">Obtainable</th>
+                                                        <th style="font-size:9px;">Obtained</th>
+                                                        <th style="font-size:9px;">Obtainable</th>
+                                                        <th style="font-size:9px;">Obtained</th>
+                                                    @endforeach
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @forelse($students as $index => $student)
+                                                    <tr>
+                                                        <td>{{ $index + 1 }}</td>
+                                                        <td>{{ $student->name }}</td>
+                                                        <td>{{ $student->admission_no }}</td>
 
-                                                @foreach($subjects as $subject)
-                                                @php
-                                                $r = $resultsMatrix[$student->id][$subject->id] ?? null;
-                                                $firstObtainable = $r?->first_half_obtainable ?? 30;
-                                                $firstObtained = $r?->first_half_obtained ?? 0;
-                                                $secondObtainable = $r?->second_half_obtainable ?? 70;
-                                                $secondObtained = $r?->second_half_obtained ?? 0;
-                                                $finalObtainable = $r?->final_obtainable ?? 100;
-                                                $finalObtained = $r?->final_obtained ?? 0;
-                                                $grade = $r?->grade ?? '-';
-                                                $teacherRemark = $r?->teacher_remark ?? '-';
-                                                @endphp
+                                                        @foreach($subjects as $subject)
+                                                            @php
+                                                                $r                = $resultsMatrix[$student->id][$subject->id] ?? null;
+                                                                $firstObtainable  = $r?->first_half_obtainable  ?? 30;
+                                                                $firstObtained    = $r?->first_half_obtained    ?? 0;
+                                                                $secondObtainable = $r?->second_half_obtainable ?? 70;
+                                                                $secondObtained   = $r?->second_half_obtained   ?? 0;
+                                                                $finalObtainable  = $r?->final_obtainable       ?? 100;
+                                                                $finalObtained    = $r?->final_obtained         ?? 0;
+                                                                $grade            = $r?->grade                  ?? '-';
+                                                                $teacherRemark    = $r?->teacher_remark         ?? '-';
+                                                            @endphp
 
-                                                <td class="text-center">{{ $firstObtainable }}</td>
-                                                <td class="text-center">{{ $firstObtained ?: '-' }}</td>
-                                                <td class="text-center">{{ $secondObtainable }}</td>
-                                                <td class="text-center">{{ $secondObtained ?: '-' }}</td>
-                                                <td class="text-center">{{ $finalObtainable }}</td>
-                                                <td class="text-center font-weight-bold">{{ $finalObtained ?: '-' }}
-                                                </td>
+                                                            <td class="text-center">{{ $firstObtainable }}</td>
+                                                            <td class="text-center">{{ $firstObtained ?: '-' }}</td>
+                                                            <td class="text-center">{{ $secondObtainable }}</td>
+                                                            <td class="text-center">{{ $secondObtained ?: '-' }}</td>
+                                                            <td class="text-center">{{ $finalObtainable }}</td>
+                                                            <td class="text-center font-weight-bold">{{ $finalObtained ?: '-' }}</td>
 
-                                                @if($isPrimary)
-                                                <td class="text-center">{{ $teacherRemark }}</td>
-                                                @else
-                                                <td class="text-center">
-                                                    <span class="badge
+                                                            @if($isPrimary)
+                                                                <td class="text-center">{{ $teacherRemark }}</td>
+                                                            @else
+                                                                <td class="text-center">
+                                                                    <span class="badge
                                                                         @if($grade == 'A') badge-success
                                                                         @elseif($grade == 'B') badge-info
                                                                         @elseif($grade == 'C') badge-primary
                                                                         @elseif($grade == 'D') badge-warning
                                                                         @elseif($grade == 'E') badge-secondary
                                                                         @else badge-danger @endif">
-                                                        {{ $grade }}
-                                                    </span>
-                                                </td>
-                                                @endif
+                                                                        {{ $grade }}
+                                                                    </span>
+                                                                </td>
+                                                            @endif
 
-                                                @endforeach
-                                            </tr>
-                                            @empty
-                                            <tr>
-                                                <td colspan="{{ 3 + ($subjects->count() * ($isPrimary ? 7 : 8)) }}"
-                                                    class="text-center">
-                                                    No students found in this class.
-                                                </td>
-                                            </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
+                                                        @endforeach
+                                                    </tr>
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="{{ 3 + ($subjects->count() * ($isPrimary ? 7 : 8)) }}"
+                                                            class="text-center">
+                                                            No students found in this class.
+                                                        </td>
+                                                    </tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
 
                                     @endif
                                     {{-- end primary/secondary table --}}
@@ -310,20 +317,58 @@
     @include('includes.edit_footer')
 
     <style>
+
+        /* ── Nursery subject / subcat headings ── */
+        .subject-heading {
+            border-left: 4px solid #333;
+            background: #f5f5f5;
+            padding: 5px 8px;
+            font-size: 13px;
+        }
+        .subcat-heading {
+            font-size: 12px;
+            padding-left: 14px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        /* ── Nursery checkbox cells ── */
+        .cb-checked,
+        .cb-empty {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 1.5px solid #555;
+            border-radius: 2px;
+            text-align: center;
+            line-height: 14px;
+            font-size: 13px;
+            font-weight: bold;
+            vertical-align: middle;
+            background: #fff;
+        }
+        .cb-checked {
+            border-color: #000;
+            color: #000;
+        }
+
+        /* ── Badge ── */
+        .badge { font-size: 0.85em; padding: 4px 8px; }
+
+        /* ══════════════════════════════════════════════════
+           PRINT
+           ══════════════════════════════════════════════════ */
         @media print {
+
             @page {
                 size: A3 landscape;
                 margin: 6mm;
             }
 
-            body * {
-                visibility: hidden;
-            }
+            body * { visibility: hidden; }
 
             .printable-area,
-            .printable-area * {
-                visibility: visible;
-            }
+            .printable-area * { visibility: visible; }
 
             .printable-area {
                 position: absolute;
@@ -332,21 +377,15 @@
                 width: 100%;
             }
 
-            .no-print {
-                display: none !important;
-            }
+            .no-print  { display: none !important; }
+            .print-only { display: block !important; }
 
-            .print-only {
-                display: block !important;
-            }
-
-            /* Shrink everything aggressively */
+            /* ── Primary / Secondary table ── */
             .table {
                 font-size: 7px !important;
                 width: 100% !important;
                 table-layout: fixed;
             }
-
             .table th,
             .table td {
                 border: 1px solid #000 !important;
@@ -355,47 +394,81 @@
                 overflow-wrap: break-word;
                 white-space: normal !important;
             }
-
-            /* Student name column — give it a bit more room */
             .table td:nth-child(2),
             .table th:nth-child(2) {
                 min-width: 80px;
                 max-width: 100px;
             }
-
-            /* Score columns — squeeze them */
             .table td:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(3)),
             .table th:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(3)) {
                 min-width: 18px;
                 max-width: 28px;
                 text-align: center !important;
             }
-
             .bg-light {
                 background-color: #f8f9fa !important;
                 -webkit-print-color-adjust: exact;
             }
-
             .badge {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
                 font-size: 7px !important;
                 padding: 1px 2px !important;
             }
+            .table tbody tr { page-break-inside: avoid; }
 
-            /* Force table not to break across pages mid-row */
-            .table tbody tr {
-                page-break-inside: avoid;
-            }
-
-            /* Nursery subject headings */
-            h6 {
+            /* ── Nursery headings ── */
+            .subject-heading {
                 font-size: 9px !important;
                 margin: 4px 0 2px 0 !important;
+                padding: 3px 6px !important;
+                background: #f0f0f0 !important;
+                -webkit-print-color-adjust: exact;
+            }
+            .subcat-heading {
+                font-size: 8px !important;
+                margin: 2px 0 1px 0 !important;
             }
 
-            p.text-muted {
+            /* ── Nursery table ── */
+            .nursery-table {
                 font-size: 8px !important;
+                width: 100% !important;
+                table-layout: auto !important;
+            }
+            .nursery-table th,
+            .nursery-table td {
+                border: 1px solid #000 !important;
+                padding: 2px 3px !important;
+                white-space: normal !important;
+                word-wrap: break-word;
+            }
+            .nursery-table tbody tr { page-break-inside: avoid; }
+
+            /* Student banner row in nursery */
+            .student-banner td {
+                font-size: 8px !important;
+                background-color: #e9e9e9 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* ── Nursery checkboxes ── */
+            .cb-checked,
+            .cb-empty {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                border: 1.5px solid #555 !important;
+                display: inline-block !important;
+                width: 12px !important;
+                height: 12px !important;
+                line-height: 11px !important;
+                font-size: 11px !important;
+                background: #fff !important;
+            }
+            .cb-checked {
+                border-color: #000 !important;
+                color: #000 !important;
             }
 
             /* Hide sidebar, navbar etc */
@@ -403,21 +476,14 @@
             .main-sidebar,
             .navbar,
             .main-footer,
-            .loader,
-            #app>.main-wrapper>.navbar-bg {
+            .loader {
                 display: none !important;
             }
         }
 
         @media screen {
-            .print-only {
-                display: none;
-            }
+            .print-only { display: none; }
         }
 
-        .badge {
-            font-size: 0.85em;
-            padding: 4px 8px;
-        }
     </style>
 </body>
