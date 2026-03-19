@@ -55,9 +55,9 @@
                                                     <strong>Admission No:</strong> {{ $student->admission_no }}
                                                 </p>
                                                 <div class="d-flex justify-content-center">
-                                                    <a href="{{ route('students.performance', $student->id) }}" class="btn btn-primary btn-sm mr-2">
+                                                    {{-- <a href="{{ route('students.performance', $student->id) }}" class="btn btn-primary btn-sm mr-2">
                                                         <i class="fas fa-chart-line"></i> Performance
-                                                    </a>
+                                                    </a> --}}
                                                     <a href="{{ route('students.profile', $student->id) }}" class="btn btn-info btn-sm">
                                                         <i class="fas fa-user"></i> Profile
                                                     </a>
