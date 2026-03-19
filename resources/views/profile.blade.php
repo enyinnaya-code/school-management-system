@@ -15,6 +15,15 @@
                         <div class="card shadow-sm">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h4 class="mb-0">User Profile</h4>
+
+                                {{-- Edit button: only admins/staff or the user viewing their own profile --}}
+                                @if(Auth::id() == $user->id || in_array(Auth::user()->user_type, [1, 2, 7, 8, 9, 10]))
+                                    @if($user->user_type == 4)
+                                        <a href="{{ route('students.edit', $user->id) }}" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-edit mr-1"></i> Edit Profile
+                                        </a>
+                                    @endif
+                                @endif
                             </div>
                             <div class="card-body">
                                 <section class="section">
@@ -416,37 +425,37 @@
         .shadow-sm {
             box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075) !important;
         }
-        
+
         .badge-lg {
             padding: 0.5rem 1rem;
             font-size: 0.875rem;
         }
-        
+
         .separator {
             border-top: 2px solid #f4f6f9;
         }
-        
+
         .border-left-primary {
             border-left: 3px solid #6777ef !important;
         }
-        
+
         .border-left-success {
             border-left: 3px solid #66bb6a !important;
         }
-        
+
         .font-weight-600 {
             font-weight: 600;
         }
-        
+
         .font-weight-700 {
             font-weight: 700;
         }
-        
+
         .alert-light {
             background-color: #f8f9fa;
             border-color: #e9ecef;
         }
-        
+
         .text-break {
             word-break: break-word;
         }

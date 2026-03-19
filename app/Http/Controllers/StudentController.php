@@ -306,22 +306,7 @@ class StudentController extends Controller
         return redirect()->route('students.create')->with('success', 'Student added successfully.');
     }
 
-    public function profile($id)
-    {
-        $user = User::with([
-            'class.section',
-            'classes.section',
-            'courses.section',
-            'students.class.section'
-        ])->findOrFail($id);
-
-        // Optional: Add authorization if needed (e.g., only allow viewing own profile or by admins/teachers)
-        // if (!in_array(Auth::user()->user_type, [1, 2, 3]) && Auth::id() != $id) {
-        //     abort(403);
-        // }
-
-        return view('profile', compact('user'));
-    }
+   public function profile
 
     public function performance($id, Request $request)
     {
