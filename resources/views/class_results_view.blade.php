@@ -209,47 +209,43 @@
                                          ══════════════════════════════════════════════════════ --}}
                                     @else
 
-                                        <table class="table table-bordered table-striped table-sm mb-4 pb-4">
+                                        <table class="table table-bordered table-striped table-sm mb-4 results-table">
                                             <thead class="text-center bg-light">
+                                                {{-- Row 1: fixed columns + subject name colspan --}}
                                                 <tr>
-                                                    <th rowspan="3">S/N</th>
-                                                    <th rowspan="3">Student Name</th>
-                                                    <th rowspan="3">Adm No</th>
+                                                    <th rowspan="2" style="vertical-align:middle; white-space:nowrap;">S/N</th>
+                                                    <th rowspan="2" style="vertical-align:middle; min-width:130px;">Student Name</th>
+                                                    <th rowspan="2" style="vertical-align:middle; white-space:nowrap;">Adm No</th>
                                                     @foreach($subjects as $subject)
-                                                        <th colspan="{{ $isPrimary ? 7 : 8 }}">
+                                                        <th colspan="{{ $isPrimary ? 7 : 8 }}"
+                                                            style="font-size:10px; white-space:nowrap;">
                                                             {{ $subject->course_name }}
                                                         </th>
                                                     @endforeach
                                                 </tr>
+                                                {{-- Row 2: sub-headers per subject — no rowspan issues --}}
                                                 <tr>
                                                     @foreach($subjects as $subject)
-                                                        <th colspan="2" style="font-size:10px;">1st Half (Max 30)</th>
-                                                        <th colspan="2" style="font-size:10px;">2nd Half (Max 70)</th>
-                                                        <th colspan="2" style="font-size:10px;">Total (Max 100)</th>
+                                                        <th style="font-size:9px; min-width:28px;">1st<br>Obtainable</th>
+                                                        <th style="font-size:9px; min-width:28px;">1st<br>Obtained</th>
+                                                        <th style="font-size:9px; min-width:28px;">2nd<br>Obtainable</th>
+                                                        <th style="font-size:9px; min-width:28px;">2nd<br>Obtained</th>
+                                                        <th style="font-size:9px; min-width:28px;">Total<br>Obtainable</th>
+                                                        <th style="font-size:9px; min-width:28px;">Total<br>Obtained</th>
                                                         @if(!$isPrimary)
-                                                            <th rowspan="2" style="font-size:10px; vertical-align:middle;">Grade</th>
+                                                            <th style="font-size:9px; min-width:28px;">Grade</th>
                                                         @else
-                                                            <th rowspan="2" style="font-size:10px; vertical-align:middle;">Remark</th>
+                                                            <th style="font-size:9px; min-width:40px;">Remark</th>
                                                         @endif
-                                                    @endforeach
-                                                </tr>
-                                                <tr>
-                                                    @foreach($subjects as $subject)
-                                                        <th style="font-size:9px;">Obtainable</th>
-                                                        <th style="font-size:9px;">Obtained</th>
-                                                        <th style="font-size:9px;">Obtainable</th>
-                                                        <th style="font-size:9px;">Obtained</th>
-                                                        <th style="font-size:9px;">Obtainable</th>
-                                                        <th style="font-size:9px;">Obtained</th>
                                                     @endforeach
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 @forelse($students as $index => $student)
                                                     <tr>
-                                                        <td>{{ $index + 1 }}</td>
+                                                        <td class="text-center">{{ $index + 1 }}</td>
                                                         <td>{{ $student->name }}</td>
-                                                        <td>{{ $student->admission_no }}</td>
+                                                        <td class="text-center">{{ $student->admission_no }}</td>
 
                                                         @foreach($subjects as $subject)
                                                             @php
@@ -272,7 +268,7 @@
                                                             <td class="text-center font-weight-bold">{{ $finalObtained ?: '-' }}</td>
 
                                                             @if($isPrimary)
-                                                                <td class="text-center">{{ $teacherRemark }}</td>
+                                                                <td class="text-center" style="font-size:10px;">{{ $teacherRemark }}</td>
                                                             @else
                                                                 <td class="text-center">
                                                                     <span class="badge
@@ -301,7 +297,7 @@
                                         </table>
 
                                     @endif
-                                    {{-- end primary/secondary table --}}
+                                    {{-- end primary/secondary/nursery --}}
 
                                 </div>
                             </div>
@@ -317,6 +313,17 @@
     @include('includes.edit_footer')
 
     <style>
+
+        /* ── Horizontal scroll on screen — nothing gets clipped ── */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ── Results table never collapses columns on screen ── */
+        .results-table {
+            min-width: max-content;
+        }
 
         /* ── Nursery subject / subcat headings ── */
         .subject-heading {
@@ -377,34 +384,39 @@
                 width: 100%;
             }
 
-            .no-print  { display: none !important; }
+            .no-print   { display: none !important; }
             .print-only { display: block !important; }
 
-            /* ── Primary / Secondary table ── */
-            .table {
+            /* ── Results table on print ── */
+            .results-table {
                 font-size: 7px !important;
                 width: 100% !important;
-                table-layout: fixed;
+                min-width: unset !important;
+                table-layout: fixed !important;
             }
-            .table th,
-            .table td {
+            .results-table th,
+            .results-table td {
                 border: 1px solid #000 !important;
                 padding: 2px 1px !important;
                 word-wrap: break-word;
                 overflow-wrap: break-word;
                 white-space: normal !important;
             }
-            .table td:nth-child(2),
-            .table th:nth-child(2) {
-                min-width: 80px;
-                max-width: 100px;
+            /* Student name column */
+            .results-table td:nth-child(2),
+            .results-table th:nth-child(2) {
+                min-width: 70px;
+                max-width: 90px;
             }
-            .table td:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(3)),
-            .table th:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(3)) {
-                min-width: 18px;
-                max-width: 28px;
+            /* All score/grade columns */
+            .results-table td:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(3)),
+            .results-table th:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(3)) {
+                min-width: 16px;
+                max-width: 26px;
                 text-align: center !important;
             }
+            .results-table tbody tr { page-break-inside: avoid; }
+
             .bg-light {
                 background-color: #f8f9fa !important;
                 -webkit-print-color-adjust: exact;
@@ -415,7 +427,6 @@
                 font-size: 7px !important;
                 padding: 1px 2px !important;
             }
-            .table tbody tr { page-break-inside: avoid; }
 
             /* ── Nursery headings ── */
             .subject-heading {
@@ -471,7 +482,7 @@
                 color: #000 !important;
             }
 
-            /* Hide sidebar, navbar etc */
+            /* ── Hide chrome ── */
             .navbar-bg,
             .main-sidebar,
             .navbar,
