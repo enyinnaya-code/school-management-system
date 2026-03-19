@@ -63,7 +63,7 @@ class ResultSheetController extends Controller
     public function create()
     {
         $sections = Section::all();
-        $terms    = $this->fetchTermsForDropdown();   // ← collection of {id, name}
+        $terms    = $this->fetchTermsForDropdown();
 
         return view('result_sheets.create', compact('sections', 'terms'));
     }
@@ -94,6 +94,15 @@ class ResultSheetController extends Controller
             return back()
                 ->withErrors(['subjects_json' => 'Please add at least one subject with sub-topics and items.'])
                 ->withInput();
+        }
+
+        // Duplicate class+term check
+        $duplicateError = $this->validateNoDuplicateClassTerm(
+            $request->applicable_classes,
+            $request->term_name
+        );
+        if ($duplicateError) {
+            return back()->withErrors(['applicable_classes' => $duplicateError])->withInput();
         }
 
         $footerFields = [
@@ -146,7 +155,7 @@ class ResultSheetController extends Controller
         }
 
         $sections         = Section::all();
-        $terms            = $this->fetchTermsForDropdown();   // ← collection of {id, name}
+        $terms            = $this->fetchTermsForDropdown();
         $existingSubjects = $this->loadTemplateStructureForEdit($id);
 
         return view('result_sheets.edit', compact(
@@ -189,6 +198,16 @@ class ResultSheetController extends Controller
             return back()
                 ->withErrors(['subjects_json' => 'No subject data found. Raw: ' . substr($request->subjects_json, 0, 200)])
                 ->withInput();
+        }
+
+        // Duplicate class+term check (exclude self)
+        $duplicateError = $this->validateNoDuplicateClassTerm(
+            $request->applicable_classes,
+            $request->term_name,
+            (int) $id
+        );
+        if ($duplicateError) {
+            return back()->withErrors(['applicable_classes' => $duplicateError])->withInput();
         }
 
         $footerFields = [
@@ -444,17 +463,17 @@ class ResultSheetController extends Controller
             foreach ($ratings as $itemId => $value) {
                 DB::table('result_sheet_ratings')->updateOrInsert(
                     [
-                        'item_id' => $itemId,
+                        'item_id'    => $itemId,
                         'student_id' => $studentId,
                         'session_id' => $sessionId,
-                        'term_id' => $termId
+                        'term_id'    => $termId,
                     ],
                     [
-                        'template_id' => $templateId,
+                        'template_id'  => $templateId,
                         'rating_value' => $value ?: null,
-                        'rated_by' => Auth::id(),
-                        'updated_at' => now(),
-                        'created_at' => now()
+                        'rated_by'     => Auth::id(),
+                        'updated_at'   => now(),
+                        'created_at'   => now(),
                     ]
                 );
             }
@@ -586,7 +605,7 @@ class ResultSheetController extends Controller
     private function resolveTermName(Request $request): void
     {
         if (!empty($request->input('term_name'))) {
-            return; // already set — nothing to do
+            return;
         }
 
         $termId = $request->input('term_id');
@@ -598,12 +617,52 @@ class ResultSheetController extends Controller
         }
     }
 
+    /**
+     * Check that none of the given class IDs already appear in another active
+     * template for the same term name.
+     *
+     * @param  array       $classIds           The class IDs being submitted
+     * @param  string      $termName           e.g. "First Term"
+     * @param  int|null    $excludeTemplateId  Current template ID when editing (excluded from check)
+     * @return string|null Error message, or null if no conflict found
+     */
+    private function validateNoDuplicateClassTerm(
+        array $classIds,
+        string $termName,
+        ?int $excludeTemplateId = null
+    ): ?string {
+        $query = DB::table('result_sheet_templates')
+            ->where('term_name', $termName)
+            ->where('is_active', 1);
+
+        if ($excludeTemplateId) {
+            $query->where('id', '!=', $excludeTemplateId);
+        }
+
+        $existingTemplates = $query->get(['id', 'name', 'applicable_classes']);
+
+        foreach ($existingTemplates as $existing) {
+            $existingClasses = json_decode($existing->applicable_classes ?? '[]', true);
+            $conflicts       = array_intersect($classIds, $existingClasses);
+
+            if (!empty($conflicts)) {
+                $conflictClassNames = SchoolClass::whereIn('id', array_values($conflicts))
+                    ->pluck('name')
+                    ->implode(', ');
+
+                return "The following class(es) already have a \"{$termName}\" template "
+                    . "(in \"{$existing->name}\"): {$conflictClassNames}.";
+            }
+        }
+
+        return null;
+    }
+
     private function saveSubjectsJson(int $templateId, array $subjects): void
     {
         foreach ($subjects as $sortOrder => $subjectData) {
-            // Strip 'existing_' prefix if present, then cast to int or null
             $courseIdRaw = $subjectData['course_id'] ?? null;
-            $courseId = null;
+            $courseId    = null;
 
             if ($courseIdRaw && !str_starts_with((string) $courseIdRaw, 'existing_')) {
                 $courseId = is_numeric($courseIdRaw) ? (int) $courseIdRaw : null;
