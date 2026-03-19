@@ -1182,38 +1182,33 @@ class ResultsController extends Controller
 
     public function viewClassResults(Request $request, $classId)
     {
-        $class = SchoolClass::findOrFail($classId);
+        $class   = SchoolClass::findOrFail($classId);
         $section = Section::find($class->section_id);
-        $user = Auth::user();
+        $user    = Auth::user();
 
-        // Security check for non-admin users
         if (!in_array($user->user_type, [1, 2])) {
             if (!$this->isTeacherAssignedToClass($user->id, $classId)) {
                 abort(403, 'You are not authorized to view results for this class.');
             }
         }
 
-        $sessions = Session::orderByDesc('name')->get();
-
+        $sessions          = Session::orderByDesc('name')->get();
         $selectedSessionId = $request->input('session_id');
         if (!$selectedSessionId) {
-            $currentSession = Session::where('is_current', true)->first();
+            $currentSession    = Session::where('is_current', true)->first();
             $selectedSessionId = $currentSession?->id;
         }
-
         $selectedSession = Session::find($selectedSessionId);
         if (!$selectedSession) {
             return redirect()->back()->with('error', 'Selected session not found.');
         }
 
-        $terms = $selectedSession->terms()->orderBy('name')->get();
-
+        $terms          = $selectedSession->terms()->orderBy('name')->get();
         $selectedTermId = $request->input('term_id');
         if (!$selectedTermId) {
-            $currentTerm = $terms->where('is_current', true)->first();
+            $currentTerm    = $terms->where('is_current', true)->first();
             $selectedTermId = $currentTerm?->id ?? $terms->first()?->id;
         }
-
         $selectedTerm = Term::find($selectedTermId);
         if (!$selectedTerm) {
             return redirect()->back()->with('error', 'Selected term not found.');
@@ -1224,29 +1219,115 @@ class ResultsController extends Controller
             ->orderBy('name')
             ->get();
 
-        $subjectsQuery = Course::orderBy('course_name');
+        // ── Detect class type ────────────────────────────────────────────────────
 
-        if (!in_array($user->user_type, [1, 2])) {
-            $subjectsQuery->whereExists(function ($query) use ($user, $classId) {
-                $query->select(DB::raw(1))
-                    ->from('course_user')
-                    ->whereColumn('course_user.course_id', 'courses.id')
-                    ->where('course_user.user_id', $user->id)
-                    ->where(function ($q) use ($classId) {
-                        $q->where('class_id', $classId)
-                            ->orWhereNull('class_id');
-                    });
+        // NURSERY: check if this class has an active result sheet template
+        $sheetTemplate = DB::table('result_sheet_templates')
+            ->where('is_active', 1)
+            ->get()
+            ->first(function ($t) use ($class, $selectedTerm) {
+                $classes     = json_decode($t->applicable_classes ?? '[]', true);
+                $classMatch  = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+                $termMatch   = !empty($t->term_name) && $t->term_name === $selectedTerm->name;
+                return $classMatch && $termMatch;
             });
+
+        // Fallback: any active template for this class regardless of term
+        if (!$sheetTemplate) {
+            $sheetTemplate = DB::table('result_sheet_templates')
+                ->where('is_active', 1)
+                ->get()
+                ->first(function ($t) use ($class) {
+                    $classes = json_decode($t->applicable_classes ?? '[]', true);
+                    return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+                });
         }
 
-        $subjects = $subjectsQuery->get();
+        $isNursery = (bool) $sheetTemplate;
 
-        $resultsMatrix = Result::where('session_id', $selectedSession->id)
-            ->where('term_id', $selectedTerm->id)
-            ->whereIn('student_id', $students->pluck('id'))
-            ->whereIn('course_id', $subjects->pluck('id'))
-            ->get()
-            ->groupBy(['student_id', 'course_id']);
+        // PRIMARY: check primary_result_classes
+        $isPrimary = !$isNursery && DB::table('primary_result_classes')
+            ->where('school_class_id', $classId)
+            ->exists();
+
+        // ── Subjects ─────────────────────────────────────────────────────────────
+        $subjects = collect();
+
+        if ($isNursery) {
+            // Nursery subjects come from the template structure
+            $service  = new ResultSheetService();
+            $subjects = collect($service->loadTemplateStructure($sheetTemplate->id));
+            $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
+        } else {
+            $subjectsQuery = Course::whereHas('schoolClasses', function ($q) use ($class) {
+                $q->where('school_classes.id', $class->id);
+            })->orderBy('course_name');
+
+            if (!in_array($user->user_type, [1, 2])) {
+                $subjectsQuery->whereExists(function ($query) use ($user, $classId) {
+                    $query->select(DB::raw(1))
+                        ->from('course_user')
+                        ->whereColumn('course_user.course_id', 'courses.id')
+                        ->where('course_user.user_id', $user->id)
+                        ->where(function ($q) use ($classId) {
+                            $q->where('class_id', $classId)->orWhereNull('class_id');
+                        });
+                });
+            }
+
+            $subjects = $subjectsQuery->get();
+        }
+
+        // ── Results matrix ───────────────────────────────────────────────────────
+        $resultsMatrix  = collect();
+        $ratingsMatrix  = collect(); // nursery only
+
+        if ($isNursery) {
+            // Collect all item IDs from template
+            $allItemIds = $subjects->flatMap(function ($subject) {
+                $ids = collect($subject->items)->pluck('id');
+                foreach ($subject->subcategories as $sub) {
+                    $ids = $ids->merge(collect($sub->items)->pluck('id'));
+                }
+                return $ids;
+            });
+
+            // Fetch all ratings for all students in one query
+            $rawRatings = DB::table('result_sheet_ratings')
+                ->where('template_id', $sheetTemplate->id)
+                ->where('session_id', $selectedSession->id)
+                ->where('term_id', $selectedTerm->id)
+                ->whereIn('student_id', $students->pluck('id'))
+                ->whereIn('item_id', $allItemIds)
+                ->get();
+
+            // ratingsMatrix[student_id][item_id] = rating_value
+            foreach ($rawRatings as $r) {
+                $ratingsMatrix[$r->student_id][$r->item_id] = $r->rating_value;
+            }
+        } elseif ($isPrimary) {
+            $raw = \App\Models\PrimarySchoolResult::where('session_id', $selectedSession->id)
+                ->where('term_id', $selectedTerm->id)
+                ->whereIn('student_id', $students->pluck('id'))
+                ->whereIn('course_id', $subjects->pluck('id'))
+                ->get();
+
+            // resultsMatrix[student_id][course_id] = result
+            foreach ($raw as $r) {
+                $resultsMatrix[$r->student_id][$r->course_id] = $r;
+            }
+        } else {
+            // Secondary
+            $raw = Result::where('session_id', $selectedSession->id)
+                ->where('term_id', $selectedTerm->id)
+                ->whereIn('student_id', $students->pluck('id'))
+                ->whereIn('course_id', $subjects->pluck('id'))
+                ->get();
+
+            foreach ($raw as $r) {
+                $resultsMatrix[$r->student_id][$r->course_id] = $r;
+            }
+        }
 
         return view('class_results_view', compact(
             'class',
@@ -1254,11 +1335,15 @@ class ResultsController extends Controller
             'students',
             'subjects',
             'resultsMatrix',
+            'ratingsMatrix',
             'sessions',
             'selectedSession',
             'terms',
             'selectedTerm',
-            'user'
+            'user',
+            'isNursery',
+            'isPrimary',
+            'sheetTemplate'
         ));
     }
 
