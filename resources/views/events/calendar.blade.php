@@ -22,7 +22,7 @@
                                     <button class="btn btn-sm btn-success mr-2 mb-2 mb-md-0" id="viewUpcomingBtn">
                                         <i data-feather="list"></i> <span class="d-none d-sm-inline">Upcoming</span>
                                     </button>
-                                    @if(in_array(auth()->user()->user_type, [1, 2]))
+                                    @if(in_array(auth()->user()->user_type, [1, 2, 7, 11]))
                                     <button class="btn btn-sm btn-primary mb-2 mb-md-0" id="addEventBtn">
                                         <i data-feather="plus"></i> <span class="d-none d-sm-inline">Add Event</span>
                                     </button>
@@ -32,8 +32,8 @@
                             <div class="card-body">
                                 <!-- Calendar Legend -->
                                 <div class="mb-3 d-flex align-items-center flex-wrap">
-                                    @if(in_array(auth()->user()->user_type, [1, 2, 7]))
-                                    <small class="text-muted mr-3 mb-2"><i data-feather="info" class="feather-sm"></i> 
+                                    @if(in_array(auth()->user()->user_type, [1, 2, 7, 11]))
+                                    <small class="text-muted mr-3 mb-2"><i data-feather="info" class="feather-sm"></i>
                                         <span class="d-none d-md-inline">Click on any date to create an event, click an event to edit</span>
                                         <span class="d-md-none">Tap date/event to manage</span>
                                     </small>
@@ -187,6 +187,55 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
 
     <style>
+        /* =============================================
+           SCROLLABLE MODAL FIX — KEY STYLES
+        ============================================= */
+
+        /* Force the modal dialog to never exceed viewport height */
+        #eventModal .modal-dialog {
+            max-height: calc(100vh - 3.5rem);
+            margin: 1.75rem auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Modal content must be a flex column so the body can grow/shrink */
+        #eventModal .modal-content {
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 3.5rem);
+            overflow: scroll; /* clip children, body scrolls internally */
+        }
+
+        /* Header and footer are fixed height — never shrink */
+        #eventModal .modal-header,
+        #eventModal .modal-footer {
+            flex-shrink: 0;
+        }
+
+        /* The body grows to fill available space and scrolls its own content */
+        #eventModal .modal-body {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* smooth scroll on iOS */
+            max-height: none; /* let flexbox handle it, not a hard cap */
+        }
+
+        /* Small screens: tighter margin so modal doesn't overflow viewport */
+        @media (max-width: 576px) {
+            #eventModal .modal-dialog {
+                margin: 0.5rem;
+                max-height: calc(100vh - 1rem);
+            }
+
+            #eventModal .modal-content {
+                max-height: calc(100vh - 1rem);
+            }
+        }
+
+        /* =============================================
+           CALENDAR STYLES
+        ============================================= */
         #calendar {
             font-family: 'Nunito', sans-serif;
         }
@@ -243,7 +292,6 @@
             pointer-events: none;
         }
 
-        /* Upcoming events list styles */
         .upcoming-event-item {
             border-left: 4px solid;
             transition: all 0.2s;
@@ -262,7 +310,6 @@
             margin-right: 8px;
         }
 
-        /* Enhanced drag and resize cursor */
         .fc-event-draggable {
             cursor: move;
         }
@@ -271,9 +318,7 @@
             cursor: ew-resize;
         }
 
-        /* Responsive styles */
         @media (max-width: 768px) {
-            /* Calendar toolbar responsive */
             .fc .fc-toolbar {
                 display: flex;
                 flex-direction: column;
@@ -291,19 +336,16 @@
                 text-align: center;
             }
 
-            /* Make calendar buttons smaller on mobile */
             .fc .fc-button {
                 padding: 0.4em 0.65em;
                 font-size: 0.85rem;
             }
 
-            /* Adjust event display */
             .fc-daygrid-event {
                 font-size: 0.75rem;
                 padding: 1px 2px;
             }
 
-            /* Stack modal footer buttons */
             .modal-footer {
                 flex-direction: column;
             }
@@ -317,18 +359,15 @@
                 margin-bottom: 0 !important;
             }
 
-            /* Responsive color presets */
             .color-preset {
                 font-size: 0.75rem;
                 padding: 3px 8px;
             }
 
-            /* Adjust card header spacing */
             .card-header h4 {
                 font-size: 1.1rem;
             }
 
-            /* Hide some calendar features on very small screens */
             .fc-dayGridMonth-button,
             .fc-timeGridWeek-button,
             .fc-timeGridDay-button,
@@ -338,7 +377,6 @@
         }
 
         @media (max-width: 576px) {
-            /* Further adjustments for very small screens */
             .fc .fc-button {
                 padding: 0.3em 0.5em;
                 font-size: 0.75rem;
@@ -348,18 +386,15 @@
                 font-size: 1rem !important;
             }
 
-            /* Make day numbers more visible */
             .fc .fc-daygrid-day-number {
                 font-size: 0.9rem;
                 padding: 4px;
             }
 
-            /* Adjust event titles */
             .fc-event-title {
                 font-size: 0.7rem;
             }
 
-            /* Compact upcoming events list */
             .upcoming-event-item {
                 padding: 0.75rem;
             }
@@ -369,7 +404,6 @@
             }
         }
 
-        /* Tablet specific styles */
         @media (min-width: 768px) and (max-width: 1024px) {
             .fc-toolbar-title {
                 font-size: 1.3rem !important;
@@ -380,7 +414,6 @@
             }
         }
 
-        /* Disable drag and resize on mobile for better UX */
         @media (max-width: 768px) {
             .fc-event-draggable {
                 cursor: pointer;
@@ -391,23 +424,10 @@
             }
         }
 
-        /* Ensure modals are scrollable on small screens */
-        @media (max-width: 576px) {
-            .modal-dialog {
-                margin: 0.5rem;
-            }
-
-            .modal-content {
-                max-height: calc(100vh - 1rem);
-            }
-        }
-
-        /* Better button spacing */
         .gap-2 {
             gap: 0.5rem;
         }
 
-        /* Utility class for button responsiveness */
         .btn-sm-auto {
             width: auto;
         }
@@ -424,8 +444,8 @@
     // Permissions
     const currentUserId = {{ auth()->id() }};
     const userType = {{ auth()->user()->user_type }};
-    const canEditAnyEvent = [1, 2, 7].includes(userType);
-    const canCreateEvents = [1, 2].includes(userType);
+    const canEditAnyEvent = [1, 2, 7, 11].includes(userType);
+    const canCreateEvents = [1, 2, 7, 11].includes(userType);
 
     // Detect if device is mobile
     const isMobile = window.innerWidth <= 768;
@@ -435,10 +455,8 @@
         const calendarEl = document.getElementById('calendar');
         let calendar;
 
-        // Store original modal body content for restoration
         const originalFormHTML = document.getElementById('originalFormContent').innerHTML;
 
-        // Responsive calendar configuration
         const calendarConfig = {
             initialView: isMobile ? 'listWeek' : 'dayGridMonth',
             headerToolbar: {
@@ -457,15 +475,15 @@
             contentHeight: 'auto',
             aspectRatio: isMobile ? 1 : 1.8,
             events: '{{ route("events.fetch") }}',
-            editable: canEditAnyEvent && !isMobile, // Disable drag/resize on mobile
+            editable: canEditAnyEvent && !isMobile,
             selectable: canCreateEvents,
             selectMirror: true,
             dayMaxEvents: isMobile ? 2 : true,
             navLinks: true,
             nowIndicator: true,
-            eventTimeFormat: { 
-                hour: '2-digit', 
-                minute: '2-digit', 
+            eventTimeFormat: {
+                hour: '2-digit',
+                minute: '2-digit',
                 meridiem: isMobile ? false : 'short'
             },
             displayEventEnd: !isMobile,
@@ -473,7 +491,6 @@
             eventDurationEditable: !isMobile,
             dragRevertDuration: 500,
             windowResize: function(view) {
-                // Adjust view when window is resized
                 const newIsMobile = window.innerWidth <= 768;
                 if (newIsMobile && !isMobile) {
                     calendar.changeView('listWeek');
@@ -663,7 +680,7 @@
                     const endDate = event.end ? formatDisplayDate(event.end, event.allDay) : '';
                     const description = event.extendedProps.description || '';
                     const creatorName = event.extendedProps.creator_name || 'Unknown';
-                    
+
                     html += `
                         <div class="list-group-item upcoming-event-item" style="border-left-color: ${event.backgroundColor}">
                             <div class="d-flex w-100 justify-content-between align-items-start mb-2 flex-wrap">
@@ -675,14 +692,14 @@
                             </div>
                             <div class="mb-1">
                                 <small class="text-success">
-                                    <i data-feather="clock" class="feather-sm"></i> 
+                                    <i data-feather="clock" class="feather-sm"></i>
                                     <strong>Start:</strong> ${startDate}
                                 </small>
                             </div>
                             ${endDate ? `
                             <div class="mb-1">
                                 <small class="text-danger">
-                                    <i data-feather="clock" class="feather-sm"></i> 
+                                    <i data-feather="clock" class="feather-sm"></i>
                                     <strong>End:</strong> ${endDate}
                                 </small>
                             </div>
@@ -697,14 +714,14 @@
                     `;
                 });
                 html += '</div>';
-                
+
                 if (events.length === 30) {
                     html += '<div class="alert alert-warning mt-3 mb-0"><small><i data-feather="info" class="feather-sm"></i> Showing the next 30 events only</small></div>';
                 }
-                
+
                 $('#upcomingEventsList').html(html);
             }
-            
+
             $('#upcomingEventsModal').modal('show');
             feather.replace();
         }
@@ -830,18 +847,18 @@
 
         function formatDisplayDate(date, allDay) {
             const d = new Date(date);
-            const options = allDay 
+            const options = allDay
                 ? { year: 'numeric', month: 'long', day: 'numeric' }
                 : { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
             return d.toLocaleDateString(undefined, options);
         }
 
-        function showError(msg) { 
-            $('#errorAlert').text(msg).removeClass('d-none'); 
+        function showError(msg) {
+            $('#errorAlert').text(msg).removeClass('d-none');
         }
-        
-        function hideError() { 
-            $('#errorAlert').addClass('d-none').text(''); 
+
+        function hideError() {
+            $('#errorAlert').addClass('d-none').text('');
         }
 
         function showToast(type, message) {

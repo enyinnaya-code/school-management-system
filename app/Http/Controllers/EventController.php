@@ -26,9 +26,9 @@ class EventController extends Controller
                 'backgroundColor' => $event->color,
                 'borderColor'     => $event->color,
                 'extendedProps'   => [
-                    'description'   => $event->description ?? '',
-                    'created_by'    => $event->created_by,
-                    'creator_name'  => $event->creator?->name ?? 'Unknown',
+                    'description'  => $event->description ?? '',
+                    'created_by'   => $event->created_by,
+                    'creator_name' => $event->creator?->name ?? 'Unknown',
                 ],
             ];
         });
@@ -36,9 +36,13 @@ class EventController extends Controller
         return response()->json($events);
     }
 
-
     public function store(Request $request)
     {
+        // Only privileged roles can create events
+        if (!in_array(Auth::user()->user_type, [1, 2, 7, 11])) {
+            abort(403, 'You do not have permission to create events.');
+        }
+
         $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -80,7 +84,7 @@ class EventController extends Controller
             'start_date',
             'end_date',
             'is_all_day',
-            'color'
+            'color',
         ]));
 
         return response()->json(['success' => true]);
@@ -96,7 +100,9 @@ class EventController extends Controller
 
     private function authorizeEvent(Event $event)
     {
-        $allowedTypes = [1, 2, 7]; // Super Admin, Admin, Principal
+        // Types 1, 2, 7, 11 can edit/delete any event.
+        // All others can only edit/delete events they created themselves.
+        $allowedTypes = [1, 2, 7, 11];
 
         if (!in_array(Auth::user()->user_type, $allowedTypes) && $event->created_by !== Auth::id()) {
             abort(403, 'You do not have permission to modify this event.');

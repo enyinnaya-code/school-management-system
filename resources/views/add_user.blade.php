@@ -43,7 +43,7 @@
                                             <option value="1">superAdmin</option>
                                             @endif
                                             <option value="2">Admin</option>
-                                            <option value="10">Director</option>
+                                            {{-- <option value="10">Director</option> --}}
                                         </select>
                                     </div>
 

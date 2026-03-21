@@ -17,10 +17,10 @@
         </a>
       </li>
 
-      <!-- ========== SUPER ADMIN & ADMIN (Type 1, 2, 7, 8, 9) ========== -->
+      <!-- ========== SUPER ADMIN & ADMIN (Type 1, 2, 7, 8, 9, 11) ========== -->
       @if(auth()->user()->user_type == 1 || auth()->user()->user_type == 2 ||
       auth()->user()->user_type == 7 || auth()->user()->user_type == 8 ||
-      auth()->user()->user_type == 9)
+      auth()->user()->user_type == 9 || auth()->user()->user_type == 11)
       <li class="menu-header">SCHOOL MANAGEMENT</li>
 
       <!-- School Settings -->
@@ -80,7 +80,8 @@
       </li>
 
       @if(auth()->user()->user_type == 1 || auth()->user()->user_type == 2 ||
-      auth()->user()->user_type == 7 || auth()->user()->user_type == 8)
+      auth()->user()->user_type == 7 || auth()->user()->user_type == 8 ||
+      auth()->user()->user_type == 11)
       <li class="menu-header">USER MANAGEMENT</li>
 
       <!-- Students -->
@@ -120,19 +121,20 @@
       </li>
 
       @endif
-      {{-- END: USER MANAGEMENT (types 1,2,7,8) --}}
+      {{-- END: USER MANAGEMENT (types 1,2,7,8,11) --}}
 
       @endif
-      {{-- END: SCHOOL MANAGEMENT (types 1,2,7,8,9) --}}
+      {{-- END: SCHOOL MANAGEMENT (types 1,2,7,8,9,11) --}}
 
       <!-- ========== ATTENDANCE - Admins & Form Teachers ========== -->
       @if(auth()->user()->user_type == 1 || auth()->user()->user_type == 2 ||
       auth()->user()->user_type == 7 || auth()->user()->user_type == 8 ||
+      auth()->user()->user_type == 11 ||
       (auth()->user()->user_type == 3 && auth()->user()->is_form_teacher))
       <li class="menu-header">ATTENDANCE</li>
 
       <!-- Staff Attendance - Admins only -->
-      @if(in_array(auth()->user()->user_type, [1, 2, 7, 8]))
+      @if(in_array(auth()->user()->user_type, [1, 2, 7, 8, 11]))
       <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
           <i data-feather="clipboard"></i><span>Staff Attendance</span>
@@ -150,7 +152,7 @@
           <i data-feather="check-square"></i><span>Student Attendance</span>
         </a>
         <ul class="dropdown-menu">
-          @if(in_array(auth()->user()->user_type, [1, 2, 7, 8]) || (auth()->user()->user_type == 3 &&
+          @if(in_array(auth()->user()->user_type, [1, 2, 7, 8, 11]) || (auth()->user()->user_type == 3 &&
           auth()->user()->is_form_teacher))
           <li><a class="nav-link" href="{{ route('attendance.students.mark') }}">Mark Attendance</a></li>
           @endif
@@ -223,7 +225,8 @@
       <li class="menu-header">COMMUNICATION</li>
 
       @if(auth()->user()->user_type == 1 || auth()->user()->user_type == 2 ||
-      auth()->user()->user_type == 7 || auth()->user()->user_type == 8)
+      auth()->user()->user_type == 7 || auth()->user()->user_type == 8 ||
+      auth()->user()->user_type == 11)
       <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
           <i data-feather="message-circle"></i><span>Announcements</span>
@@ -241,8 +244,8 @@
         </a>
       </li>
 
-      <!-- ========== MY TEACHING - Admin, Teachers, Counsellors (Type 1,2,3,7,8,9,10) ========== -->
-      @if(in_array(Auth::user()->user_type, [1, 2, 3, 7, 8, 9, 10]))
+      <!-- ========== MY TEACHING - Admin, Teachers, Counsellors (Type 1,2,3,7,8,9,10,11) ========== -->
+      @if(in_array(Auth::user()->user_type, [1, 2, 3, 7, 8, 9, 10, 11]))
       <li class="menu-header">MY TEACHING</li>
 
       <li class="dropdown">
@@ -286,14 +289,13 @@
       </li>
 
       <!-- Results -->
-      <!-- Results -->
       <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
           <i data-feather="file-text"></i><span>Results</span>
         </a>
         <ul class="dropdown-menu">
           <li><a class="nav-link" href="{{ route('results.upload') }}">Upload Results</a></li>
-          @if(in_array(Auth::user()->user_type, [1, 2]) || (Auth::user()->user_type == 3 &&
+          @if(in_array(Auth::user()->user_type, [1, 2, 7, 8, 11]) || (Auth::user()->user_type == 3 &&
           Auth::user()->is_form_teacher))
           <li><a class="nav-link" href="{{ route('results.print') }}">Print Results</a></li>
           <li><a class="nav-link" href="{{ route('students.promote') }}">Promote Students</a></li>
@@ -306,10 +308,10 @@
       </li>
 
       @endif
-      {{-- END: MY TEACHING (types 1,2,3,7,8,9,10) --}}
+      {{-- END: MY TEACHING (types 1,2,3,7,8,9,10,11) --}}
 
-      <!-- ========== E-LEARNING (Types 1,2,3,4,7,8,9,10) ========== -->
-      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10]))
+      <!-- ========== E-LEARNING (Types 1,2,3,4,7,8,9,10,11) ========== -->
+      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10, 11]))
       <li class="menu-header">E-LEARNING</li>
 
       <li class="dropdown">
@@ -321,10 +323,10 @@
       {{-- END: E-LEARNING --}}
 
       <!-- ========== COMPUTER-BASED TESTING ========== -->
-      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10]))
+      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10, 11]))
       <li class="menu-header">COMPUTER-BASED TESTING</li>
 
-      @if(in_array(Auth::user()->user_type, [1, 2, 7, 8, 9]))
+      @if(in_array(Auth::user()->user_type, [1, 2, 7, 8, 9, 11]))
       <!-- CBT Dashboard - Admin Only -->
       <li class="dropdown">
         <a href="{{ route('dashboard') }}" class="nav-link">
@@ -344,7 +346,7 @@
       </li>
       @endif
 
-      @if(in_array(Auth::user()->user_type, [1, 2, 3, 7, 8, 9, 10]))
+      @if(in_array(Auth::user()->user_type, [1, 2, 3, 7, 8, 9, 10, 11]))
       <!-- Create Tests - Admin & Teachers -->
       <li class="dropdown">
         <a href="#" class="menu-toggle nav-link has-dropdown">
@@ -384,8 +386,8 @@
       @endif
       {{-- END: CBT --}}
 
-      <!-- ========== LIBRARY (Types 1,2,3,4,7,8,9,10 + Librarians) ========== -->
-      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10]) || (Auth::user()->user_type == 3 &&
+      <!-- ========== LIBRARY (Types 1,2,3,4,7,8,9,10,11 + Librarians) ========== -->
+      @if(in_array(Auth::user()->user_type, [1, 2, 3, 4, 7, 8, 9, 10, 11]) || (Auth::user()->user_type == 3 &&
       Auth::user()->is_librarian == 1))
       <li class="menu-header">LIBRARY</li>
 

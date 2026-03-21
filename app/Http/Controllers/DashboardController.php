@@ -360,6 +360,7 @@ class DashboardController extends Controller
             case 8: // viceprincipal
             case 9: // dean of studies
             case 10: // Guidance counsellor
+            case 11: // Headmaster/mistress
                 return redirect()->route('admins.dashboard');
             case 2: // Admin
                 return redirect()->route('admins.dashboard');

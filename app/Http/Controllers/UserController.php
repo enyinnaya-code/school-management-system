@@ -33,21 +33,15 @@ class UserController extends Controller
     {
         $teacher = Auth::user();
 
-        // Current session & term – same logic as student dashboard
         $currentSession = Session::where('is_current', true)->first();
         $currentTerm    = Term::where('is_current', true)->first();
 
-        // Classes the teacher is currently teaching
         $assignedClasses = $teacher->classes()->with('section')->get();
-
-        // Unique courses the teacher is teaching (across all classes)
         $assignedCourses = $teacher->courses()->distinct()->get();
 
-        // Count of classes & courses
         $classesCount  = $assignedClasses->count();
         $coursesCount  = $assignedCourses->count();
 
-        // Check if teacher is a form teacher
         $formClass = null;
         if ($teacher->is_form_teacher && $teacher->form_class_id) {
             $formClass = SchoolClass::with('section')->find($teacher->form_class_id);
@@ -65,7 +59,6 @@ class UserController extends Controller
         ));
     }
 
-
     public function getClassesBySections(Request $request)
     {
         $sectionIds = $request->input('section_ids', []);
@@ -74,16 +67,14 @@ class UserController extends Controller
             ->get()
             ->map(function ($class) {
                 return [
-                    'id' => $class->id,
-                    'name' => $class->name ?? $class->class_name ?? 'Unnamed Class ' . $class->id,
+                    'id'         => $class->id,
+                    'name'       => $class->name ?? $class->class_name ?? 'Unnamed Class ' . $class->id,
                     'section_id' => $class->section_id
                 ];
             });
 
         return response()->json($classes);
     }
-
-
 
     public function getAssignedFormClassesWithTeachers()
     {
@@ -118,18 +109,18 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
+            'name'      => 'required|string|max:255',
+            'email'     => 'required|email|unique:users,email',
+            'password'  => 'required|string|min:6',
             'user_type' => 'required|integer',
         ]);
 
         User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'name'      => $request->name,
+            'email'     => $request->email,
+            'password'  => Hash::make($request->password),
             'user_type' => $request->user_type,
-            'added_by' => Auth::id(),
+            'added_by'  => Auth::id(),
         ]);
 
         return redirect()->route('user.add')->with('success', 'User added successfully.');
@@ -139,48 +130,47 @@ class UserController extends Controller
     {
         $userType = $request->input('user_type', 3);
 
-        // Roles that can teach: Teacher(3), Principal(7), Vice-Principal(8), Dean of Studies(9)
-        $teachingCapableRoles = [3, 7, 8, 9, 10];
-        $isTeachingCapable = in_array($userType, $teachingCapableRoles);
+        // Roles that can teach: Teacher(3), Principal(7), Vice-Principal(8),
+        // Dean of Studies(9), Guidance Counsellor(10), Head Master/Mistress(11)
+        $teachingCapableRoles = [3, 7, 8, 9, 10, 11];
+        $isTeachingCapable    = in_array($userType, $teachingCapableRoles);
 
-        // Base rules
         $rules = [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
-            'user_type' => 'required|integer|in:3,6,7,8,9,10',
+            'name'      => 'required|string|max:255',
+            'email'     => 'required|email|unique:users,email',
+            'password'  => 'required|string|min:6',
+            'user_type' => 'required|integer|in:3,6,7,8,9,10,11',
         ];
 
-        // Optional teaching fields for capable roles
         if ($isTeachingCapable) {
-            $rules['section_ids'] = 'nullable|array';
-            $rules['section_ids.*'] = 'exists:sections,id';
-            $rules['class_ids'] = 'nullable|array';
-            $rules['class_ids.*'] = 'exists:school_classes,id';
-            $rules['course_ids'] = 'nullable|array';
-            $rules['course_ids.*'] = 'exists:courses,id';
+            $rules['section_ids']    = 'nullable|array';
+            $rules['section_ids.*']  = 'exists:sections,id';
+            $rules['class_ids']      = 'nullable|array';
+            $rules['class_ids.*']    = 'exists:school_classes,id';
+            $rules['course_ids']     = 'nullable|array';
+            $rules['course_ids.*']   = 'exists:courses,id';
             $rules['is_form_teacher'] = 'nullable|in:0,1';
-            $rules['form_class_id'] = 'nullable|exists:school_classes,id';
+            $rules['form_class_id']  = 'nullable|exists:school_classes,id';
         }
 
         $request->validate($rules);
 
-        // Handle form teacher assignment
-        $isFormTeacher = $isTeachingCapable && $request->filled('is_form_teacher') && $request->is_form_teacher == 1;
+        $isFormTeacher = $isTeachingCapable
+            && $request->filled('is_form_teacher')
+            && $request->is_form_teacher == 1;
 
         if ($isFormTeacher) {
             $request->validate([
                 'form_class_id' => 'required|exists:school_classes,id'
             ]);
 
-            // Remove existing form teacher assignment
             $existing = User::where('is_form_teacher', true)
                 ->where('form_class_id', $request->form_class_id)
                 ->first();
 
             if ($existing) {
                 $existing->is_form_teacher = false;
-                $existing->form_class_id = null;
+                $existing->form_class_id   = null;
                 $existing->save();
             }
         }
@@ -189,21 +179,19 @@ class UserController extends Controller
 
         try {
             $user = User::create([
-                'name' => strtoupper($request->name),
-                'email' => $request->email,
-                'password' => Hash::make('123456'),
-                'user_type' => $userType,
-                'added_by' => Auth::id(),
+                'name'           => strtoupper($request->name),
+                'email'          => $request->email,
+                'password'       => Hash::make('123456'),
+                'user_type'      => $userType,
+                'added_by'       => Auth::id(),
                 'is_form_teacher' => $isFormTeacher,
-                'form_class_id' => $isFormTeacher ? $request->form_class_id : null,
+                'form_class_id'  => $isFormTeacher ? $request->form_class_id : null,
             ]);
 
-            // Attach teaching assignments only if role allows
             if ($isTeachingCapable) {
                 $user->sections()->sync($request->section_ids ?? []);
                 $user->classes()->sync($request->class_ids ?? []);
 
-                // Course assignments per class
                 if ($request->filled('course_ids') && $request->filled('class_ids')) {
                     $courseAssignments = [];
 
@@ -227,7 +215,6 @@ class UserController extends Controller
                     }
 
                     if (!empty($courseAssignments)) {
-                        // Clear old (none yet), then insert
                         DB::table('course_user')->insert($courseAssignments);
                     }
                 }
@@ -242,25 +229,24 @@ class UserController extends Controller
         }
     }
 
-
     public function manageUsers(Request $request)
     {
         $currentUser = Auth::user();
 
-        $filter_name = $request->input('filter_name');
-        $filter_email = $request->input('filter_email');
-        $filter_status = $request->input('filter_status');
+        $filter_name      = $request->input('filter_name');
+        $filter_email     = $request->input('filter_email');
+        $filter_status    = $request->input('filter_status');
         $filter_date_from = $request->input('filter_date_from');
-        $filter_date_to = $request->input('filter_date_to');
+        $filter_date_to   = $request->input('filter_date_to');
 
         $query = User::where('id', '!=', $currentUser->id)
             ->whereIn('user_type', [2, 10]);
 
-        if ($filter_name) $query->where('name', 'like', '%' . $filter_name . '%');
+        if ($filter_name)  $query->where('name', 'like', '%' . $filter_name . '%');
         if ($filter_email) $query->where('email', 'like', '%' . $filter_email . '%');
         if ($filter_status !== null && $filter_status !== '') $query->where('is_active', $filter_status);
         if ($filter_date_from) $query->whereDate('created_at', '>=', $filter_date_from);
-        if ($filter_date_to) $query->whereDate('created_at', '<=', $filter_date_to);
+        if ($filter_date_to)   $query->whereDate('created_at', '<=', $filter_date_to);
 
         $users = $query->orderBy('created_at', 'desc')->paginate(15);
 
@@ -271,15 +257,15 @@ class UserController extends Controller
     {
         $currentUser = Auth::user();
 
-        $filter_name = $request->input('filter_name');
-        $filter_email = $request->input('filter_email');
-        $filter_user_type = $request->input('filter_teacher_type');
-        $filter_status = $request->input('filter_status');
-        $filter_date_from = $request->input('filter_date_from');
-        $filter_date_to = $request->input('filter_date_to');
-        $filter_section_ids = $request->input('filter_section_ids', []);
-        $filter_class_ids = $request->input('filter_class_ids', []);
-        $filter_form_teacher = $request->input('filter_form_teacher'); // Add this line
+        $filter_name         = $request->input('filter_name');
+        $filter_email        = $request->input('filter_email');
+        $filter_user_type    = $request->input('filter_teacher_type');
+        $filter_status       = $request->input('filter_status');
+        $filter_date_from    = $request->input('filter_date_from');
+        $filter_date_to      = $request->input('filter_date_to');
+        $filter_section_ids  = $request->input('filter_section_ids', []);
+        $filter_class_ids    = $request->input('filter_class_ids', []);
+        $filter_form_teacher = $request->input('filter_form_teacher');
 
         $query = User::where('id', '!=', $currentUser->id)
             ->whereNotIn('user_type', [1, 2, 4, 5]);
@@ -307,28 +293,23 @@ class UserController extends Controller
             $query->whereDate('created_at', '<=', $filter_date_to);
         }
 
-        // Add Form Teacher filter
         if ($filter_form_teacher !== null && $filter_form_teacher !== '') {
             if ($filter_form_teacher == '1') {
-                // Show only form teachers
                 $query->where('is_form_teacher', true);
             } elseif ($filter_form_teacher == '0') {
-                // Show only non-form teachers
                 $query->where(function ($q) {
                     $q->where('is_form_teacher', false)
-                        ->orWhereNull('is_form_teacher');
+                      ->orWhereNull('is_form_teacher');
                 });
             }
         }
 
-        // Filter by sections
         if (!empty($filter_section_ids)) {
             $query->whereHas('sections', function ($q) use ($filter_section_ids) {
                 $q->whereIn('sections.id', $filter_section_ids);
             });
         }
 
-        // Filter by classes
         if (!empty($filter_class_ids)) {
             $query->whereHas('classes', function ($q) use ($filter_class_ids) {
                 $q->whereIn('school_classes.id', $filter_class_ids);
@@ -346,12 +327,10 @@ class UserController extends Controller
             ->paginate(15);
 
         $sections = Section::all();
-        $classes = SchoolClass::all();
+        $classes  = SchoolClass::all();
 
         return view('manage_teachers', compact('teachers', 'sections', 'classes'));
     }
-
-
 
     public function edit($id)
     {
@@ -366,15 +345,14 @@ class UserController extends Controller
 
     public function editTeacher($encryptedId)
     {
-        $id = Crypt::decrypt($encryptedId);
+        $id      = Crypt::decrypt($encryptedId);
         $teacher = User::with(['sections', 'classes', 'courses'])->findOrFail($id);
         $sections = Section::all();
 
         $assignedSectionIds = $teacher->sections()->pluck('sections.id')->toArray();
-        $assignedClassIds = $teacher->classes()->pluck('school_classes.id')->toArray();
-        $assignedCourseIds = $teacher->courses()->pluck('courses.id')->toArray();
+        $assignedClassIds   = $teacher->classes()->pluck('school_classes.id')->toArray();
+        $assignedCourseIds  = $teacher->courses()->pluck('courses.id')->toArray();
 
-        // Add this to pre-load assigned form teachers globally
         $assignedFormTeachers = User::where('is_form_teacher', true)
             ->whereNotNull('form_class_id')
             ->select('form_class_id', 'name', 'id')
@@ -387,40 +365,44 @@ class UserController extends Controller
             'assignedSectionIds',
             'assignedClassIds',
             'assignedCourseIds',
-            'assignedFormTeachers'  // Pass this
+            'assignedFormTeachers'
         ));
     }
 
-
     public function updateTeacher(Request $request, $encryptedId)
     {
-        $id = Crypt::decrypt($encryptedId);
+        $id      = Crypt::decrypt($encryptedId);
         $teacher = User::findOrFail($id);
 
         $newUserType = $request->input('user_type', $teacher->user_type);
-        $teachingCapableRoles = [3, 7, 8, 9, 10];
-        $isTeachingCapable = in_array($newUserType, $teachingCapableRoles);
+
+        // Roles that can teach: Teacher(3), Principal(7), Vice-Principal(8),
+        // Dean of Studies(9), Guidance Counsellor(10), Head Master/Mistress(11)
+        $teachingCapableRoles = [3, 7, 8, 9, 10, 11];
+        $isTeachingCapable    = in_array($newUserType, $teachingCapableRoles);
 
         $rules = [
-            'name' => 'required|string|max:255',
-            'email' => "required|email|unique:users,email,{$id}",
-            'user_type' => 'required|integer|in:3,6,7,8,9,10',
+            'name'      => 'required|string|max:255',
+            'email'     => "required|email|unique:users,email,{$id}",
+            'user_type' => 'required|integer|in:3,6,7,8,9,10,11',
         ];
 
         if ($isTeachingCapable) {
-            $rules['section_ids'] = 'nullable|array';
-            $rules['section_ids.*'] = 'exists:sections,id';
-            $rules['class_ids'] = 'nullable|array';
-            $rules['class_ids.*'] = 'exists:school_classes,id';
-            $rules['course_ids'] = 'nullable|array';
-            $rules['course_ids.*'] = 'exists:courses,id';
+            $rules['section_ids']     = 'nullable|array';
+            $rules['section_ids.*']   = 'exists:sections,id';
+            $rules['class_ids']       = 'nullable|array';
+            $rules['class_ids.*']     = 'exists:school_classes,id';
+            $rules['course_ids']      = 'nullable|array';
+            $rules['course_ids.*']    = 'exists:courses,id';
             $rules['is_form_teacher'] = 'nullable|in:0,1';
-            $rules['form_class_id'] = 'nullable|exists:school_classes,id';
+            $rules['form_class_id']   = 'nullable|exists:school_classes,id';
         }
 
         $request->validate($rules);
 
-        $isAssigningFormTeacher = $isTeachingCapable && $request->filled('is_form_teacher') && $request->is_form_teacher == 1;
+        $isAssigningFormTeacher = $isTeachingCapable
+            && $request->filled('is_form_teacher')
+            && $request->is_form_teacher == 1;
 
         if ($isAssigningFormTeacher) {
             $request->validate(['form_class_id' => 'required|exists:school_classes,id']);
@@ -431,23 +413,23 @@ class UserController extends Controller
                 ->first();
 
             if ($existing) {
-                return redirect()->back()->withInput()->with('error', "This class is already assigned to {$existing->name} as form teacher.");
+                return redirect()->back()->withInput()
+                    ->with('error', "This class is already assigned to {$existing->name} as form teacher.");
             }
         }
 
         $teacher->update([
-            'name' => strtoupper($request->name),
-            'email' => $request->email,
-            'user_type' => $newUserType,
+            'name'           => strtoupper($request->name),
+            'email'          => $request->email,
+            'user_type'      => $newUserType,
             'is_form_teacher' => $isAssigningFormTeacher,
-            'form_class_id' => $isAssigningFormTeacher ? $request->form_class_id : null,
+            'form_class_id'  => $isAssigningFormTeacher ? $request->form_class_id : null,
         ]);
 
         if ($isTeachingCapable) {
             $teacher->sections()->sync($request->section_ids ?? []);
             $teacher->classes()->sync($request->class_ids ?? []);
 
-            // Clear and reassign courses
             $teacher->courses()->detach();
 
             if ($request->filled('course_ids') && $request->filled('class_ids')) {
@@ -476,18 +458,16 @@ class UserController extends Controller
                 }
             }
         } else {
-            // If changed to non-teaching role, clear all teaching data
             $teacher->sections()->detach();
             $teacher->classes()->detach();
             $teacher->courses()->detach();
             $teacher->is_form_teacher = false;
-            $teacher->form_class_id = null;
+            $teacher->form_class_id   = null;
             $teacher->save();
         }
 
         return redirect()->route('teachers.index')->with('success', 'Staff updated successfully.');
     }
-
 
     public function getAssignedFormClassIds()
     {
@@ -505,14 +485,14 @@ class UserController extends Controller
         $user = User::findOrFail($decryptedId);
 
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $decryptedId,
+            'name'      => 'required|string|max:255',
+            'email'     => 'required|email|unique:users,email,' . $decryptedId,
             'user_type' => 'required|integer',
         ]);
 
         $user->update([
-            'name' => $request->name,
-            'email' => $request->email,
+            'name'      => $request->name,
+            'email'     => $request->email,
             'user_type' => $request->user_type,
         ]);
 
@@ -522,7 +502,7 @@ class UserController extends Controller
     public function toggleActive($encryptedId)
     {
         try {
-            $id = Crypt::decrypt($encryptedId);
+            $id   = Crypt::decrypt($encryptedId);
             $user = User::findOrFail($id);
             $user->is_active = !$user->is_active;
             if ($user->is_active) $user->login_attempts = 3;
@@ -538,7 +518,7 @@ class UserController extends Controller
     public function toggleActiveTeacher($encryptedId)
     {
         try {
-            $id = Crypt::decrypt($encryptedId);
+            $id   = Crypt::decrypt($encryptedId);
             $user = User::findOrFail($id);
             $user->is_active = !$user->is_active;
             if ($user->is_active) $user->login_attempts = 3;
@@ -554,7 +534,7 @@ class UserController extends Controller
     public function resetPassword($encryptedId)
     {
         try {
-            $id = Crypt::decrypt($encryptedId);
+            $id   = Crypt::decrypt($encryptedId);
             $user = User::findOrFail($id);
             $user->password = Hash::make('123456');
             $user->save();
@@ -567,7 +547,7 @@ class UserController extends Controller
     public function resetPasswordTeacher($encryptedId)
     {
         try {
-            $id = Crypt::decrypt($encryptedId);
+            $id   = Crypt::decrypt($encryptedId);
             $user = User::findOrFail($id);
             $user->password = Hash::make('123456');
             $user->save();
@@ -580,7 +560,7 @@ class UserController extends Controller
     public function destroy($encryptedId)
     {
         try {
-            $id = Crypt::decrypt($encryptedId);
+            $id   = Crypt::decrypt($encryptedId);
             $user = User::findOrFail($id);
             $user->delete();
             return redirect()->route('users.index')->with('success', 'User deleted successfully.');
@@ -592,7 +572,7 @@ class UserController extends Controller
     public function destroyTeacher($encryptedId)
     {
         try {
-            $id = Crypt::decrypt($encryptedId);
+            $id   = Crypt::decrypt($encryptedId);
             $user = User::findOrFail($id);
             $user->delete();
             return redirect()->route('teachers.index')->with('success', 'Teacher deleted successfully.');

@@ -42,11 +42,9 @@
     }
 
     .select-all-wrapper {
-        /* background-color: #f8f9fa; */
         padding: 10px 15px;
         border-radius: 5px;
         margin-bottom: 15px;
-        /* border: 2px solid #dee2e6; */
     }
 
     .select-all-wrapper .form-check-input {
@@ -78,12 +76,13 @@
 
                             @php
                                 $roleNames = [
-                                    3 => 'Teacher',
-                                    6 => 'Bursar',
-                                    7 => 'Principal',
-                                    8 => 'Vice-Principal',
-                                    9 => 'Dean of Studies',
+                                    3  => 'Teacher',
+                                    6  => 'Bursar',
+                                    7  => 'Principal',
+                                    8  => 'Vice-Principal',
+                                    9  => 'Dean of Studies',
                                     10 => 'Guidance Counsellor',
+                                    11 => 'Head Master/Mistress',
                                 ];
                             @endphp
 
@@ -127,7 +126,7 @@
                                             @endforeach
                                         </select>
                                         <small class="text-muted">
-                                            Note: Principal, Vice-Principal, and Dean of Studies can also teach classes.
+                                            Note: Principal, Vice-Principal, Dean of Studies, and Head Master/Mistress can also teach classes.
                                         </small>
                                     </div>
 
@@ -221,8 +220,8 @@
         const assignedFormTeachers = @json($assignedFormTeachers);
         const assignedFormClassIds = Object.keys(assignedFormTeachers).map(id => parseInt(id));
 
-        // Roles that can teach
-        const teachingRoles = ['3', '7', '8', '9', '10'];
+        // Roles that can teach: Teacher, Principal, VP, Dean of Studies, Guidance Counsellor, Head Master/Mistress
+        const teachingRoles = ['3', '7', '8', '9', '10', '11'];
 
         function updateTeacherFieldsVisibility() {
             const userType = userTypeSelect.value;
@@ -244,21 +243,17 @@
                 classMap = {};
                 courseMap = {};
                 formClassMap = {};
-                // Uncheck all section checkboxes
                 sectionCheckboxes.forEach(cb => cb.checked = false);
             }
 
-            // If can teach, but current form teacher status is no → hide form class section
             if (canTeach && isFormTeacherSelect.value !== '1') {
                 formClassSection.style.display = 'none';
             }
         }
 
-        // Initial visibility
         updateTeacherFieldsVisibility();
         userTypeSelect.addEventListener('change', updateTeacherFieldsVisibility);
 
-        // Form teacher toggle
         isFormTeacherSelect.addEventListener('change', function () {
             if (this.value === '1' && teachingRoles.includes(userTypeSelect.value)) {
                 formClassSection.style.display = 'block';
@@ -269,7 +264,6 @@
             }
         });
 
-        // Add class checkboxes with Select All
         function addClassCheckboxes(sectionId, classes) {
             if (classContainer.querySelector(`[data-section-id="${sectionId}"]`)) return;
 
@@ -283,7 +277,6 @@
             title.classList.add('mb-3', 'font-weight-bold');
             wrapper.appendChild(title);
 
-            // Add Select All checkbox
             const selectAllWrapper = document.createElement('div');
             selectAllWrapper.classList.add('select-all-wrapper');
 
@@ -339,15 +332,11 @@
             wrapper.appendChild(row);
             classContainer.appendChild(wrapper);
 
-            // Add event listener for Select All
             selectAllCheckbox.addEventListener('change', function() {
                 const checkboxes = wrapper.querySelectorAll('.class-checkbox');
-                checkboxes.forEach(cb => {
-                    cb.checked = this.checked;
-                });
+                checkboxes.forEach(cb => { cb.checked = this.checked; });
             });
 
-            // Add event listeners to individual checkboxes to update Select All state
             const classCheckboxes = wrapper.querySelectorAll('.class-checkbox');
             classCheckboxes.forEach(cb => {
                 cb.addEventListener('change', function() {
@@ -355,7 +344,6 @@
                 });
             });
 
-            // Initialize Select All state
             updateSelectAllState(sectionId);
         }
 
@@ -365,10 +353,10 @@
 
             const selectAllCheckbox = wrapper.querySelector('.select-all-classes');
             const classCheckboxes = wrapper.querySelectorAll('.class-checkbox');
-            
+
             const allChecked = Array.from(classCheckboxes).every(cb => cb.checked);
             const someChecked = Array.from(classCheckboxes).some(cb => cb.checked);
-            
+
             selectAllCheckbox.checked = allChecked;
             selectAllCheckbox.indeterminate = someChecked && !allChecked;
         }
@@ -378,7 +366,6 @@
             if (group) group.remove();
         }
 
-        // Add course checkboxes
         function addCourseCheckboxes(sectionId, courses) {
             if (courseContainer.querySelector(`[data-section-id="${sectionId}"]`)) return;
 
@@ -430,7 +417,6 @@
             if (group) group.remove();
         }
 
-        // Section checkbox handler
         sectionCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', function () {
                 const sectionId = this.value;
@@ -471,7 +457,6 @@
             });
         });
 
-        // Form class loading and rendering
         function loadFormClassesFromSelectedSections() {
             const checkedIds = Array.from(sectionCheckboxes)
                 .filter(cb => cb.checked)
@@ -570,12 +555,9 @@
             }
         }
 
-        // On page load: initialize checked sections
         document.addEventListener('DOMContentLoaded', () => {
-            // Trigger visibility based on current role
             updateTeacherFieldsVisibility();
 
-            // Load classes/courses for already checked sections
             sectionCheckboxes.forEach(cb => {
                 if (cb.checked) {
                     const sid = cb.value;
@@ -589,7 +571,6 @@
                 }
             });
 
-            // If currently a form teacher, load form classes
             if (isFormTeacherSelect.value === '1') {
                 loadFormClassesFromSelectedSections();
             }

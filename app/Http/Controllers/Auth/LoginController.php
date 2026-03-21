@@ -34,7 +34,7 @@ class LoginController extends Controller
                 $allowedUserTypes = [1, 2]; // Superadmin and Admin
                 break;
             case 'staff':
-                $allowedUserTypes = [3, 6, 7, 8, 9, 10];
+                $allowedUserTypes = [3, 6, 7, 8, 9, 10, 11];
                 break;
             case 'student':
                 $allowedUserTypes = [4]; // Student only
@@ -102,6 +102,7 @@ class LoginController extends Controller
                 case 8: // viceprincipal
                 case 9: // dean of studies
                 case 10: // Guidance counsellor
+                case 11: // Guidance counsellor
                     return redirect()->route('admins.dashboard');
                 case 3: // Teacher
                     return redirect()->route('teachers.dashboard');

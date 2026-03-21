@@ -20,7 +20,6 @@
         opacity: 1;
     }
 
-    /* Optional: Reduce badge margins for tighter layout */
     #modal-sections .badge,
     #modal-classes .badge,
     #modal-courses .badge {
@@ -71,18 +70,13 @@
                                             <label>Staff Type</label>
                                             <select class="form-control" name="filter_teacher_type">
                                                 <option value="">All Types</option>
-                                                <option value="3" {{ request('filter_teacher_type')=='3' ? 'selected'
-                                                    : '' }}>Teacher</option>
-                                                <option value="6" {{ request('filter_teacher_type')=='6' ? 'selected'
-                                                    : '' }}>Bursar</option>
-                                                <option value="7" {{ request('filter_teacher_type')=='7' ? 'selected'
-                                                    : '' }}>Principal</option>
-                                                <option value="8" {{ request('filter_teacher_type')=='8' ? 'selected'
-                                                    : '' }}>Vice-Principal</option>
-                                                <option value="9" {{ request('filter_teacher_type')=='9' ? 'selected'
-                                                    : '' }}>Dean of Studies</option>
-                                                <option value="10" {{ request('filter_teacher_type')=='10' ? 'selected'
-                                                    : '' }}>Guidance Counsellor</option>
+                                                <option value="3"  {{ request('filter_teacher_type') == '3'  ? 'selected' : '' }}>Teacher</option>
+                                                <option value="6"  {{ request('filter_teacher_type') == '6'  ? 'selected' : '' }}>Bursar</option>
+                                                <option value="7"  {{ request('filter_teacher_type') == '7'  ? 'selected' : '' }}>Principal</option>
+                                                <option value="8"  {{ request('filter_teacher_type') == '8'  ? 'selected' : '' }}>Vice-Principal</option>
+                                                <option value="9"  {{ request('filter_teacher_type') == '9'  ? 'selected' : '' }}>Dean of Studies</option>
+                                                <option value="10" {{ request('filter_teacher_type') == '10' ? 'selected' : '' }}>Guidance Counsellor</option>
+                                                <option value="11" {{ request('filter_teacher_type') == '11' ? 'selected' : '' }}>Head Master/Mistress</option>
                                             </select>
                                         </div>
 
@@ -90,12 +84,10 @@
                                             <label>Form Teacher</label>
                                             <select class="form-control" name="filter_form_teacher">
                                                 <option value="">All Staff</option>
-                                                <option value="1" {{ request('filter_form_teacher')=='1' ? 'selected'
-                                                    : '' }}>
+                                                <option value="1" {{ request('filter_form_teacher') == '1' ? 'selected' : '' }}>
                                                     Form Teachers Only
                                                 </option>
-                                                <option value="0" {{ request('filter_form_teacher')=='0' ? 'selected'
-                                                    : '' }}>
+                                                <option value="0" {{ request('filter_form_teacher') == '0' ? 'selected' : '' }}>
                                                     Not Form Teachers
                                                 </option>
                                             </select>
@@ -105,10 +97,8 @@
                                             <label>Status</label>
                                             <select class="form-control" name="filter_status">
                                                 <option value="">All Statuses</option>
-                                                <option value="1" {{ request('filter_status')=='1' ? 'selected' : '' }}>
-                                                    Active</option>
-                                                <option value="0" {{ request('filter_status')=='0' ? 'selected' : '' }}>
-                                                    Deactivated</option>
+                                                <option value="1" {{ request('filter_status') == '1' ? 'selected' : '' }}>Active</option>
+                                                <option value="0" {{ request('filter_status') == '0' ? 'selected' : '' }}>Deactivated</option>
                                             </select>
                                         </div>
 
@@ -116,8 +106,7 @@
                                             <label>Section(s)</label>
                                             <select class="form-control" name="filter_section_ids[]">
                                                 @foreach($sections as $section)
-                                                <option value="{{ $section->id }}" {{ in_array($section->id,
-                                                    (array)request('filter_section_ids')) ? 'selected' : '' }}>
+                                                <option value="{{ $section->id }}" {{ in_array($section->id, (array)request('filter_section_ids')) ? 'selected' : '' }}>
                                                     {{ $section->section_name }}
                                                 </option>
                                                 @endforeach
@@ -148,22 +137,21 @@
                                     <span class="badge badge-info mr-2">Email: {{ request('filter_email') }}</span>
                                     @endif
 
-                                    @if(request('filter_teacher_type') !== null && request('filter_teacher_type') !==
-                                    '')
+                                    @if(request('filter_teacher_type') !== null && request('filter_teacher_type') !== '')
                                     <span class="badge badge-info mr-2">Type:
                                         @switch(request('filter_teacher_type'))
-                                        @case(3) Teacher @break
-                                        @case(6) Bursar @break
-                                        @case(7) Principal @break
-                                        @case(8) Vice-Principal @break
-                                        @case(9) Dean of Studies @break
-                                        @case(10) Guidance Counsellor @break
+                                            @case(3)  Teacher @break
+                                            @case(6)  Bursar @break
+                                            @case(7)  Principal @break
+                                            @case(8)  Vice-Principal @break
+                                            @case(9)  Dean of Studies @break
+                                            @case(10) Guidance Counsellor @break
+                                            @case(11) Head Master/Mistress @break
                                         @endswitch
                                     </span>
                                     @endif
 
-                                    @if(request('filter_form_teacher') !== null && request('filter_form_teacher') !==
-                                    '')
+                                    @if(request('filter_form_teacher') !== null && request('filter_form_teacher') !== '')
                                     <span class="badge badge-info mr-2">
                                         Form Teacher: {{ request('filter_form_teacher') == '1' ? 'Yes' : 'No' }}
                                     </span>
@@ -183,8 +171,7 @@
 
                                     @if(is_array(request('filter_class_ids')) && count(request('filter_class_ids')))
                                     @foreach($classes->whereIn('id', request('filter_class_ids')) as $class)
-                                    <span class="badge badge-info mr-2">Class: {{ $class->name ?? $class->class_name
-                                        }}</span>
+                                    <span class="badge badge-info mr-2">Class: {{ $class->name ?? $class->class_name }}</span>
                                     @endforeach
                                     @endif
 
@@ -219,8 +206,7 @@
                                         <tbody>
                                             @foreach($teachers as $index => $teacher)
                                             <tr>
-                                                <td>{{ ($teachers->currentPage() - 1) * $teachers->perPage() + $index +
-                                                    1 }}</td>
+                                                <td>{{ ($teachers->currentPage() - 1) * $teachers->perPage() + $index + 1 }}</td>
                                                 <td>
                                                     {{ $teacher->name }}
                                                     @if($teacher->is_form_teacher && $teacher->formClass)
@@ -234,19 +220,19 @@
                                                 <td>{{ $teacher->email }}</td>
                                                 <td>
                                                     @switch($teacher->user_type)
-                                                    @case(3) Teacher @break
-                                                    @case(6) Bursar @break
-                                                    @case(7) Principal @break
-                                                    @case(8) Vice-Principal @break
-                                                    @case(9) Dean of Studies @break
-                                                    @case(10) Guidance Counsellor @break
-                                                    @default Unknown
+                                                        @case(3)  Teacher @break
+                                                        @case(6)  Bursar @break
+                                                        @case(7)  Principal @break
+                                                        @case(8)  Vice-Principal @break
+                                                        @case(9)  Dean of Studies @break
+                                                        @case(10) Guidance Counsellor @break
+                                                        @case(11) Head Master/Mistress @break
+                                                        @default  Unknown
                                                     @endswitch
                                                 </td>
                                                 <td>{{ $teacher->created_at->format('M d, Y') }}</td>
                                                 <td>
-                                                    <span
-                                                        class="badge {{ $teacher->is_active ? 'badge-success' : 'badge-danger' }}">
+                                                    <span class="badge {{ $teacher->is_active ? 'badge-success' : 'badge-danger' }}">
                                                         {{ $teacher->is_active ? 'Active' : 'Deactivated' }}
                                                     </span>
                                                 </td>
@@ -268,8 +254,7 @@
                                                         <button type="submit"
                                                             class="btn btn-sm m-1 {{ $teacher->is_active ? 'btn-secondary' : 'btn-success' }}"
                                                             title="{{ $teacher->is_active ? 'Deactivate' : 'Activate' }}">
-                                                            <i
-                                                                class="fas {{ $teacher->is_active ? 'fa-ban' : 'fa-check' }}"></i>
+                                                            <i class="fas {{ $teacher->is_active ? 'fa-ban' : 'fa-check' }}"></i>
                                                         </button>
                                                     </form>
 
@@ -306,7 +291,7 @@
         </div>
     </div>
 
-    <!-- Single Shared View Details Modal - Compact Side-by-Side Layout -->
+    <!-- View Details Modal -->
     <div class="modal fade" id="viewStaffModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
@@ -319,7 +304,6 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <!-- Top: Personal Info (2 columns) -->
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="detail-label">Full Name</div>
@@ -345,7 +329,6 @@
 
                     <hr>
 
-                    <!-- Bottom: Assignments (2 or 3 columns depending on content) -->
                     <div class="row">
                         <div class="col-md-4">
                             <div class="detail-label">
@@ -379,7 +362,6 @@
 
     @include('includes.footer')
 
-    <!-- JavaScript to populate the shared modal dynamically -->
     <script>
         document.querySelectorAll('.view-staff-btn').forEach(button => {
             button.addEventListener('click', function () {
@@ -393,54 +375,48 @@
 
                 let typeText = 'Unknown';
                 switch (parseInt(teacher.user_type)) {
-                    case 3: typeText = 'Teacher'; break;
-                    case 6: typeText = 'Bursar'; break;
-                    case 7: typeText = 'Principal'; break;
-                    case 8: typeText = 'Vice-Principal'; break;
-                    case 9: typeText = 'Dean of Studies'; break;
+                    case 3:  typeText = 'Teacher'; break;
+                    case 6:  typeText = 'Bursar'; break;
+                    case 7:  typeText = 'Principal'; break;
+                    case 8:  typeText = 'Vice-Principal'; break;
+                    case 9:  typeText = 'Dean of Studies'; break;
                     case 10: typeText = 'Guidance Counsellor'; break;
+                    case 11: typeText = 'Head Master/Mistress'; break;
                 }
                 document.getElementById('modal-type').innerHTML = `<span class="badge badge-primary">${typeText}</span>`;
 
                 document.getElementById('modal-date').textContent = teacher.created_at;
 
-                // Form Teacher
                 if (teacher.is_form_teacher && teacher.form_class_name) {
                     document.getElementById('modal-form-teacher').innerHTML = `<span class="badge badge-success">Yes → ${teacher.form_class_name}</span>`;
                 } else {
                     document.getElementById('modal-form-teacher').innerHTML = '<span class="text-muted">Not a Form Teacher</span>';
                 }
 
-                // Status
                 const statusClass = teacher.is_active ? 'badge-success' : 'badge-danger';
-                const statusText = teacher.is_active ? 'Active' : 'Deactivated';
+                const statusText  = teacher.is_active ? 'Active' : 'Deactivated';
                 document.getElementById('modal-status').innerHTML = `<span class="badge ${statusClass}">${statusText}</span>`;
 
-                // Sections
                 if (teacher.sections.length > 0) {
                     document.getElementById('modal-sections').innerHTML = teacher.sections.map(s => `<span class="badge badge-info">${s}</span>`).join(' ');
                 } else {
                     document.getElementById('modal-sections').innerHTML = '<span class="text-muted">No sections assigned</span>';
                 }
 
-                // Classes
                 if (teacher.classes.length > 0) {
                     document.getElementById('modal-classes').innerHTML = teacher.classes.map(c => `<span>${c}</span>`).join(' ');
                 } else {
                     document.getElementById('modal-classes').innerHTML = '<span class="text-muted">No classes assigned</span>';
                 }
 
-                // Courses
                 if (teacher.courses.length > 0) {
                     document.getElementById('modal-courses').innerHTML = teacher.courses.map(c => `<span>${c}</span>`).join(' ');
                 } else {
                     document.getElementById('modal-courses').innerHTML = '<span class="text-muted">No courses assigned</span>';
                 }
 
-                // Edit link
                 document.getElementById('modal-edit-link').href = teacher.edit_url;
 
-                // Show modal
                 $('#viewStaffModal').modal('show');
             });
         });

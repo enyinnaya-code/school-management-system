@@ -366,7 +366,7 @@ class TimetableController extends Controller
     {
         $teacher = Auth::user();
 
-        $allowedRoles = [1, 2, 3, 7, 8, 9, 10];
+        $allowedRoles = [1, 2, 3, 7, 8, 9, 10, 11];
         if (!in_array($teacher->user_type, $allowedRoles)) {
             return redirect()->back()->with('error', 'Access denied.');
         }
