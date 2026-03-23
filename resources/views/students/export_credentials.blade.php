@@ -323,7 +323,7 @@
 
             <div class="info-box">
                 &#8505; <strong>Login Information:</strong>
-                Students log in using their <strong>email address</strong> as their username.
+                Students log in using their <strong>email address</strong> and default password
                 If a student has no email listed, they may use their
                 <strong>admission number</strong> to identify themselves to an administrator
                 for account setup. The login URL is: <strong>{{ config('app.url') }}</strong>
