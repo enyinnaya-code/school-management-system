@@ -306,7 +306,49 @@ class StudentController extends Controller
         return redirect()->route('students.create')->with('success', 'Student added successfully.');
     }
 
-     public function profile($id)
+
+    public function exportStudentsPdf(Request $request)
+    {
+        if (!in_array(Auth::user()->user_type, [1, 2])) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $query = User::where('user_type', 4)
+            ->with('class.section')
+            ->where('is_active', 1);
+
+        // Optional filters passed from the index page
+        if ($filterSection = $request->get('filter_section')) {
+            $query->whereHas('class', function ($q) use ($filterSection) {
+                $q->where('section_id', $filterSection);
+            });
+        }
+
+        if ($filterClass = $request->get('filter_class')) {
+            $query->where('class_id', $filterClass);
+        }
+
+        // Group alphabetically within each class
+        $students = $query
+            ->orderBy('class_id')
+            ->orderBy('name')
+            ->get();
+
+        // Group by class name
+        $groupedByClass = $students->groupBy(function ($student) {
+            return $student->class->name ?? 'No Class Assigned';
+        })->sortKeys();
+
+        $pdf = Pdf::loadView('students.export_pdf', [
+            'groupedByClass' => $groupedByClass,
+            'generatedAt'    => now()->format('d M Y, h:i A'),
+            'generatedBy'    => Auth::user()->name,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream('Students_Default_Passwords_' . now()->format('Ymd_His') . '.pdf');
+    }
+
+    public function profile($id)
     {
         $authUser = Auth::user();
 
@@ -1228,49 +1270,49 @@ class StudentController extends Controller
      * View promotion history
      */
     public function promotionHistory()
-{
-    $promotions = DB::table('promotions as p')
-        // FIXED: Changed 'sessions' to 'school_sessions'
-        ->leftJoin('school_sessions as s', 'p.session_id', '=', 's.id')
-        ->leftJoin('terms as t', 'p.term_id', '=', 't.id')
-        ->leftJoin('sections as sec', 'p.section_id', '=', 'sec.id')
-        ->leftJoin('users as u', 'p.processed_by', '=', 'u.id')
-        ->leftJoin('users as rb_user', 'p.rolled_back_by', '=', 'rb_user.id')
-        ->select(
-            'p.id',
-            'p.promotion_batch_id',
-            'p.session_id',
-            DB::raw('COALESCE(s.name, CONCAT("Unknown Session (ID: ", p.session_id, ")")) as session_name'),
-            'p.term_id',
-            DB::raw('COALESCE(t.name, CONCAT("Unknown Term (ID: ", p.term_id, ")")) as term_name'),
-            'p.section_id',
-            DB::raw('COALESCE(sec.section_name, CONCAT("Unknown Section (ID: ", p.section_id, ")")) as section_name'),
-            'p.source_class_ids',
-            'p.source_class_names',
-            'p.promotion_type',
-            'p.promotion_config',
-            'p.total_students',
-            'p.promoted_count',
-            'p.repeating_count',
-            'p.destination_classes_count',
-            'p.status',
-            'p.processed_by',
-            DB::raw('COALESCE(u.name, CONCAT("Unknown User (ID: ", p.processed_by, ")")) as processed_by_name'),
-            'p.processed_at',
-            'p.rolled_back_by',
-            DB::raw('COALESCE(rb_user.name, NULL) as rolled_back_by_name'),
-            'p.rolled_back_at',
-            'p.rollback_reason',
-            'p.notes',
-            'p.created_at',
-            'p.updated_at',
-            DB::raw('CASE WHEN p.total_students > 0 THEN ROUND((p.promoted_count / p.total_students) * 100, 1) ELSE 0 END as promotion_rate')
-        )
-        ->orderBy('p.processed_at', 'desc')
-        ->paginate(20);
+    {
+        $promotions = DB::table('promotions as p')
+            // FIXED: Changed 'sessions' to 'school_sessions'
+            ->leftJoin('school_sessions as s', 'p.session_id', '=', 's.id')
+            ->leftJoin('terms as t', 'p.term_id', '=', 't.id')
+            ->leftJoin('sections as sec', 'p.section_id', '=', 'sec.id')
+            ->leftJoin('users as u', 'p.processed_by', '=', 'u.id')
+            ->leftJoin('users as rb_user', 'p.rolled_back_by', '=', 'rb_user.id')
+            ->select(
+                'p.id',
+                'p.promotion_batch_id',
+                'p.session_id',
+                DB::raw('COALESCE(s.name, CONCAT("Unknown Session (ID: ", p.session_id, ")")) as session_name'),
+                'p.term_id',
+                DB::raw('COALESCE(t.name, CONCAT("Unknown Term (ID: ", p.term_id, ")")) as term_name'),
+                'p.section_id',
+                DB::raw('COALESCE(sec.section_name, CONCAT("Unknown Section (ID: ", p.section_id, ")")) as section_name'),
+                'p.source_class_ids',
+                'p.source_class_names',
+                'p.promotion_type',
+                'p.promotion_config',
+                'p.total_students',
+                'p.promoted_count',
+                'p.repeating_count',
+                'p.destination_classes_count',
+                'p.status',
+                'p.processed_by',
+                DB::raw('COALESCE(u.name, CONCAT("Unknown User (ID: ", p.processed_by, ")")) as processed_by_name'),
+                'p.processed_at',
+                'p.rolled_back_by',
+                DB::raw('COALESCE(rb_user.name, NULL) as rolled_back_by_name'),
+                'p.rolled_back_at',
+                'p.rollback_reason',
+                'p.notes',
+                'p.created_at',
+                'p.updated_at',
+                DB::raw('CASE WHEN p.total_students > 0 THEN ROUND((p.promoted_count / p.total_students) * 100, 1) ELSE 0 END as promotion_rate')
+            )
+            ->orderBy('p.processed_at', 'desc')
+            ->paginate(20);
 
-    return view('students.promotion_history', compact('promotions'));
-}
+        return view('students.promotion_history', compact('promotions'));
+    }
 
 
 
@@ -1279,76 +1321,76 @@ class StudentController extends Controller
      * View specific promotion details
      */
     public function viewPromotionDetails($promotionId)
-{
-    $promotion = DB::table('promotions as p')
-        // FIXED: Changed 'sessions' to 'school_sessions'
-        ->join('school_sessions as s', 'p.session_id', '=', 's.id')
-        ->join('terms as t', 'p.term_id', '=', 't.id')
-        ->join('sections as sec', 'p.section_id', '=', 'sec.id')
-        ->join('users as u', 'p.processed_by', '=', 'u.id')
-        ->leftJoin('users as rb_user', 'p.rolled_back_by', '=', 'rb_user.id')
-        ->where('p.id', $promotionId)
-        ->select(
-            'p.*',
-            's.name as session_name',
-            't.name as term_name',
-            'sec.section_name',
-            'u.name as processed_by_name',
-            'rb_user.name as rolled_back_by_name',
-            DB::raw('ROUND((p.promoted_count / p.total_students) * 100, 2) as promotion_rate')
-        )
-        ->first();
+    {
+        $promotion = DB::table('promotions as p')
+            // FIXED: Changed 'sessions' to 'school_sessions'
+            ->join('school_sessions as s', 'p.session_id', '=', 's.id')
+            ->join('terms as t', 'p.term_id', '=', 't.id')
+            ->join('sections as sec', 'p.section_id', '=', 'sec.id')
+            ->join('users as u', 'p.processed_by', '=', 'u.id')
+            ->leftJoin('users as rb_user', 'p.rolled_back_by', '=', 'rb_user.id')
+            ->where('p.id', $promotionId)
+            ->select(
+                'p.*',
+                's.name as session_name',
+                't.name as term_name',
+                'sec.section_name',
+                'u.name as processed_by_name',
+                'rb_user.name as rolled_back_by_name',
+                DB::raw('ROUND((p.promoted_count / p.total_students) * 100, 2) as promotion_rate')
+            )
+            ->first();
 
-    if (!$promotion) {
-        abort(404, 'Promotion not found');
+        if (!$promotion) {
+            abort(404, 'Promotion not found');
+        }
+
+        $students = DB::table('promotion_records as pr')
+            ->join('promotions as p', 'pr.promotion_id', '=', 'p.id')
+            // FIXED: Changed 'sessions' to 'school_sessions'
+            ->join('school_sessions as s', 'p.session_id', '=', 's.id')
+            ->join('terms as t', 'p.term_id', '=', 't.id')
+            ->join('users as u', 'pr.student_id', '=', 'u.id')
+            ->join('users as processor', 'p.processed_by', '=', 'processor.id')
+            ->where('pr.promotion_id', $promotionId)
+            ->select(
+                'pr.*',
+                'p.promotion_batch_id',
+                'p.session_id',
+                's.name as session_name',
+                'p.term_id',
+                't.name as term_name',
+                'u.admission_no',
+                'u.name as student_name',
+                'u.gender',
+                'p.promotion_type',
+                'p.status as promotion_batch_status',
+                'p.processed_at',
+                'p.processed_by',
+                'processor.name as processed_by_name'
+            )
+            ->orderBy('u.name')
+            ->get();
+
+        $capacities = DB::table('promotion_class_capacities as pcc')
+            ->join('promotions as p', 'pcc.promotion_id', '=', 'p.id')
+            // FIXED: Changed 'sessions' to 'school_sessions'
+            ->join('school_sessions as s', 'p.session_id', '=', 's.id')
+            ->where('pcc.promotion_id', $promotionId)
+            ->select(
+                'pcc.*',
+                'p.promotion_batch_id',
+                'p.session_id',
+                's.name as session_name',
+                'p.processed_at',
+                'p.status as promotion_status',
+                DB::raw('ROUND((pcc.students_assigned / pcc.max_capacity) * 100, 2) as utilization_percentage'),
+                DB::raw('(pcc.initial_enrollment + pcc.students_assigned) as final_enrollment')
+            )
+            ->get();
+
+        return view('students.promotion_details', compact('promotion', 'students', 'capacities'));
     }
-
-    $students = DB::table('promotion_records as pr')
-        ->join('promotions as p', 'pr.promotion_id', '=', 'p.id')
-        // FIXED: Changed 'sessions' to 'school_sessions'
-        ->join('school_sessions as s', 'p.session_id', '=', 's.id')
-        ->join('terms as t', 'p.term_id', '=', 't.id')
-        ->join('users as u', 'pr.student_id', '=', 'u.id')
-        ->join('users as processor', 'p.processed_by', '=', 'processor.id')
-        ->where('pr.promotion_id', $promotionId)
-        ->select(
-            'pr.*',
-            'p.promotion_batch_id',
-            'p.session_id',
-            's.name as session_name',
-            'p.term_id',
-            't.name as term_name',
-            'u.admission_no',
-            'u.name as student_name',
-            'u.gender',
-            'p.promotion_type',
-            'p.status as promotion_batch_status',
-            'p.processed_at',
-            'p.processed_by',
-            'processor.name as processed_by_name'
-        )
-        ->orderBy('u.name')
-        ->get();
-
-    $capacities = DB::table('promotion_class_capacities as pcc')
-        ->join('promotions as p', 'pcc.promotion_id', '=', 'p.id')
-        // FIXED: Changed 'sessions' to 'school_sessions'
-        ->join('school_sessions as s', 'p.session_id', '=', 's.id')
-        ->where('pcc.promotion_id', $promotionId)
-        ->select(
-            'pcc.*',
-            'p.promotion_batch_id',
-            'p.session_id',
-            's.name as session_name',
-            'p.processed_at',
-            'p.status as promotion_status',
-            DB::raw('ROUND((pcc.students_assigned / pcc.max_capacity) * 100, 2) as utilization_percentage'),
-            DB::raw('(pcc.initial_enrollment + pcc.students_assigned) as final_enrollment')
-        )
-        ->get();
-
-    return view('students.promotion_details', compact('promotion', 'students', 'capacities'));
-}
 
 
     /**

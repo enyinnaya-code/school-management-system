@@ -13,11 +13,17 @@
                 <section class="section mb-5 pb-1 px-0">
                     <div class="col-12">
                         <div class="card">
-                            <div class="card-header">
+                            <div class="card-header d-flex justify-content-between align-items-center">
                                 <h4>Manage Students</h4>
+                                <div class="d-flex gap-2">
+                                    {{-- Export PDF button --}}
+                                    <a href="{{ route('students.export.pdf', request()->only(['filter_section', 'filter_class'])) }}"
+                                        class="btn btn-danger btn-sm mr-2" target="_blank"
+                                        title="Export credentials as PDF">
+                                        <i class="fas fa-file-pdf"></i> Export Credentials PDF
+                                    </a>
 
-                                <div class="card-header-action">
-                                    <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                    <button class="btn btn-primary btn-sm" type="button" data-toggle="collapse"
                                         data-target="#filterCollapse">
                                         <i class="fas fa-filter"></i> Filter students
                                     </button>

@@ -164,8 +164,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tests/{test}/comment', [TestController::class, 'submitComment'])->name('tests.comment');
 
     // Student routes
+     Route::get('/students/export-pdf', [StudentController::class, 'exportStudentsPdf'])->name('students.export.pdf');
     Route::get('/students/create', [StudentController::class, 'create'])->name('students.create');
     Route::get('/students', [StudentController::class, 'index'])->name('students.index');
+   
     Route::get('/get-classes/{section_id}', [StudentController::class, 'getClasses']);
     Route::post('/students', [StudentController::class, 'store'])->name('students.store');
     Route::get('/students/{student}/edit', [StudentController::class, 'edit'])->name('students.edit');
