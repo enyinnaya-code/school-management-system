@@ -318,7 +318,6 @@ class StudentController extends Controller
             ->with('class.section')
             ->where('is_active', 1);
 
-        // Optional filters passed from the index page
         if ($filterSection = $request->get('filter_section')) {
             $query->whereHas('class', function ($q) use ($filterSection) {
                 $q->where('section_id', $filterSection);
@@ -329,24 +328,21 @@ class StudentController extends Controller
             $query->where('class_id', $filterClass);
         }
 
-        // Group alphabetically within each class
         $students = $query
             ->orderBy('class_id')
             ->orderBy('name')
             ->get();
 
-        // Group by class name
         $groupedByClass = $students->groupBy(function ($student) {
             return $student->class->name ?? 'No Class Assigned';
         })->sortKeys();
 
-        $pdf = Pdf::loadView('students.export_pdf', [
+        return view('students.export_credentials', [
             'groupedByClass' => $groupedByClass,
             'generatedAt'    => now()->format('d M Y, h:i A'),
             'generatedBy'    => Auth::user()->name,
-        ])->setPaper('a4', 'portrait');
-
-        return $pdf->stream('Students_Default_Passwords_' . now()->format('Ymd_His') . '.pdf');
+            'grandTotal'     => $students->count(),
+        ]);
     }
 
     public function profile($id)
