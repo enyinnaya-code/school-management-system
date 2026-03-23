@@ -88,18 +88,65 @@ class ResultsController extends Controller
         return view('upload_result', compact('sections'));
     }
 
+    public function selectClassGet(Request $request)
+    {
+        $sections = Section::all();
+        $class_id = $request->query('class_id') ?? session('selected_class_id');
+        $section_id = $request->query('section_id') ?? session('selected_section_id');
+
+        if (!$class_id || !$section_id) {
+            return redirect()->route('results.uploadFormResult')
+                ->with('error', 'Please select a section and class first.');
+        }
+
+        $user = Auth::user();
+        $class = SchoolClass::findOrFail($class_id);
+
+        if (!in_array($user->user_type, [1, 2])) {
+            if (!$this->isTeacherAssignedToClass($user->id, $class_id)) {
+                return redirect()->back()->with('error', 'You are not assigned to this class.');
+            }
+        }
+
+        $students = User::where('user_type', 4)
+            ->where('class_id', $class_id)
+            ->select(
+                'id',
+                'name',
+                'email',
+                'admission_no',
+                'dob',
+                'phone',
+                'guardian_name',
+                'guardian_phone',
+                'guardian_email',
+                'guardian_address',
+                'address',
+                'class_id',
+                'gender'
+            )
+            ->paginate(10);
+
+        return view('upload_result', compact('students', 'class', 'sections'));
+    }
+
     public function selectClass(Request $request)
     {
         $request->validate([
             'section_id' => 'required|exists:sections,id',
-            'class_id' => 'required|exists:school_classes,id',
+            'class_id'   => 'required|exists:school_classes,id',
+        ]);
+
+        // Store in session so the GET method can retrieve it for pagination
+        session([
+            'selected_class_id'   => $request->class_id,
+            'selected_section_id' => $request->section_id,
         ]);
 
         $sections = Section::all();
-        $class = SchoolClass::findOrFail($request->class_id);
-        $user = Auth::user();
+        $class    = SchoolClass::findOrFail($request->class_id);
+        $user     = Auth::user();
 
-        // Security check for non-admin users
         if (!in_array($user->user_type, [1, 2])) {
             if (!$this->isTeacherAssignedToClass($user->id, $request->class_id)) {
                 return redirect()->back()->with('error', 'You are not assigned to this class.');
@@ -108,7 +155,21 @@ class ResultsController extends Controller
 
         $students = User::where('user_type', 4)
             ->where('class_id', $request->class_id)
-            ->select('id', 'name', 'email', 'admission_no', 'dob', 'phone', 'guardian_name', 'guardian_phone', 'guardian_email', 'guardian_address', 'address', 'class_id', 'gender')
+            ->select(
+                'id',
+                'name',
+                'email',
+                'admission_no',
+                'dob',
+                'phone',
+                'guardian_name',
+                'guardian_phone',
+                'guardian_email',
+                'guardian_address',
+                'address',
+                'class_id',
+                'gender'
+            )
             ->paginate(10);
 
         return view('upload_result', compact('students', 'class', 'sections'));

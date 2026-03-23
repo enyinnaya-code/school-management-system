@@ -414,6 +414,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Results routes (grouped and duplicates removed)
     Route::get('/results/upload', [ResultsController::class, 'uploadForm'])->name('results.upload');
+    Route::get('/results/select-class', [ResultsController::class, 'selectClassGet'])->name('results.selectClass.get');
     Route::post('/results/select-class', [ResultsController::class, 'selectClass'])->name('results.selectClass');
     Route::get('/results', [ResultsController::class, 'index'])->name('results.index');
     Route::get('/student-result-upload/{student}', [ResultsController::class, 'studentResultUpload'])->name('student.result.upload');

@@ -71,7 +71,7 @@
 
                                 <!-- Pagination -->
                                 <div class="d-flex justify-content-center">
-                                    {{ $students->links() }}
+                                  {{ $students->appends(['class_id' => $class->id, 'section_id' => $class->section_id])->links() }}
                                 </div>
                             </div>
                         </div>
