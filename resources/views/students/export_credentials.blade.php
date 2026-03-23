@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Login Credentials</title>
     <style>
-        /* ── Screen styles ───────────────────────────────────────── */
         * {
             margin: 0;
             padding: 0;
@@ -86,12 +85,11 @@
         }
 
         .page-wrapper {
-            max-width: 900px;
+            max-width: 960px;
             margin: 80px auto 40px;
             padding: 0 20px;
         }
 
-        /* ── Document styles (screen + print) ───────────────────── */
         .document {
             background: #fff;
             padding: 36px 40px;
@@ -126,6 +124,16 @@
             font-size: 11px;
             color: #888;
             margin-bottom: 16px;
+        }
+
+        .info-box {
+            background: #e8f4fd;
+            border-left: 4px solid #2980b9;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            font-size: 11.5px;
+            color: #1a5276;
+            border-radius: 0 4px 4px 0;
         }
 
         .warning-box {
@@ -192,16 +200,24 @@
 
         tbody td {
             padding: 6px 10px;
-            font-size: 11.5px;
+            font-size: 11px;
             border: 1px solid #ddd;
             color: #333;
+            vertical-align: middle;
         }
 
-        .col-sn       { width: 5%;  text-align: center; color: #999; }
-        .col-adm      { width: 14%; font-weight: 600; color: #1a1a2e; }
-        .col-name     { width: 42%; }
-        .col-class    { width: 20%; }
-        .col-password { width: 19%; font-family: monospace; color: #c0392b; font-weight: bold; }
+        .col-sn       { width: 4%;  text-align: center; color: #999; }
+        .col-adm      { width: 10%; font-weight: 600; color: #1a1a2e; }
+        .col-name     { width: 28%; }
+        .col-class    { width: 14%; }
+        .col-email    { width: 28%; font-size: 10.5px; color: #555; }
+        .col-password { width: 16%; font-family: monospace; color: #c0392b; font-weight: bold; }
+
+        .no-email {
+            color: #bbb;
+            font-style: italic;
+            font-size: 10px;
+        }
 
         .total-summary {
             text-align: right;
@@ -222,7 +238,7 @@
             border-top: 1px solid #eee;
         }
 
-        /* ── Print styles ────────────────────────────────────────── */
+        /* ── Print styles ── */
         @media print {
             body {
                 background: #fff;
@@ -253,7 +269,8 @@
                 page-break-inside: avoid;
             }
 
-            .warning-box {
+            .warning-box,
+            .info-box {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
@@ -264,6 +281,11 @@
             }
 
             thead tr {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            tbody tr:nth-child(even) {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
@@ -291,7 +313,7 @@
 
             <div class="report-header">
                 <h1>Student Login Credentials</h1>
-                <p>Admission Numbers &bull; Names &bull; Classes &bull; Default Passwords</p>
+                <p>Admission Numbers &bull; Names &bull; Classes &bull; Login Email &bull; Default Passwords</p>
             </div>
 
             <div class="meta-info">
@@ -299,35 +321,54 @@
                 <span>Date: <strong>{{ $generatedAt }}</strong></span>
             </div>
 
-            <div class="warning-box">
-                &#9888; <strong>Confidential:</strong> This document contains login credentials.
-                Please distribute securely and advise students to change their passwords after
-                first login. The default password for all students is <strong>12345</strong>.
+            <div class="info-box">
+                &#8505; <strong>Login Information:</strong>
+                Students log in using their <strong>email address</strong> as their username.
+                If a student has no email listed, they may use their
+                <strong>admission number</strong> to identify themselves to an administrator
+                for account setup. The login URL is: <strong>{{ config('app.url') }}</strong>
             </div>
 
-            @foreach($groupedByClass as $className => $students)
+            <div class="warning-box">
+                &#9888; <strong>Confidential:</strong> This document contains login credentials.
+                Please distribute securely. The default password shown is <strong>12345</strong>
+                — this is the password that will be set if an administrator uses the
+                <em>"Reset Password"</em> function. Students who have already changed their
+                password will have a different password. Advise all students to change their
+                password after first login.
+            </div>
+
+            @foreach($groupedByClass as $className => $classStudents)
                 <div class="class-section">
                     <div class="class-title">
                         <span>{{ $className }}</span>
-                        <span class="count-badge">{{ $students->count() }} student(s)</span>
+                        <span class="count-badge">{{ $classStudents->count() }} student(s)</span>
                     </div>
                     <table>
                         <thead>
                             <tr>
                                 <th class="col-sn">#</th>
-                                <th class="col-adm">Admission No</th>
+                                <th class="col-adm">Adm. No</th>
                                 <th class="col-name">Student Name</th>
                                 <th class="col-class">Class</th>
+                                <th class="col-email">Login Email</th>
                                 <th class="col-password">Default Password</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($students as $index => $student)
+                            @foreach($classStudents as $index => $student)
                                 <tr>
                                     <td class="col-sn">{{ $index + 1 }}</td>
                                     <td class="col-adm">{{ $student->admission_no ?? 'N/A' }}</td>
                                     <td class="col-name">{{ $student->name }}</td>
                                     <td class="col-class">{{ $student->class->name ?? 'N/A' }}</td>
+                                    <td class="col-email">
+                                        @if($student->email)
+                                            {{ $student->email }}
+                                        @else
+                                            <span class="no-email">&#8212; no email set &#8212;</span>
+                                        @endif
+                                    </td>
                                     <td class="col-password">12345</td>
                                 </tr>
                             @endforeach
