@@ -175,42 +175,76 @@ class ResultsController extends Controller
         return view('upload_result', compact('students', 'class', 'sections'));
     }
 
+   private function getAdjacentStudents($classId, $currentStudentId)
+    {
+        $classStudentIds = User::where('user_type', 4)
+            ->where('class_id', $classId)
+            ->orderBy('name')
+            ->pluck('id')
+            ->values();
+ 
+        $currentIndex = $classStudentIds->search($currentStudentId);
+ 
+        $prevStudent = ($currentIndex !== false && $currentIndex > 0)
+            ? User::find($classStudentIds[$currentIndex - 1])
+            : null;
+ 
+        $nextStudent = ($currentIndex !== false && $currentIndex < $classStudentIds->count() - 1)
+            ? User::find($classStudentIds[$currentIndex + 1])
+            : null;
+ 
+        $studentPosition = $currentIndex !== false ? $currentIndex + 1 : null;
+        $totalStudents   = $classStudentIds->count();
+ 
+        return compact('prevStudent', 'nextStudent', 'studentPosition', 'totalStudents');
+    }
+ 
+ 
+// ─────────────────────────────────────────────────────────────────────────────
+// REPLACE your existing studentResultUpload() with this full version
+// ─────────────────────────────────────────────────────────────────────────────
+ 
     public function studentResultUpload($studentId)
     {
         $student = User::where('user_type', 4)->findOrFail($studentId);
         $class   = SchoolClass::findOrFail($student->class_id);
         $section = Section::find($class->section_id);
         $user    = Auth::user();
-
+ 
         if (!in_array($user->user_type, [1, 2])) {
             if (!$this->isTeacherAssignedToClass($user->id, $class->id)) {
                 abort(403, 'You are not assigned to this class.');
             }
         }
-
+ 
         $currentSession = Session::where('is_current', true)->first();
         $currentTerm    = $currentSession?->terms()->where('is_current', true)->first();
-
+ 
         if (!$currentSession || !$currentTerm) {
             return redirect()->back()->with('error', 'No current academic session or term is set.');
         }
-
-        // ── NURSERY: Custom result sheet template ─────────────────────────────
-        // ── NURSERY: Custom result sheet template ─────────────────────────────
+ 
+        // ── Prev / Next student navigation ────────────────────────────────────
+        [
+            'prevStudent'     => $prevStudent,
+            'nextStudent'     => $nextStudent,
+            'studentPosition' => $studentPosition,
+            'totalStudents'   => $totalStudents,
+        ] = $this->getAdjacentStudents($class->id, $student->id);
+        // ──────────────────────────────────────────────────────────────────────
+ 
+        // ── NURSERY: Custom result sheet template ──────────────────────────────
         $sheetTemplate = DB::table('result_sheet_templates')
             ->where('is_active', 1)
             ->get()
             ->first(function ($t) use ($class, $currentTerm) {
-                $classes = json_decode($t->applicable_classes ?? '[]', true);
+                $classes      = json_decode($t->applicable_classes ?? '[]', true);
                 $classMatches = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-
-                // Also match by term_name against the current term's name
-                $termMatches = !empty($t->term_name) && $t->term_name === $currentTerm->name;
-
+                $termMatches  = !empty($t->term_name) && $t->term_name === $currentTerm->name;
                 return $classMatches && $termMatches;
             });
-
-        // Fallback: if no term-specific template found, try any active template for this class
+ 
+        // Fallback: any active template for this class regardless of term
         if (!$sheetTemplate) {
             $sheetTemplate = DB::table('result_sheet_templates')
                 ->where('is_active', 1)
@@ -220,11 +254,11 @@ class ResultsController extends Controller
                     return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
                 });
         }
-
+ 
         if ($sheetTemplate) {
             $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
             $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
-
+ 
             $service    = new ResultSheetService();
             $subjects   = $service->loadTemplateStructure($sheetTemplate->id);
             $allItemIds = collect($subjects)->flatMap(function ($subject) {
@@ -234,21 +268,21 @@ class ResultsController extends Controller
                 }
                 return $ids;
             });
-
+ 
             $existingRatings = DB::table('result_sheet_ratings')
                 ->where('student_id', $studentId)
                 ->where('session_id', $currentSession->id)
                 ->where('term_id', $currentTerm->id)
                 ->whereIn('item_id', $allItemIds)
                 ->pluck('rating_value', 'item_id');
-
+ 
             $footerData = DB::table('result_sheet_footer_data')
                 ->where('student_id', $student->id)
                 ->where('session_id', $currentSession->id)
                 ->where('term_id', $currentTerm->id)
                 ->where('template_id', $sheetTemplate->id)
                 ->first();
-
+ 
             return view('student_result_sheet', compact(
                 'student',
                 'class',
@@ -258,43 +292,47 @@ class ResultsController extends Controller
                 'existingRatings',
                 'currentSession',
                 'currentTerm',
-                'footerData'
+                'footerData',
+                'prevStudent',
+                'nextStudent',
+                'studentPosition',
+                'totalStudents'
             ));
         }
-
-        // ── PRIMARY: Primary school cognitive ability grid ────────────────────
+ 
+        // ── PRIMARY: Primary school cognitive ability grid ─────────────────────
         $isPrimaryClass = DB::table('primary_result_classes')
             ->where('school_class_id', $class->id)
             ->exists();
-
+ 
         if ($isPrimaryClass) {
             $subjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
                 $q->where('school_classes.id', $class->id);
             })->orderBy('course_name')->get(['id', 'course_name']);
-
+ 
             $existingResults = \App\Models\PrimarySchoolResult::where('student_id', $studentId)
                 ->where('session_id', $currentSession->id)
                 ->where('term_id', $currentTerm->id)
                 ->get()
                 ->keyBy('course_id');
-
+ 
             $termlyScores = $this->calculateTermlyScores(
                 $studentId,
                 $currentSession->id,
                 $currentTerm->id
             );
-
+ 
             $remark = StudentRemark::where('student_id', $student->id)
                 ->where('class_id', $class->id)
                 ->where('session_id', $currentSession->id)
                 ->where('term_id', $currentTerm->id)
                 ->first();
-
+ 
             $affectiveRatings = array_merge(
                 $this->defaultRatings('affective'),
                 $remark?->affective_ratings ?? []
             );
-
+ 
             return view('primary_student_result_upload', compact(
                 'student',
                 'class',
@@ -304,15 +342,19 @@ class ResultsController extends Controller
                 'termlyScores',
                 'affectiveRatings',
                 'currentSession',
-                'currentTerm'
+                'currentTerm',
+                'prevStudent',
+                'nextStudent',
+                'studentPosition',
+                'totalStudents'
             ));
         }
-
-        // ── OTHER (Secondary/JS/SS): Standard numeric result upload ───────────
+ 
+        // ── OTHER (Secondary/JS/SS): Standard numeric result upload ────────────
         $subjectsQuery = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
         })->orderBy('course_name');
-
+ 
         if (!in_array($user->user_type, [1, 2])) {
             $subjectsQuery->whereExists(function ($query) use ($user) {
                 $query->select(DB::raw(1))
@@ -321,16 +363,16 @@ class ResultsController extends Controller
                     ->where('course_user.user_id', $user->id);
             });
         }
-
+ 
         $subjects        = $subjectsQuery->get(['id', 'course_name']);
         $existingResults = Result::where('student_id', $studentId)
             ->where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
             ->get()
             ->keyBy('course_id');
-
+ 
         $sheetTemplate = null;
-
+ 
         return view('student_result_upload', compact(
             'student',
             'class',
@@ -339,7 +381,11 @@ class ResultsController extends Controller
             'existingResults',
             'currentSession',
             'currentTerm',
-            'sheetTemplate'
+            'sheetTemplate',
+            'prevStudent',
+            'nextStudent',
+            'studentPosition',
+            'totalStudents'
         ));
     }
 

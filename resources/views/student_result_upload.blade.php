@@ -8,22 +8,83 @@
         @include('includes.side_nav')
 
         <div class="main-content pt-5 mt-5">
-            <section class="section mb-5 pb-1 px-0">
+            <section class="section mb-5 pb-5 px-0">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <div>
-                                <h4 class="mb-1">
-                                    <i class="fas fa-clipboard-check mr-2"></i>
-                                    Upload Results — {{ $student->name }}
-                                </h4>
-                                <p class="mb-0 text-muted">
-                                    {{ $class->name }} &bull; {{ $section->section_name ?? '' }} &bull;
-                                    <strong>{{ $currentSession->name }}</strong> &mdash;
-                                    <strong>{{ $currentTerm->name }}</strong>
-                                </p>
+
+                        {{-- ══════════════════════════════════════════════════════
+                             CARD HEADER — student info + top navigation bar
+                        ══════════════════════════════════════════════════════ --}}
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap" style="gap:12px;">
+
+                                {{-- Left: student name & context --}}
+                                <div>
+                                    <h4 class="mb-1">
+                                        <i class="fas fa-clipboard-check mr-2"></i>
+                                        Upload Results &mdash; {{ $student->name }}
+                                    </h4>
+                                    <p class="mb-0 text-muted">
+                                        {{ $class->name }}
+                                        @if($section) &bull; {{ $section->section_name }} @endif
+                                        &bull; <strong>{{ $currentSession->name }}</strong>
+                                        &mdash; <strong>{{ $currentTerm->name }}</strong>
+                                    </p>
+                                    @if(isset($studentPosition) && isset($totalStudents))
+                                        <small class="text-muted">
+                                            <i class="fas fa-users mr-1"></i>
+                                            Student {{ $studentPosition }} of {{ $totalStudents }}
+                                        </small>
+                                    @endif
+                                </div>
+
+                                {{-- Right: navigation buttons --}}
+                                <div class="d-flex align-items-center flex-wrap" style="gap:6px;">
+
+                                    {{-- Back to list --}}
+                                    <a href="{{ route('results.selectClass.get', [
+                                            'class_id'   => $class->id,
+                                            'section_id' => $class->section_id,
+                                        ]) }}"
+                                       class="btn btn-outline-secondary btn-sm"
+                                       title="Back to student list">
+                                        <i class="fas fa-list mr-1"></i> Back to List
+                                    </a>
+
+                                    {{-- Previous student --}}
+                                    @if($prevStudent ?? null)
+                                        <a href="{{ route('student.result.upload', $prevStudent->id) }}"
+                                           class="btn btn-outline-primary btn-sm"
+                                           title="Go to {{ $prevStudent->name }}">
+                                            <i class="fas fa-chevron-left mr-1"></i>
+                                            <span class="d-none d-md-inline">{{ $prevStudent->name }}</span>
+                                            <span class="d-md-none">Prev</span>
+                                        </a>
+                                    @else
+                                        <button class="btn btn-outline-secondary btn-sm" disabled>
+                                            <i class="fas fa-chevron-left mr-1"></i> Prev
+                                        </button>
+                                    @endif
+
+                                    {{-- Next student --}}
+                                    @if($nextStudent ?? null)
+                                        <a href="{{ route('student.result.upload', $nextStudent->id) }}"
+                                           class="btn btn-primary btn-sm"
+                                           title="Go to {{ $nextStudent->name }}">
+                                            <span class="d-none d-md-inline">{{ $nextStudent->name }}</span>
+                                            <span class="d-md-none">Next</span>
+                                            <i class="fas fa-chevron-right ml-1"></i>
+                                        </a>
+                                    @else
+                                        <button class="btn btn-secondary btn-sm" disabled>
+                                            Next <i class="fas fa-chevron-right ml-1"></i>
+                                        </button>
+                                    @endif
+
+                                </div>
                             </div>
                         </div>
+                        {{-- END card-header --}}
 
                         <div class="card-body">
                             @if(session('success'))
@@ -48,16 +109,16 @@
                             </p>
 
                             <form method="POST"
-                                  action="{{ route('student.results.save', ['studentId' => $student->id]) }}">
+                                  action="{{ route('student.results.save', ['studentId' => $student->id]) }}"
+                                  id="resultsForm">
                                 @csrf
 
                                 <input type="hidden" name="session_id" value="{{ $currentSession->id }}">
-                                <input type="hidden" name="term_id" value="{{ $currentTerm->id }}">
+                                <input type="hidden" name="term_id"    value="{{ $currentTerm->id }}">
 
                                 <div class="table-responsive">
                                     <table class="table table-bordered align-middle" id="resultsTable">
                                         <thead>
-                                            {{-- Group header --}}
                                             <tr class="text-center">
                                                 <th rowspan="2" class="align-middle" style="min-width:180px;">Subject</th>
                                                 <th colspan="2" style="background:#dbeafe;">
@@ -75,16 +136,12 @@
                                                 <th rowspan="2" class="align-middle" style="min-width:160px;">Comment</th>
                                             </tr>
                                             <tr class="text-center small">
-                                                {{-- 1st Half --}}
                                                 <th style="background:#eff6ff; min-width:90px;">Obtainable</th>
                                                 <th style="background:#eff6ff; min-width:90px;">Obtained</th>
-                                                {{-- 2nd Half --}}
                                                 <th style="background:#f0fdf4; min-width:90px;">Obtainable</th>
                                                 <th style="background:#f0fdf4; min-width:90px;">Obtained</th>
-                                                {{-- Total --}}
                                                 <th style="background:#fefce8; min-width:90px;">Obtainable</th>
                                                 <th style="background:#fefce8; min-width:90px;">Obtained</th>
-                                                {{-- Grade and Comment span from rowspan above --}}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -93,7 +150,7 @@
                                                 <tr class="item-row">
                                                     <td class="font-weight-bold">{{ $subject->course_name }}</td>
 
-                                                    {{-- 1st Half Obtainable (fixed = 30) --}}
+                                                    {{-- 1st Half Obtainable --}}
                                                     <td class="text-center" style="background:#f8fbff;">
                                                         <input type="hidden"
                                                                name="results[{{ $subject->id }}][first_half_obtainable]"
@@ -111,7 +168,7 @@
                                                                placeholder="0–30">
                                                     </td>
 
-                                                    {{-- 2nd Half Obtainable (fixed = 70) --}}
+                                                    {{-- 2nd Half Obtainable --}}
                                                     <td class="text-center" style="background:#f8fdf9;">
                                                         <input type="hidden"
                                                                name="results[{{ $subject->id }}][second_half_obtainable]"
@@ -129,7 +186,7 @@
                                                                placeholder="0–70">
                                                     </td>
 
-                                                    {{-- Total Obtainable (fixed = 100) --}}
+                                                    {{-- Total Obtainable --}}
                                                     <td class="text-center" style="background:#fffef5;">
                                                         <input type="hidden"
                                                                name="results[{{ $subject->id }}][final_obtainable]"
@@ -173,14 +230,28 @@
                                     </table>
                                 </div>
 
-                                <div class="mt-3">
+                                {{-- ── Form action buttons ────────────────────── --}}
+                                <div class="mt-3 d-flex flex-wrap align-items-center" style="gap:8px;">
                                     <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="fas fa-save mr-1"></i> Save Results
                                     </button>
-                                    <a href="{{ url()->previous() }}" class="btn btn-secondary btn-lg ml-2">
+                                    <button type="submit" id="saveAndNextBtn" class="btn btn-success btn-lg"
+                                            @if(!($nextStudent ?? null)) disabled @endif>
+                                        <i class="fas fa-save mr-1"></i>
+                                        Save &amp; Next
+                                        @if($nextStudent ?? null)
+                                            &rarr; {{ $nextStudent->name }}
+                                        @endif
+                                    </button>
+                                    <a href="{{ route('results.selectClass.get', [
+                                            'class_id'   => $class->id,
+                                            'section_id' => $class->section_id,
+                                        ]) }}"
+                                       class="btn btn-secondary btn-lg">
                                         <i class="fas fa-times mr-1"></i> Cancel
                                     </a>
                                 </div>
+
                             </form>
 
                             {{-- Grading Key --}}
@@ -188,7 +259,7 @@
                                 <h6 class="font-weight-bold text-muted mb-2">
                                     <i class="fas fa-info-circle mr-1"></i> Grading Key
                                 </h6>
-                                <table class="table table-sm table-bordered grading-key-table" style="max-width: 420px;">
+                                <table class="table table-sm table-bordered" style="max-width:420px;">
                                     <thead class="thead-light">
                                         <tr>
                                             <th class="text-center">Grade</th>
@@ -208,12 +279,90 @@
                             </div>
 
                         </div>
+                        {{-- END card-body --}}
+
                     </div>
                 </div>
             </section>
         </div>
+
     </div>
 </div>
+
+{{-- ══════════════════════════════════════════════════════════════════════════
+     STICKY BOTTOM NAVIGATION BAR
+══════════════════════════════════════════════════════════════════════════ --}}
+<div id="stickyNav" style="
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #ffffff;
+    border-top: 2px solid #dee2e6;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1040;
+    box-shadow: 0 -3px 10px rgba(0,0,0,.10);
+">
+    {{-- Left: back to list --}}
+    <a href="{{ route('results.selectClass.get', [
+            'class_id'   => $class->id,
+            'section_id' => $class->section_id,
+        ]) }}"
+       class="btn btn-outline-secondary">
+        <i class="fas fa-list mr-1"></i>
+        <span class="d-none d-sm-inline">Back to List</span>
+        <span class="d-sm-none">List</span>
+    </a>
+
+    {{-- Centre: student position indicator --}}
+    @if(isset($studentPosition) && isset($totalStudents))
+        <small class="text-muted d-none d-md-block">
+            <i class="fas fa-user mr-1"></i>
+            {{ $student->name }}
+            &nbsp;&bull;&nbsp;
+            {{ $studentPosition }} / {{ $totalStudents }}
+        </small>
+    @endif
+
+    {{-- Right: prev / next --}}
+    <div style="display:flex; gap:8px;">
+        @if($prevStudent ?? null)
+            <a href="{{ route('student.result.upload', $prevStudent->id) }}"
+               class="btn btn-outline-primary"
+               title="{{ $prevStudent->name }}">
+                <i class="fas fa-chevron-left mr-1"></i>
+                <span class="d-none d-sm-inline">{{ $prevStudent->name }}</span>
+                <span class="d-sm-none">Prev</span>
+            </a>
+        @else
+            <button class="btn btn-outline-secondary" disabled>
+                <i class="fas fa-chevron-left mr-1"></i>
+                <span class="d-none d-sm-inline">Previous</span>
+                <span class="d-sm-none">Prev</span>
+            </button>
+        @endif
+
+        @if($nextStudent ?? null)
+            <a href="{{ route('student.result.upload', $nextStudent->id) }}"
+               class="btn btn-primary"
+               title="{{ $nextStudent->name }}">
+                <span class="d-none d-sm-inline">{{ $nextStudent->name }}</span>
+                <span class="d-sm-none">Next</span>
+                <i class="fas fa-chevron-right ml-1"></i>
+            </a>
+        @else
+            <button class="btn btn-secondary" disabled>
+                <span class="d-none d-sm-inline">Next</span>
+                <span class="d-sm-none">Next</span>
+                <i class="fas fa-chevron-right ml-1"></i>
+            </button>
+        @endif
+    </div>
+</div>
+
+{{-- Push page content above the sticky bar --}}
+<div style="height:62px;"></div>
 
 @include('includes.edit_footer')
 
@@ -231,6 +380,7 @@ input[type=number] { -moz-appearance: textfield; }
 <script>
 $(function () {
 
+    // ── Grade helpers ─────────────────────────────────────────────────────────
     function calculateGrade(total) {
         if (total >= 70) return 'A';
         if (total >= 60) return 'B';
@@ -241,10 +391,11 @@ $(function () {
     }
 
     function gradeColor(grade) {
-        var map = { 'A': '#16a34a', 'B': '#2563eb', 'C': '#0891b2', 'D': '#d97706', 'E': '#6b7280', 'F': '#dc2626' };
+        var map = { 'A':'#16a34a', 'B':'#2563eb', 'C':'#0891b2', 'D':'#d97706', 'E':'#6b7280', 'F':'#dc2626' };
         return map[grade] || '#374151';
     }
 
+    // ── Row recalculation ─────────────────────────────────────────────────────
     function recalcRow($row) {
         var firstVal  = $row.find('.first-half-input').val();
         var secondVal = $row.find('.second-half-input').val();
@@ -272,25 +423,70 @@ $(function () {
         $gradeHidden.val(grade);
     }
 
-    // Inline validation + recalc on input
+    // ── Live validation + recalc on input ─────────────────────────────────────
     $('#resultsTable tbody').on('input', '.score-input', function () {
         var max = parseFloat($(this).data('max'));
         var val = parseFloat($(this).val());
-        if (!isNaN(val) && val > max) {
-            $(this).addClass('is-invalid');
-        } else {
-            $(this).removeClass('is-invalid');
-        }
+        $(this).toggleClass('is-invalid', !isNaN(val) && val > max);
         recalcRow($(this).closest('tr'));
     });
 
-    // Recalc on page load for pre-filled rows
+    // ── Recalc pre-filled rows on page load ───────────────────────────────────
     $('#resultsTable tbody tr.item-row').each(function () {
         recalcRow($(this));
     });
 
-    // Submit validation
-    $('form').on('submit', function (e) {
+    // ── Save & Next button — stores the next-student URL then submits ─────────
+    @if($nextStudent ?? null)
+    var nextStudentUrl = "{{ route('student.result.upload', $nextStudent->id) }}";
+    @endif
+
+    $('#saveAndNextBtn').on('click', function (e) {
+        e.preventDefault();
+
+        // Run the same validation as the normal submit
+        var valid = true;
+        var firstError = null;
+
+        $('#resultsTable tbody tr.item-row').each(function () {
+            var $row = $(this);
+            var subjectName = $row.find('td:first').text().trim();
+
+            $row.find('.score-input').each(function () {
+                var max = parseFloat($(this).data('max'));
+                var val = parseFloat($(this).val());
+                if (!isNaN(val) && val > max) {
+                    valid = false;
+                    $(this).addClass('is-invalid');
+                    if (!firstError) {
+                        var half = $(this).hasClass('first-half-input') ? '1st Half' : '2nd Half';
+                        firstError = '"' + subjectName + '" — ' + half + ': Score (' + val + ') exceeds max (' + max + ').';
+                    }
+                }
+            });
+        });
+
+        if (!valid) {
+            alert(firstError + '\n\nPlease correct the highlighted fields before saving.');
+            $('html, body').animate({ scrollTop: $('.is-invalid').first().offset().top - 150 }, 400);
+            return;
+        }
+
+        @if($nextStudent ?? null)
+        // Redirect to next student after successful form submission
+        $('#resultsForm').attr('action',
+            $('#resultsForm').attr('action') + '?redirect_to=' + encodeURIComponent(nextStudentUrl)
+        );
+        @endif
+
+        $('#resultsForm').submit();
+    });
+
+    // ── Normal submit validation ───────────────────────────────────────────────
+    $('#resultsForm').on('submit', function (e) {
+        // Skip extra validation if triggered by Save & Next (already validated above)
+        if ($(document.activeElement).attr('id') === 'saveAndNextBtn') return;
+
         var valid = true;
         var firstError = null;
 
@@ -318,6 +514,7 @@ $(function () {
             $('html, body').animate({ scrollTop: $('.is-invalid').first().offset().top - 150 }, 400);
         }
     });
+
 });
 </script>
 </body>
