@@ -235,14 +235,14 @@
                                     <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="fas fa-save mr-1"></i> Save Results
                                     </button>
-                                    <button type="submit" id="saveAndNextBtn" class="btn btn-success btn-lg"
+                                    {{-- <button type="submit" id="saveAndNextBtn" class="btn btn-success btn-lg"
                                             @if(!($nextStudent ?? null)) disabled @endif>
                                         <i class="fas fa-save mr-1"></i>
                                         Save &amp; Next
                                         @if($nextStudent ?? null)
                                             &rarr; {{ $nextStudent->name }}
                                         @endif
-                                    </button>
+                                    </button> --}}
                                     <a href="{{ route('results.selectClass.get', [
                                             'class_id'   => $class->id,
                                             'section_id' => $class->section_id,
