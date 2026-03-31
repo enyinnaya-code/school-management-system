@@ -423,6 +423,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/upload-result', [ResultsController::class, 'uploadResult'])->name('results.uploadResult');
     Route::post('/save-result', [ResultsController::class, 'saveResult'])->name('results.saveResult');
 
+    // Activity Log
+Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])
+    ->name('activity.log');
+Route::delete('/activity-log/clear', [App\Http\Controllers\ActivityLogController::class, 'clear'])
+    ->name('activity.log.clear');
+
     Route::post('/results/primary-student/{studentId}/save', [ResultsController::class, 'savePrimaryStudentResults'])
         ->name('results.savePrimaryStudent')
         ->middleware('auth');

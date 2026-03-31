@@ -562,6 +562,15 @@
       @endif
       {{-- END: SYSTEM ADMINISTRATION --}}
 
+      @if(in_array(Auth::user()->user_type, [1, 2]))
+      <li class="menu-header">SYSTEM LOGS</li>
+      <li>
+        <a href="{{ route('activity.log') }}" class="nav-link">
+          <i data-feather="activity"></i><span>Activity Log</span>
+        </a>
+      </li>
+      @endif
+
     </ul>
   </aside>
 </div>
