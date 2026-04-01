@@ -164,10 +164,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tests/{test}/comment', [TestController::class, 'submitComment'])->name('tests.comment');
 
     // Student routes
-     Route::get('/students/export-pdf', [StudentController::class, 'exportStudentsPdf'])->name('students.export.pdf');
+    Route::get('/students/export-pdf', [StudentController::class, 'exportStudentsPdf'])->name('students.export.pdf');
     Route::get('/students/create', [StudentController::class, 'create'])->name('students.create');
     Route::get('/students', [StudentController::class, 'index'])->name('students.index');
-   
+
     Route::get('/get-classes/{section_id}', [StudentController::class, 'getClasses']);
     Route::post('/students', [StudentController::class, 'store'])->name('students.store');
     Route::get('/students/{student}/edit', [StudentController::class, 'edit'])->name('students.edit');
@@ -424,10 +424,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/save-result', [ResultsController::class, 'saveResult'])->name('results.saveResult');
 
     // Activity Log
-Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])
-    ->name('activity.log');
-Route::delete('/activity-log/clear', [App\Http\Controllers\ActivityLogController::class, 'clear'])
-    ->name('activity.log.clear');
+    Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])
+        ->name('activity.log');
+    Route::delete('/activity-log/clear', [App\Http\Controllers\ActivityLogController::class, 'clear'])
+        ->name('activity.log.clear');
 
     Route::post('/results/primary-student/{studentId}/save', [ResultsController::class, 'savePrimaryStudentResults'])
         ->name('results.savePrimaryStudent')

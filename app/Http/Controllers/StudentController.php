@@ -131,6 +131,22 @@ class StudentController extends Controller
         return response()->json(['classes' => $classes]);
     }
 
+    /**
+     * Helper: build the filter query string array from request for redirect persistence
+     */
+    private function getFilterParams(Request $request = null)
+    {
+        $req = $request ?? request();
+        return array_filter([
+            'filter_name'       => $req->get('filter_name'),
+            'filter_section'    => $req->get('filter_section'),
+            'filter_class'      => $req->get('filter_class'),
+            'filter_gender'     => $req->get('filter_gender'),
+            'filter_date_added' => $req->get('filter_date_added'),
+            'filter_student_id' => $req->get('filter_student_id'),
+        ]);
+    }
+
     public function index()
     {
         if (!in_array(Auth::user()->user_type, [1, 2, 3, 7, 8, 9, 10])) {
@@ -152,7 +168,12 @@ class StudentController extends Controller
             $query->where('name', 'like', "%{$filterName}%");
         }
 
-        // Fix: Filter students by section through their class's section_id
+        // Filter by student ID (admission_no)
+        if ($filterStudentId = request('filter_student_id')) {
+            $query->where('admission_no', 'like', "%{$filterStudentId}%");
+        }
+
+        // Filter students by section through their class's section_id
         if ($selectedSection) {
             $query->whereHas('class', function ($q) use ($selectedSection) {
                 $q->where('section_id', $selectedSection);
@@ -180,31 +201,41 @@ class StudentController extends Controller
     {
         $student->is_active = 0;
         $student->save();
-        return redirect()->route('students.index')->with('success', 'Student suspended.');
+
+        $filters = $this->getFilterParams();
+        return redirect()->route('students.index', $filters)->with('success', 'Student suspended.');
     }
 
     public function activate(User $student)
     {
         $student->is_active = 1;
         $student->save();
-        return redirect()->route('students.index')->with('success', 'Student activated.');
+
+        $filters = $this->getFilterParams();
+        return redirect()->route('students.index', $filters)->with('success', 'Student activated.');
     }
 
     public function resetPassword(User $student)
     {
         $student->password = bcrypt('123456');
         $student->save();
-        return redirect()->route('students.index')->with('success', 'Password reset to 123456.');
+
+        $filters = $this->getFilterParams();
+        return redirect()->route('students.index', $filters)->with('success', 'Password reset to 123456.');
     }
 
     public function destroy(User $student)
     {
         if ($student->is_active) {
-            return redirect()->route('students.index')->with('error', 'Active students cannot be deleted. Please suspend them first.');
+            $filters = $this->getFilterParams();
+            return redirect()->route('students.index', $filters)
+                ->with('error', 'Active students cannot be deleted. Please suspend them first.');
         }
 
         $student->delete();
-        return redirect()->route('students.index')->with('success', 'Student deleted successfully.');
+
+        $filters = $this->getFilterParams();
+        return redirect()->route('students.index', $filters)->with('success', 'Student deleted successfully.');
     }
 
     /**
@@ -518,16 +549,22 @@ class StudentController extends Controller
             'class_id' => $validated['class_id'],
         ]);
 
-        return redirect()->route('students.index')->with('success', 'Student updated successfully.');
+        // Restore filters after edit if they were passed along
+        $filters = array_filter([
+            'filter_name'       => $request->get('_filter_name'),
+            'filter_section'    => $request->get('_filter_section'),
+            'filter_class'      => $request->get('_filter_class'),
+            'filter_gender'     => $request->get('_filter_gender'),
+            'filter_date_added' => $request->get('_filter_date_added'),
+            'filter_student_id' => $request->get('_filter_student_id'),
+        ]);
+
+        return redirect()->route('students.index', $filters)->with('success', 'Student updated successfully.');
     }
 
 
     public function myStudents()
     {
-        // if (Auth::user()->user_type != 3) {
-        //     abort(403, 'Unauthorized access.');
-        // }
-
         $teacher = Auth::user();
 
         // Load teacher's assigned classes (with section for display)
@@ -573,7 +610,6 @@ class StudentController extends Controller
     public function getThirdTerm($sessionId)
     {
         // Find the third term for this session
-        // Assuming term naming convention includes "Third" or position = 3
         $thirdTerm = Term::where('session_id', $sessionId)
             ->where(function ($query) {
                 $query->where('name', 'LIKE', '%Third%')
@@ -597,11 +633,9 @@ class StudentController extends Controller
 
     /**
      * Get students for promotion preview with cumulative average calculation
-     * Cumulative Average = (Term 1 Average + Term 2 Average + Term 3 Average) / Number of Terms
      */
     public function getPromotionPreview(Request $request)
     {
-        // Log incoming request for debugging
         Log::info('Promotion Preview Request:', $request->all());
 
         $request->validate([
@@ -614,23 +648,17 @@ class StudentController extends Controller
         $sessionId = $request->session_id;
         $termId = $request->term_id;
 
-        // Verify session and term exist
         $session = Session::find($sessionId);
         $term = Term::find($termId);
 
         if (!$session) {
-            return response()->json([
-                'error' => 'Invalid session selected.'
-            ], 400);
+            return response()->json(['error' => 'Invalid session selected.'], 400);
         }
 
         if (!$term) {
-            return response()->json([
-                'error' => 'Invalid term selected.'
-            ], 400);
+            return response()->json(['error' => 'Invalid term selected.'], 400);
         }
 
-        // Verify that the selected class belongs to the selected section
         $currentClass = SchoolClass::where('id', $request->current_class_id)
             ->where('section_id', $request->section_id)
             ->first();
@@ -647,7 +675,6 @@ class StudentController extends Controller
             ->with(['class.section'])
             ->get()
             ->map(function ($student) use ($sessionId) {
-                // Get all terms for the session
                 $sessionTerms = Term::where('session_id', $sessionId)
                     ->orderBy('id')
                     ->get();
@@ -655,7 +682,6 @@ class StudentController extends Controller
                 $termAverages = [];
 
                 foreach ($sessionTerms as $term) {
-                    // Get the student's class for this term from class_user table
                     $studentClass = DB::table('class_user')
                         ->where('user_id', $student->id)
                         ->first();
@@ -666,7 +692,6 @@ class StudentController extends Controller
                         $classId = $studentClass->school_class_id;
                     }
 
-                    // Get total number of subjects for this class from class_course table
                     $subjectCount = DB::table('class_course')
                         ->where('school_class_id', $classId)
                         ->count();
@@ -676,21 +701,17 @@ class StudentController extends Controller
                         continue;
                     }
 
-                    // Get sum of total scores for this student in this term
                     $totalScores = Result::where('student_id', $student->id)
                         ->where('session_id', $sessionId)
                         ->where('term_id', $term->id)
                         ->sum('total');
 
-                    // Check if student has any results for this term
                     $resultsCount = Result::where('student_id', $student->id)
                         ->where('session_id', $sessionId)
                         ->where('term_id', $term->id)
                         ->count();
 
                     if ($resultsCount > 0) {
-                        // Term Average = Total Scores / Subject Count
-                        // Make sure this is already a percentage (0-100)
                         $termAverage = ($totalScores / $subjectCount);
                         $termAverages[] = round($termAverage, 2);
 
@@ -698,7 +719,6 @@ class StudentController extends Controller
                     }
                 }
 
-                // Calculate cumulative average as average of all term averages
                 $cumulativeAverage = 0;
                 if (count($termAverages) > 0) {
                     $cumulativeAverage = round(array_sum($termAverages) / count($termAverages), 2);
@@ -723,7 +743,6 @@ class StudentController extends Controller
                 ];
             });
 
-        // Get all classes in the same section for "next class" options
         $nextClasses = SchoolClass::where('section_id', $request->section_id)
             ->where('id', '!=', $request->current_class_id)
             ->orderBy('name')
@@ -768,12 +787,10 @@ class StudentController extends Controller
 
                 if ($student) {
                     if (!empty($studentData['next_class_id'])) {
-                        // Promote student
                         $student->class_id = $studentData['next_class_id'];
                         $student->save();
                         $promotedCount++;
                     } else {
-                        // Student repeats (stays in same class)
                         $repeatingCount++;
                     }
                 }
@@ -798,7 +815,6 @@ class StudentController extends Controller
 
     /**
      * Get promotion preview for multiple classes
-     * Supports selecting multiple source classes (e.g., JSS1A, JSS1B, JSS1C)
      */
     public function getPromotionPreviewMultiple(Request $request)
     {
@@ -816,7 +832,6 @@ class StudentController extends Controller
         $termId = $request->term_id;
         $classIds = $request->class_ids;
 
-        // Verify session and term exist
         $session = Session::find($sessionId);
         $term = Term::find($termId);
 
@@ -828,7 +843,6 @@ class StudentController extends Controller
             return response()->json(['error' => 'Invalid term selected.'], 400);
         }
 
-        // Verify all selected classes belong to the selected section
         $validClasses = SchoolClass::where('section_id', $request->section_id)
             ->whereIn('id', $classIds)
             ->count();
@@ -839,14 +853,12 @@ class StudentController extends Controller
             ], 400);
         }
 
-        // Get students from all selected classes
         $students = User::where('user_type', 4)
             ->whereIn('class_id', $classIds)
             ->where('is_active', 1)
             ->with(['class.section'])
             ->get()
             ->map(function ($student) use ($sessionId) {
-                // Get all terms for the session
                 $sessionTerms = Term::where('session_id', $sessionId)
                     ->orderBy('id')
                     ->get();
@@ -854,14 +866,12 @@ class StudentController extends Controller
                 $termAverages = [];
 
                 foreach ($sessionTerms as $term) {
-                    // Get student's class for this term
                     $studentClass = DB::table('class_user')
                         ->where('user_id', $student->id)
                         ->first();
 
                     $classId = $studentClass ? $studentClass->school_class_id : $student->class_id;
 
-                    // Get total number of subjects for this class
                     $subjectCount = DB::table('class_course')
                         ->where('school_class_id', $classId)
                         ->count();
@@ -871,13 +881,11 @@ class StudentController extends Controller
                         continue;
                     }
 
-                    // Get sum of total scores for this student in this term
                     $totalScores = Result::where('student_id', $student->id)
                         ->where('session_id', $sessionId)
                         ->where('term_id', $term->id)
                         ->sum('total');
 
-                    // Check if student has any results for this term
                     $resultsCount = Result::where('student_id', $student->id)
                         ->where('session_id', $sessionId)
                         ->where('term_id', $term->id)
@@ -891,7 +899,6 @@ class StudentController extends Controller
                     }
                 }
 
-                // Calculate cumulative average
                 $cumulativeAverage = 0;
                 if (count($termAverages) > 0) {
                     $cumulativeAverage = round(array_sum($termAverages) / count($termAverages), 2);
@@ -915,13 +922,11 @@ class StudentController extends Controller
                 ];
             });
 
-        // Get potential destination classes (all classes in same section except source classes)
         $nextClasses = SchoolClass::where('section_id', $request->section_id)
             ->whereNotIn('id', $classIds)
             ->orderBy('name')
             ->get();
 
-        // Also get current enrollment counts for destination classes
         $classEnrollments = User::where('user_type', 4)
             ->where('is_active', 1)
             ->whereIn('class_id', $nextClasses->pluck('id'))
@@ -968,7 +973,6 @@ class StudentController extends Controller
             $config = json_decode($request->promotion_config, true);
             $currentClassIds = json_decode($request->current_class_ids, true);
 
-            // Generate unique batch ID
             $promotionBatchId = 'PROMO_' . date('Y') . '_' . str_pad(
                 DB::table('promotions')->whereYear('created_at', date('Y'))->count() + 1,
                 4,
@@ -976,11 +980,9 @@ class StudentController extends Controller
                 STR_PAD_LEFT
             );
 
-            // Get source class names
             $sourceClasses = SchoolClass::whereIn('id', $currentClassIds)->pluck('name')->toArray();
             $sourceClassNames = implode(', ', $sourceClasses);
 
-            // Create main promotion record
             $promotionId = DB::table('promotions')->insertGetId([
                 'promotion_batch_id' => $promotionBatchId,
                 'session_id' => $request->session_id,
@@ -991,8 +993,8 @@ class StudentController extends Controller
                 'promotion_type' => $request->promotion_type,
                 'promotion_config' => $request->promotion_config,
                 'total_students' => count($request->students),
-                'promoted_count' => 0, // Will update after processing
-                'repeating_count' => 0, // Will update after processing
+                'promoted_count' => 0,
+                'repeating_count' => 0,
                 'destination_classes_count' => count($config['destination_classes'] ?? []),
                 'status' => 'pending',
                 'processed_by' => Auth::id(),
@@ -1001,7 +1003,6 @@ class StudentController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Track capacity usage
             $capacityUsed = [];
             $capacityRecords = [];
 
@@ -1009,7 +1010,6 @@ class StudentController extends Controller
                 foreach ($config['capacities'] as $classId => $capacity) {
                     $capacityUsed[$classId] = 0;
 
-                    // Get initial enrollment
                     $initialEnrollment = User::where('user_type', 4)
                         ->where('class_id', $classId)
                         ->where('is_active', 1)
@@ -1035,7 +1035,6 @@ class StudentController extends Controller
             $repeatingCount = 0;
             $promotionRecords = [];
 
-            // Process each student
             foreach ($request->students as $studentData) {
                 $student = User::where('user_type', 4)
                     ->where('id', $studentData['student_id'])
@@ -1046,10 +1045,8 @@ class StudentController extends Controller
                     continue;
                 }
 
-                // Get student's current class info
                 $originalClass = SchoolClass::find($student->class_id);
 
-                // Get student's cumulative average
                 $cumulativeAverage = $this->calculateCumulativeAverage(
                     $student->id,
                     $request->session_id
@@ -1063,7 +1060,6 @@ class StudentController extends Controller
                 if (!empty($studentData['next_class_id'])) {
                     $nextClassId = $studentData['next_class_id'];
 
-                    // Verify capacity
                     $canPromote = true;
                     if (isset($config['capacities'][$nextClassId])) {
                         $maxCapacity = $config['capacities'][$nextClassId]['max'];
@@ -1080,7 +1076,6 @@ class StudentController extends Controller
                     }
 
                     if ($canPromote) {
-                        // Update student's class
                         $student->class_id = $nextClassId;
                         $student->save();
 
@@ -1092,7 +1087,6 @@ class StudentController extends Controller
                             ? "Met performance criteria (Avg: {$cumulativeAverage}%)"
                             : 'Bulk promotion';
 
-                        // Update capacity tracking
                         if (isset($capacityUsed[$nextClassId])) {
                             $capacityUsed[$nextClassId]++;
                             $capacityRecords[$nextClassId]['students_assigned']++;
@@ -1109,7 +1103,6 @@ class StudentController extends Controller
                     $repeatingCount++;
                 }
 
-                // Create promotion record for this student
                 $promotionRecords[] = [
                     'promotion_id' => $promotionId,
                     'student_id' => $student->id,
@@ -1127,17 +1120,14 @@ class StudentController extends Controller
                 ];
             }
 
-            // Batch insert promotion records
             if (!empty($promotionRecords)) {
                 DB::table('promotion_records')->insert($promotionRecords);
             }
 
-            // Insert capacity records
             if (!empty($capacityRecords)) {
                 DB::table('promotion_class_capacities')->insert(array_values($capacityRecords));
             }
 
-            // Update main promotion record with final counts
             DB::table('promotions')->where('id', $promotionId)->update([
                 'promoted_count' => $promotedCount,
                 'repeating_count' => $repeatingCount,
@@ -1147,7 +1137,6 @@ class StudentController extends Controller
 
             DB::commit();
 
-            // Build success message
             $message = "Successfully completed promotion batch {$promotionBatchId}: " .
                 "{$promotedCount} student(s) promoted, " .
                 "{$repeatingCount} student(s) repeating current class";
@@ -1161,7 +1150,6 @@ class StudentController extends Controller
             Log::error("Promotion error: " . $e->getMessage());
             Log::error($e->getTraceAsString());
 
-            // Mark promotion as failed if it was created
             if (isset($promotionId)) {
                 DB::table('promotions')->where('id', $promotionId)->update([
                     'status' => 'failed',
@@ -1263,13 +1251,9 @@ class StudentController extends Controller
     /**
      * View promotion history
      */
-    /**
-     * View promotion history
-     */
     public function promotionHistory()
     {
         $promotions = DB::table('promotions as p')
-            // FIXED: Changed 'sessions' to 'school_sessions'
             ->leftJoin('school_sessions as s', 'p.session_id', '=', 's.id')
             ->leftJoin('terms as t', 'p.term_id', '=', 't.id')
             ->leftJoin('sections as sec', 'p.section_id', '=', 'sec.id')
@@ -1311,16 +1295,12 @@ class StudentController extends Controller
         return view('students.promotion_history', compact('promotions'));
     }
 
-
-
-
     /**
      * View specific promotion details
      */
     public function viewPromotionDetails($promotionId)
     {
         $promotion = DB::table('promotions as p')
-            // FIXED: Changed 'sessions' to 'school_sessions'
             ->join('school_sessions as s', 'p.session_id', '=', 's.id')
             ->join('terms as t', 'p.term_id', '=', 't.id')
             ->join('sections as sec', 'p.section_id', '=', 'sec.id')
@@ -1344,7 +1324,6 @@ class StudentController extends Controller
 
         $students = DB::table('promotion_records as pr')
             ->join('promotions as p', 'pr.promotion_id', '=', 'p.id')
-            // FIXED: Changed 'sessions' to 'school_sessions'
             ->join('school_sessions as s', 'p.session_id', '=', 's.id')
             ->join('terms as t', 'p.term_id', '=', 't.id')
             ->join('users as u', 'pr.student_id', '=', 'u.id')
@@ -1371,7 +1350,6 @@ class StudentController extends Controller
 
         $capacities = DB::table('promotion_class_capacities as pcc')
             ->join('promotions as p', 'pcc.promotion_id', '=', 'p.id')
-            // FIXED: Changed 'sessions' to 'school_sessions'
             ->join('school_sessions as s', 'p.session_id', '=', 's.id')
             ->where('pcc.promotion_id', $promotionId)
             ->select(
@@ -1388,7 +1366,6 @@ class StudentController extends Controller
 
         return view('students.promotion_details', compact('promotion', 'students', 'capacities'));
     }
-
 
     /**
      * Rollback a promotion
@@ -1411,7 +1388,6 @@ class StudentController extends Controller
                 throw new \Exception('This promotion has already been rolled back');
             }
 
-            // Get all promotion records
             $records = DB::table('promotion_records')
                 ->where('promotion_id', $promotionId)
                 ->where('is_rolled_back', false)
@@ -1420,13 +1396,10 @@ class StudentController extends Controller
             $rolledBackCount = 0;
 
             foreach ($records as $record) {
-                // Only rollback students who were actually promoted
                 if ($record->promotion_status === 'promoted' && $record->new_class_id) {
-                    // Restore student to original class
                     User::where('id', $record->student_id)
                         ->update(['class_id' => $record->original_class_id]);
 
-                    // Mark record as rolled back
                     DB::table('promotion_records')
                         ->where('id', $record->id)
                         ->update([
@@ -1439,7 +1412,6 @@ class StudentController extends Controller
                 }
             }
 
-            // Update main promotion record
             DB::table('promotions')->where('id', $promotionId)->update([
                 'status' => 'rolled_back',
                 'rolled_back_by' => Auth::id(),
