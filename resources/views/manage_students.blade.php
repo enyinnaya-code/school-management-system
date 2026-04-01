@@ -358,7 +358,7 @@
 
     @endforeach
 
-    @include('includes.new_footer')
+    @include('includes.edit_footer')
 
     <script>
     document.addEventListener('DOMContentLoaded', function () {
