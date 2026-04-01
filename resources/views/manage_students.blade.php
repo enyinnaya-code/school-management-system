@@ -177,7 +177,7 @@
                                                         <span class="badge badge-danger">Deactivated</span>
                                                     @endif
                                                 </td>
-                                                <td>
+                                                <td class="d-flex g-2">
                                                     {{-- Edit: pass current filters as query params so edit page can relay them back --}}
                                                     <a href="{{ route('students.edit', array_merge(['student' => $student->id], request()->only(['filter_name','filter_admission_no','filter_section','filter_class','filter_gender','filter_date_added','page']))) }}"
                                                         class="btn m-1 btn-sm btn-info" title="Edit">
