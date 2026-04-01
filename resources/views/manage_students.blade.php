@@ -16,7 +16,7 @@
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h4>Manage Students</h4>
                                 <div class="d-flex gap-2">
-                                    {{-- Export PDF button - preserves current section/class filters --}}
+                                    {{-- Export PDF button --}}
                                     <a href="{{ route('students.export.pdf', request()->only(['filter_section', 'filter_class'])) }}"
                                         class="btn btn-danger btn-sm mr-2" target="_blank"
                                         title="Export credentials as PDF">
@@ -31,39 +31,32 @@
                             </div>
 
                             <!-- Filter Collapse Panel -->
-                            {{-- Auto-expand the panel if any filter is active --}}
-                            <div class="collapse {{ request()->hasAny(['filter_name','filter_section','filter_class','filter_gender','filter_date_added','filter_student_id']) ? 'show' : '' }}" id="filterCollapse">
+                            <div class="collapse" id="filterCollapse">
                                 <div class="card-body row px-5 pb-0">
-                                    <form action="{{ route('students.index') }}" method="GET" class="row mb-4 w-100">
+                                    <form action="{{ route('students.index') }}" method="GET" class="row mb-4">
                                         <div class="form-group col-md-3">
                                             <label>Student Name</label>
                                             <input type="text" class="form-control" name="filter_name"
-                                                value="{{ request('filter_name') }}" placeholder="Search by name...">
-                                        </div>
-                                        <div class="form-group col-md-3">
-                                            <label>Student ID (Admission No.)</label>
-                                            <input type="text" class="form-control" name="filter_student_id"
-                                                value="{{ request('filter_student_id') }}" placeholder="e.g. 0042">
+                                                value="{{ request('filter_name') }}">
                                         </div>
                                         <div class="form-group col-md-3">
                                             <label>Section</label>
                                             <select class="form-control" name="filter_section">
                                                 <option value="">-- All Sections --</option>
                                                 @foreach($sections as $section)
-                                                    <option value="{{ $section->id }}" {{ request('filter_section') == $section->id ? 'selected' : '' }}>
-                                                        {{ $section->section_name }}
-                                                    </option>
+                                                <option value="{{ $section->id }}" {{
+                                                    request('filter_section')==$section->id ? 'selected' : '' }}>{{
+                                                    $section->section_name }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
                                         <div class="form-group col-md-3">
                                             <label>Class</label>
-                                            <select class="form-control" name="filter_class" id="filter_class_select">
+                                            <select class="form-control" name="filter_class">
                                                 <option value="">-- Select Class --</option>
                                                 @foreach($classes as $class)
-                                                    <option value="{{ $class->id }}" {{ request('filter_class') == $class->id ? 'selected' : '' }}>
-                                                        {{ $class->name }}
-                                                    </option>
+                                                <option value="{{ $class->id }}" {{ request('filter_class')==$class->id
+                                                    ? 'selected' : '' }}>{{ $class->name }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -71,8 +64,10 @@
                                             <label>Gender</label>
                                             <select class="form-control" name="filter_gender">
                                                 <option value="">-- Select Gender --</option>
-                                                <option value="Male" {{ request('filter_gender') == 'Male' ? 'selected' : '' }}>Male</option>
-                                                <option value="Female" {{ request('filter_gender') == 'Female' ? 'selected' : '' }}>Female</option>
+                                                <option value="Male" {{ request('filter_gender')=='Male' ? 'selected'
+                                                    : '' }}>Male</option>
+                                                <option value="Female" {{ request('filter_gender')=='Female'
+                                                    ? 'selected' : '' }}>Female</option>
                                             </select>
                                         </div>
                                         <div class="form-group col-md-3">
@@ -80,7 +75,7 @@
                                             <input type="date" class="form-control" name="filter_date_added"
                                                 value="{{ request('filter_date_added') }}">
                                         </div>
-                                        <div class="form-group col-md-3 d-flex align-items-end">
+                                        <div class="form-group col-md-3">
                                             <button type="submit" class="btn btn-primary mr-2">
                                                 <i class="fas fa-search"></i> Apply Filters
                                             </button>
@@ -91,72 +86,60 @@
                                     </form>
                                 </div>
                             </div>
-
                             <div class="card-body">
-
-                                {{-- Active filter badges --}}
-                                @if(request('filter_name') || request('filter_section') || request('filter_class') || request('filter_gender') || request('filter_date_added') || request('filter_student_id'))
+                                <!-- Table to display students -->
+                                @if(request('filter_name') || request('filter_section') || request('filter_class') ||
+                                request('filter_gender') || request('filter_date_added'))
                                 <div class="mb-3">
                                     <h6>Active Filters:</h6>
                                     <div class="active-filters">
-
                                         @if(request('filter_name'))
-                                            <span class="badge badge-info mr-2">Student Name: {{ request('filter_name') }}</span>
-                                        @endif
-
-                                        @if(request('filter_student_id'))
-                                            <span class="badge badge-info mr-2">Student ID: {{ request('filter_student_id') }}</span>
+                                        <span class="badge badge-info mr-2">Student Name: {{ request('filter_name')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_section'))
-                                            @php $selectedSection = $sections->firstWhere('id', request('filter_section')); @endphp
-                                            <span class="badge badge-info mr-2">
-                                                Section: {{ $selectedSection ? $selectedSection->section_name : 'N/A' }}
-                                            </span>
+                                        @php
+                                        $selectedSection = $sections->firstWhere('id', request('filter_section'));
+                                        @endphp
+                                        <span class="badge badge-info mr-2">
+                                            Section: {{ $selectedSection ? $selectedSection->section_name : 'N/A' }}
+                                        </span>
                                         @endif
 
                                         @if(request('filter_class'))
-                                            @php $selectedClass = $classes->firstWhere('id', request('filter_class')); @endphp
-                                            <span class="badge badge-info mr-2">
-                                                Class: {{ $selectedClass ? $selectedClass->name : 'N/A' }}
-                                            </span>
+                                        @php
+                                        $selectedClass = $classes->firstWhere('id', request('filter_class'));
+                                        @endphp
+                                        <span class="badge badge-info mr-2">
+                                            Class: {{ $selectedClass ? $selectedClass->name : 'N/A' }}
+                                        </span>
                                         @endif
 
                                         @if(request('filter_gender'))
-                                            <span class="badge badge-info mr-2">Gender: {{ request('filter_gender') }}</span>
+                                        <span class="badge badge-info mr-2">Gender: {{ request('filter_gender')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_date_added'))
-                                            <span class="badge badge-info mr-2">Date Added: {{ request('filter_date_added') }}</span>
+                                        <span class="badge badge-info mr-2">Date Added: {{ request('filter_date_added')
+                                            }}</span>
                                         @endif
 
-                                        <a href="{{ route('students.index') }}" class="btn btn-sm m-1 btn-outline-danger">
+                                        <a href="{{ route('students.index') }}"
+                                            class="btn btn-sm m-1 btn-outline-danger">
                                             <i class="fas fa-times"></i> Clear All
                                         </a>
                                     </div>
                                 </div>
-                                @endif
 
-                                {{-- Flash messages --}}
-                                @if(session('success'))
-                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                        <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
-                                        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-                                    </div>
-                                @endif
-                                @if(session('error'))
-                                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                        <i class="fas fa-exclamation-circle mr-2"></i>{{ session('error') }}
-                                        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-                                    </div>
                                 @endif
 
                                 <div class="table-responsive">
-                                    <table class="table table-striped table-hover" style="width:100%;">
+                                    <table class="table table-striped table-hover" id="" style="width:100%;">
                                         <thead>
                                             <tr>
                                                 <th>S/N</th>
-                                                <th>Student ID</th>
                                                 <th>Name</th>
                                                 <th>Email</th>
                                                 <th>Gender</th>
@@ -167,27 +150,24 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @forelse($students as $index => $student)
+                                            @foreach($students as $index => $student)
                                             <tr>
                                                 <td>{{ $students->firstItem() + $index }}</td>
-                                                <td>
-                                                    <span class="badge badge-secondary">{{ $student->admission_no ?? 'N/A' }}</span>
-                                                </td>
                                                 <td>{{ $student->name }}</td>
-                                                <td>{{ $student->email ?? '-' }}</td>
+                                                <td>{{ $student->email }}</td>
                                                 <td>{{ ucfirst($student->gender ?? '-') }}</td>
                                                 <td>{{ $student->class->name ?? 'N/A' }}</td>
                                                 <td>{{ $student->created_at->format('d M, Y') }}</td>
                                                 <td>
                                                     @if($student->is_active)
-                                                        <span class="badge badge-success">Active</span>
+                                                    <span class="badge badge-success">Active</span>
                                                     @else
-                                                        <span class="badge badge-danger">Deactivated</span>
+                                                    <span class="badge badge-danger">Deactivated</span>
                                                     @endif
                                                 </td>
+
                                                 <td>
-                                                    {{-- Edit: passes current filters as query params so edit_student form can relay them back --}}
-                                                    <a href="{{ route('students.edit', array_merge(['student' => $student->id], request()->only(['filter_name','filter_section','filter_class','filter_gender','filter_date_added','filter_student_id']))) }}"
+                                                    <a href="{{ route('students.edit', $student->id) }}"
                                                         class="btn m-1 btn-sm btn-info" title="Edit">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
@@ -200,18 +180,19 @@
                                                         <i class="fas fa-chart-bar"></i>
                                                     </a>
 
+
                                                     @if($student->is_active)
-                                                        <button type="button" class="btn m-1 btn-sm btn-warning"
-                                                            title="Suspend" data-toggle="modal"
-                                                            data-target="#suspendModal{{ $student->id }}">
-                                                            <i class="fas fa-user-slash"></i>
-                                                        </button>
+                                                    <button type="button" class="btn m-1 btn-sm btn-warning"
+                                                        title="Suspend" data-toggle="modal"
+                                                        data-target="#suspendModal{{ $student->id }}">
+                                                        <i class="fas fa-user-slash"></i>
+                                                    </button>
                                                     @else
-                                                        <button type="button" class="btn btn-sm m-1 btn-success"
-                                                            title="Activate" data-toggle="modal"
-                                                            data-target="#activateModal{{ $student->id }}">
-                                                            <i class="fas fa-user-check"></i>
-                                                        </button>
+                                                    <button type="button" class="btn btn-sm m-1 btn-success"
+                                                        title="Activate" data-toggle="modal"
+                                                        data-target="#activateModal{{ $student->id }}">
+                                                        <i class="fas fa-user-check"></i>
+                                                    </button>
                                                     @endif
 
                                                     <button type="button" class="btn btn-sm m-1 btn-secondary"
@@ -226,15 +207,9 @@
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </td>
+
                                             </tr>
-                                            @empty
-                                            <tr>
-                                                <td colspan="9" class="text-center text-muted py-4">
-                                                    <i class="fas fa-users fa-2x mb-2 d-block"></i>
-                                                    No students found matching the current filters.
-                                                </td>
-                                            </tr>
-                                            @endforelse
+                                            @endforeach
                                         </tbody>
                                     </table>
                                     <div class="mt-3">
@@ -249,20 +224,19 @@
         </div>
     </div>
 
-    {{-- ============================================================
-         MODALS — rendered once per student (no duplicates)
-         Each form posts to the action route + appends filter params
-         so the controller redirect lands back with filters intact.
-    ============================================================ --}}
-    @foreach($students as $student)
+    <!-- Add these modals at the end of your page, before the @include('includes.footer') -->
 
-    {{-- Suspend Modal --}}
-    <div class="modal fade" id="suspendModal{{ $student->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Suspend Student Confirmation Modal -->
+    @foreach($students as $student)
+    <div class="modal fade" id="suspendModal{{ $student->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="suspendModalLabel{{ $student->id }}" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Suspend Student</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <h5 class="modal-title" id="suspendModalLabel{{ $student->id }}">Suspend Student</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <div class="modal-body">
                     Are you sure you want to suspend <strong>{{ $student->name }}</strong>?
@@ -273,10 +247,6 @@
                     <form action="{{ route('students.suspend', $student->id) }}" method="POST">
                         @csrf
                         @method('PATCH')
-                        {{-- Pass current filters so controller redirect preserves them --}}
-                        @foreach(request()->only(['filter_name','filter_section','filter_class','filter_gender','filter_date_added','filter_student_id']) as $key => $value)
-                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                        @endforeach
                         <button type="submit" class="btn btn-warning">Yes, Suspend Student</button>
                     </form>
                 </div>
@@ -284,13 +254,16 @@
         </div>
     </div>
 
-    {{-- Activate Modal --}}
-    <div class="modal fade" id="activateModal{{ $student->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Activate Student Confirmation Modal -->
+    <div class="modal fade" id="activateModal{{ $student->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="activateModalLabel{{ $student->id }}" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Activate Student</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <h5 class="modal-title" id="activateModalLabel{{ $student->id }}">Activate Student</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <div class="modal-body">
                     Are you sure you want to activate <strong>{{ $student->name }}</strong>?
@@ -301,9 +274,6 @@
                     <form action="{{ route('students.activate', $student->id) }}" method="POST">
                         @csrf
                         @method('PATCH')
-                        @foreach(request()->only(['filter_name','filter_section','filter_class','filter_gender','filter_date_added','filter_student_id']) as $key => $value)
-                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                        @endforeach
                         <button type="submit" class="btn btn-success">Yes, Activate Student</button>
                     </form>
                 </div>
@@ -311,26 +281,26 @@
         </div>
     </div>
 
-    {{-- Reset Password Modal --}}
-    <div class="modal fade" id="resetPasswordModal{{ $student->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Reset Password Confirmation Modal -->
+    <div class="modal fade" id="resetPasswordModal{{ $student->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="resetPasswordModalLabel{{ $student->id }}" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Reset Password</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <h5 class="modal-title" id="resetPasswordModalLabel{{ $student->id }}">Reset Password</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <div class="modal-body">
                     Are you sure you want to reset the password for <strong>{{ $student->name }}</strong>?
-                    <p class="text-info mt-2">Password will be reset to <strong>123456</strong>.</p>
+                    <p class="text-info mt-2">Password will be reset to 123456</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <form action="{{ route('students.reset_password', $student->id) }}" method="POST">
                         @csrf
                         @method('PATCH')
-                        @foreach(request()->only(['filter_name','filter_section','filter_class','filter_gender','filter_date_added','filter_student_id']) as $key => $value)
-                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                        @endforeach
                         <button type="submit" class="btn btn-info">Yes, Reset Password</button>
                     </form>
                 </div>
@@ -338,13 +308,17 @@
         </div>
     </div>
 
-    {{-- Delete Modal --}}
-    <div class="modal fade" id="deleteModal{{ $student->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Delete Student Confirmation Modal -->
+    <div class="modal fade" id="deleteModal{{ $student->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="deleteModalLabel{{ $student->id }}" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Delete Student</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <h5 class="modal-title" id="deleteModalLabel{{ $student->id }}">Delete Student</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-danger">
@@ -358,71 +332,121 @@
                     <form action="{{ route('students.destroy', $student->id) }}" method="POST">
                         @csrf
                         @method('DELETE')
-                        @foreach(request()->only(['filter_name','filter_section','filter_class','filter_gender','filter_date_added','filter_student_id']) as $key => $value)
-                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                        @endforeach
                         <button type="submit" class="btn btn-danger">Yes, Delete Student</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
-
     @endforeach
 
-    @include('includes.new_footer')
 
+    <!-- Replace the existing delete form with a button that triggers the modal -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click handlers for delete buttons
+            const deleteButtons = document.querySelectorAll('.delete-student-btn');
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const studentId = this.getAttribute('data-student-id');
+                    $('#deleteModal' + studentId).modal('show');
+                });
+            });
+        });
+    </script>
+
+    <!-- Delete Student Confirmation Modal -->
+    @foreach($students as $student)
+    <div class="modal fade" id="deleteModal{{ $student->id }}" tabindex="-1" role="dialog"
+        aria-labelledby="deleteModalLabel{{ $student->id }}" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel{{ $student->id }}">Delete Student</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> Warning: This action cannot be undone!
+                    </div>
+                    <p>Are you sure you want to permanently delete <strong>{{ $student->name }}</strong>?</p>
+                    <p>All associated student data will be removed from the system.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <form action="{{ route('students.destroy', $student->id) }}" method="POST">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger">Yes, Delete Student</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endforeach
+
+
+    @include('includes.new_footer')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const sectionSelect = document.querySelector('select[name="filter_section"]');
-            const classSelect   = document.getElementById('filter_class_select');
+    const sectionSelect = document.querySelector('select[name="filter_section"]');
+    const classSelect = document.querySelector('select[name="filter_class"]');
 
-            if (!sectionSelect || !classSelect) return;
+    if (!sectionSelect || !classSelect) return;
 
-            function updateClasses(sectionId, preserveClassId) {
-                if (!sectionId) {
-                    classSelect.innerHTML = '<option value="">-- Select Class --</option>';
-                    return;
+    function updateClasses(sectionId) {
+        if (!sectionId) {
+            classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+            return;
+        }
+
+        // Show loading state
+        classSelect.innerHTML = '<option value="">Loading...</option>';
+
+        fetch(`{{ url('/get-classes') }}/${sectionId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
                 }
-
-                classSelect.innerHTML = '<option value="">Loading...</option>';
-
-                fetch(`{{ url('/get-classes') }}/${sectionId}`)
-                    .then(response => {
-                        if (!response.ok) throw new Error('Network response was not ok');
-                        return response.json();
-                    })
-                    .then(data => {
-                        let options = '<option value="">-- Select Class --</option>';
-
-                        if (data.classes && data.classes.length > 0) {
-                            data.classes.forEach(cls => {
-                                // Preserve the currently filtered class if it belongs to this section
-                                const selected = (preserveClassId && cls.id == preserveClassId) ? 'selected' : '';
-                                options += `<option value="${cls.id}" ${selected}>${cls.name}</option>`;
-                            });
-                        } else {
-                            options = '<option value="">No classes found</option>';
-                        }
-
-                        classSelect.innerHTML = options;
-                    })
-                    .catch(err => {
-                        console.error('Error loading classes:', err);
-                        classSelect.innerHTML = '<option value="">Error loading classes</option>';
+                return response.json();
+            })
+            .then(data => {  // ✅ Changed from 'classes' to 'data'
+                console.log('Response:', data); // Debug log
+                
+                let options = '<option value="">-- Select Class --</option>';
+                
+                // ✅ Access data.classes since controller returns {classes: [...]}
+                if (data.classes && data.classes.length > 0) {
+                    data.classes.forEach(cls => {
+                        const selected = cls.id == '{{ request('filter_class') }}' ? 'selected' : '';
+                        options += `<option value="${cls.id}" ${selected}>${cls.name}</option>`;
                     });
-            }
-
-            // When section changes, reload classes (do NOT preserve old class selection)
-            sectionSelect.addEventListener('change', function () {
-                updateClasses(this.value, null);
+                } else {
+                    options = '<option value="">No classes found</option>';
+                }
+                
+                classSelect.innerHTML = options;
+            })
+            .catch(err => {
+                console.error('Error loading classes:', err);
+                classSelect.innerHTML = '<option value="">Error loading classes</option>';
+                alert('Failed to load classes. Please try again.');
             });
+    }
 
-            // On page load: if a section filter is already selected, reload classes and
-            // preserve the currently selected class filter value.
-            if (sectionSelect.value) {
-                updateClasses(sectionSelect.value, '{{ request('filter_class') }}');
-            }
-        });
+    // On section change: update classes
+    sectionSelect.addEventListener('change', function () {
+        const sectionId = this.value;
+        updateClasses(sectionId);
+    });
+
+    // Initial load if section is pre-selected (e.g., after applying filter)
+    if (sectionSelect.value) {
+        updateClasses(sectionSelect.value);
+    }
+});
     </script>
 </body>
