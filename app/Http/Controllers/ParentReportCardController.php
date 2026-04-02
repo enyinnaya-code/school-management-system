@@ -148,14 +148,10 @@ class ParentReportCardController extends Controller
         $class          = SchoolClass::findOrFail($student->class_id);
         $section        = Section::find($class->section_id);
 
-        // ── Term settings: resumption date, school fees, fees payable by ──────
-        // These are set by admin in ResultAccessController::saveTermSettings()
-        // and stored in the term_settings table keyed by session_id + term_id.
         $termSettings = TermSetting::where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
             ->first();
 
-        // ── 1. Check for nursery / custom result-sheet template ───────────────
         $sheetTemplate = DB::table('result_sheet_templates')
             ->where('is_active', 1)
             ->get()
@@ -170,7 +166,6 @@ class ParentReportCardController extends Controller
             );
         }
 
-        // ── 2. Check for primary school ───────────────────────────────────────
         $isPrimary = DB::table('primary_result_classes')
             ->where('school_class_id', $class->id)
             ->exists();
@@ -181,10 +176,83 @@ class ParentReportCardController extends Controller
             );
         }
 
-        // ── 3. Secondary school (default) ─────────────────────────────────────
         return $this->showSecondaryReport(
             $student, $class, $section, $currentSession, $currentTerm, $termSettings
         );
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Download PDF — same data as showReport(), rendered via DomPDF
+    // ──────────────────────────────────────────────────────────────────────────
+    public function downloadPdf()
+    {
+        $access = session('parent_verified_report');
+
+        // ── Session / expiry guard ────────────────────────────────────────────
+        if (!$access || ($access['expires_at'] ?? null) < now()) {
+            return redirect()->route('parents.wards.reportcards')
+                ->with('error', 'Session expired. Please verify PIN again.');
+        }
+
+        $student = User::findOrFail($access['student_id']);
+        $parent  = Auth::user();
+
+        // ── Parent-ward relationship guard ────────────────────────────────────
+        if (!$parent->students()->where('student_id', $student->id)->exists()) {
+            abort(403);
+        }
+
+        // ── Block check ───────────────────────────────────────────────────────
+        $block = $this->getBlock($student->id, $access['session_id'], $access['term_id']);
+        if ($block) {
+            session()->forget('parent_verified_report');
+            $reason = $block->reason ?: 'This ward has been restricted from accessing their result.';
+            return redirect()->route('parents.wards.reportcards')
+                ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
+        }
+
+        $currentSession = Session::findOrFail($access['session_id']);
+        $currentTerm    = Term::findOrFail($access['term_id']);
+        $class          = SchoolClass::findOrFail($student->class_id);
+        $section        = Section::find($class->section_id);
+
+        $termSettings = TermSetting::where('session_id', $currentSession->id)
+            ->where('term_id', $currentTerm->id)
+            ->first();
+
+        // ── Build view data (same logic as showReport) ────────────────────────
+        $sheetTemplate = DB::table('result_sheet_templates')
+            ->where('is_active', 1)
+            ->get()
+            ->first(function ($t) use ($class) {
+                $classes = json_decode($t->applicable_classes ?? '[]', true);
+                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            });
+
+        if ($sheetTemplate) {
+            $viewData = $this->buildResultSheetData(
+                $student, $class, $section, $currentSession, $currentTerm, $sheetTemplate, $termSettings
+            );
+        } else {
+            $isPrimary = DB::table('primary_result_classes')
+                ->where('school_class_id', $class->id)
+                ->exists();
+
+            $viewData = $isPrimary
+                ? $this->buildPrimaryData($student, $class, $section, $currentSession, $currentTerm, $termSettings)
+                : $this->buildSecondaryData($student, $class, $section, $currentSession, $currentTerm, $termSettings);
+        }
+
+        $pdf = Pdf::loadView('students.report_cards.report_card_pdf', $viewData)
+            ->setPaper('a4', 'portrait');
+
+        $filename = 'ReportCard_' . strtoupper(str_replace(' ', '_', $student->name))
+            . '_' . $currentTerm->name
+            . '_' . $currentSession->name
+            . '.pdf';
+
+        return $pdf->download($filename);
     }
 
 
@@ -192,6 +260,12 @@ class ParentReportCardController extends Controller
     // NURSERY — custom result sheet (ratings/checkboxes)
     // ═══════════════════════════════════════════════════════════════════════════
     private function showResultSheet($student, $class, $section, $session, $term, $sheetTemplate, $termSettings)
+    {
+        $data = $this->buildResultSheetData($student, $class, $section, $session, $term, $sheetTemplate, $termSettings);
+        return view('parents.wards.report_card_view', $data);
+    }
+
+    private function buildResultSheetData($student, $class, $section, $session, $term, $sheetTemplate, $termSettings)
     {
         $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
         $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields  ?? '{}', true);
@@ -223,35 +297,22 @@ class ParentReportCardController extends Controller
             ->where('template_id', $sheetTemplate->id)
             ->first();
 
-        // ── Attendance ────────────────────────────────────────────────────────
-        $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $student->id)
-            ->where('class_id', $class->id)
-            ->where('session_id', $session->id)
-            ->where('session_term', $term->id)
-            ->selectRaw("
-                COUNT(*) as total_days,
-                SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
-                SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
-            ")
-            ->first();
+        $attendanceSummary = $this->getAttendance($student->id, $class->id, $session->id, $term->id);
 
-        return view('parents.wards.report_card_view', [
-            'student'        => $student,
-            'class'          => $class,
-            'section'        => $section,
-            'currentSession' => $session,
-            'currentTerm'    => $term,
-            'classTeacher'   => $this->getClassTeacher($class->id),
-            'termSettings'   => $termSettings,
-
-            'isNursery' => true,
-            'isPrimary' => false,
-
-            'sheetTemplate' => $sheetTemplate,
-            'subjects'      => $subjects,
-            'ratings'       => $ratings,
-            'footerData'    => $footerData,
-
+        return [
+            'student'              => $student,
+            'class'                => $class,
+            'section'              => $section,
+            'currentSession'       => $session,
+            'currentTerm'          => $term,
+            'classTeacher'         => $this->getClassTeacher($class->id),
+            'termSettings'         => $termSettings,
+            'isNursery'            => true,
+            'isPrimary'            => false,
+            'sheetTemplate'        => $sheetTemplate,
+            'subjects'             => $subjects,
+            'ratings'              => $ratings,
+            'footerData'           => $footerData,
             'results'              => collect(),
             'overallTotal'         => 0,
             'overallAverage'       => 0,
@@ -265,14 +326,20 @@ class ParentReportCardController extends Controller
             'principalRemark'      => '',
             'headmasterRemark'     => '',
             'attendanceSummary'    => $attendanceSummary,
-        ]);
+        ];
     }
 
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PRIMARY SCHOOL — 1st Half / 2nd Half / Total
+    // PRIMARY SCHOOL — 1st Half / 2nd Half / Total / Grade
     // ═══════════════════════════════════════════════════════════════════════════
     private function showPrimaryReport($student, $class, $section, $session, $term, $termSettings)
+    {
+        $data = $this->buildPrimaryData($student, $class, $section, $session, $term, $termSettings);
+        return view('parents.wards.report_card_view', $data);
+    }
+
+    private function buildPrimaryData($student, $class, $section, $session, $term, $termSettings)
     {
         $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
@@ -285,7 +352,8 @@ class ParentReportCardController extends Controller
             ->keyBy('course_id');
 
         $results = $allSubjects->map(function ($subject) use ($studentPrimaryResults) {
-            $r = $studentPrimaryResults->get($subject->id);
+            $r             = $studentPrimaryResults->get($subject->id);
+            $finalObtained = $r?->final_obtained ?? 0;
             return [
                 'course_name'            => $subject->course_name,
                 'first_half_obtainable'  => $r?->first_half_obtainable  ?? 30,
@@ -293,7 +361,8 @@ class ParentReportCardController extends Controller
                 'second_half_obtainable' => $r?->second_half_obtainable ?? 70,
                 'second_half_obtained'   => $r?->second_half_obtained   ?? 0,
                 'final_obtainable'       => $r?->final_obtainable       ?? 100,
-                'final_obtained'         => $r?->final_obtained         ?? 0,
+                'final_obtained'         => $finalObtained,
+                'grade'                  => $finalObtained > 0 ? $this->calculateGrade($finalObtained) : '-',
                 'teacher_remark'         => $r?->teacher_remark         ?? '',
             ];
         });
@@ -324,19 +393,7 @@ class ParentReportCardController extends Controller
             ->where('term_id', $term->id)
             ->first();
 
-        // ── Attendance ────────────────────────────────────────────────────────
-        $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $student->id)
-            ->where('class_id', $class->id)
-            ->where('session_id', $session->id)
-            ->where('session_term', $term->id)
-            ->selectRaw("
-                COUNT(*) as total_days,
-                SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
-                SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
-            ")
-            ->first();
-
-        return view('parents.wards.report_card_view', [
+        return [
             'student'              => $student,
             'class'                => $class,
             'section'              => $section,
@@ -356,15 +413,14 @@ class ParentReportCardController extends Controller
             'teacherRemark'        => $remark?->teacher_remark    ?? '',
             'headmasterRemark'     => $remark?->headmaster_remark ?? '',
             'principalRemark'      => '',
-            'attendanceSummary'    => $attendanceSummary,
-
-            'isPrimary'     => true,
-            'isNursery'     => false,
-            'sheetTemplate' => null,
-            'subjects'      => collect(),
-            'ratings'       => [],
-            'footerData'    => null,
-        ]);
+            'attendanceSummary'    => $this->getAttendance($student->id, $class->id, $session->id, $term->id),
+            'isPrimary'            => true,
+            'isNursery'            => false,
+            'sheetTemplate'        => null,
+            'subjects'             => collect(),
+            'ratings'              => [],
+            'footerData'           => null,
+        ];
     }
 
 
@@ -372,6 +428,12 @@ class ParentReportCardController extends Controller
     // SECONDARY SCHOOL — 1st Half / 2nd Half / Total / Grade
     // ═══════════════════════════════════════════════════════════════════════════
     private function showSecondaryReport($student, $class, $section, $session, $term, $termSettings)
+    {
+        $data = $this->buildSecondaryData($student, $class, $section, $session, $term, $termSettings);
+        return view('parents.wards.report_card_view', $data);
+    }
+
+    private function buildSecondaryData($student, $class, $section, $session, $term, $termSettings)
     {
         $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
@@ -425,19 +487,7 @@ class ParentReportCardController extends Controller
             ->where('term_id', $term->id)
             ->first();
 
-        // ── Attendance ────────────────────────────────────────────────────────
-        $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $student->id)
-            ->where('class_id', $class->id)
-            ->where('session_id', $session->id)
-            ->where('session_term', $term->id)
-            ->selectRaw("
-                COUNT(*) as total_days,
-                SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
-                SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
-            ")
-            ->first();
-
-        return view('parents.wards.report_card_view', [
+        return [
             'student'              => $student,
             'class'                => $class,
             'section'              => $section,
@@ -457,21 +507,34 @@ class ParentReportCardController extends Controller
             'teacherRemark'        => $remark?->teacher_remark   ?? '',
             'principalRemark'      => $remark?->principal_remark ?? '',
             'headmasterRemark'     => '',
-            'attendanceSummary'    => $attendanceSummary,
-
-            'isPrimary'     => false,
-            'isNursery'     => false,
-            'sheetTemplate' => null,
-            'subjects'      => collect(),
-            'ratings'       => [],
-            'footerData'    => null,
-        ]);
+            'attendanceSummary'    => $this->getAttendance($student->id, $class->id, $session->id, $term->id),
+            'isPrimary'            => false,
+            'isNursery'            => false,
+            'sheetTemplate'        => null,
+            'subjects'             => collect(),
+            'ratings'              => [],
+            'footerData'           => null,
+        ];
     }
 
 
     // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
+
+    private function getAttendance($studentId, $classId, $sessionId, $termId)
+    {
+        return \App\Models\StudentAttendance::where('student_id', $studentId)
+            ->where('class_id', $classId)
+            ->where('session_id', $sessionId)
+            ->where('session_term', $termId)
+            ->selectRaw("
+                COUNT(*) as total_days,
+                SUM(CASE WHEN attendance = 'Present' THEN 1 ELSE 0 END) as present,
+                SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
+            ")
+            ->first();
+    }
 
     private function getClassTeacher($classId)
     {
