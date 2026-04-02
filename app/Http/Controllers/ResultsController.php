@@ -613,6 +613,40 @@ class ResultsController extends Controller
     }
 
 
+    private function applySubjectLimit($results, int $classId): array
+    {
+        $limit = \App\Models\ClassSubjectLimit::where('school_class_id', $classId)->first();
+ 
+        if (!$limit) {
+            $scored  = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
+            $divisor = $scored->count() > 0 ? $scored->count() : 1;
+            return [
+                'adjusted_total'  => $results->sum('final_obtained'),
+                'average_divisor' => $divisor,
+                'dropped_course'  => null,
+            ];
+        }
+ 
+        $minSubjects   = (int) $limit->min_subjects;
+        $scored        = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
+        $droppedCourse = null;
+ 
+        if ($scored->count() > $minSubjects) {
+            $lowestKey     = $scored->sortBy('final_obtained')->keys()->first();
+            $droppedCourse = $results[$lowestKey]['course_name'] ?? null;
+            $adjustedTotal = $scored->except([$lowestKey])->sum('final_obtained');
+        } else {
+            $adjustedTotal = $scored->sum('final_obtained');
+        }
+ 
+        return [
+            'adjusted_total'  => $adjustedTotal,
+            'average_divisor' => $minSubjects,
+            'dropped_course'  => $droppedCourse,
+        ];
+    }
+
+
    public function masterList(Request $request, $classId)
     {
         $class   = SchoolClass::findOrFail($classId);
