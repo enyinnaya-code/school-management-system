@@ -17,6 +17,7 @@ use App\Models\Result;
 use App\Models\StudentRemark;
 use App\Models\ResultAccessRestriction;
 use App\Models\TermSetting;
+use App\Models\ClassSubjectLimit;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\ResultSheetService;
 
@@ -31,6 +32,55 @@ class ParentReportCardController extends Controller
             ->where('session_id', $sessionId)
             ->where('term_id', $termId)
             ->first();
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Helper: apply custom subject limit logic for secondary classes.
+    //
+    // Returns:
+    //   'adjusted_total'  — total after dropping lowest if scored count > min
+    //   'average_divisor' — always min_subjects when a limit exists
+    //   'dropped_course'  — course_name of dropped subject, or null
+    //
+    // Rules:
+    //   1. Only subjects where final_obtained > 0 are considered "scored".
+    //   2. If scored count > min → drop the ONE subject with the lowest score.
+    //   3. adjusted_total = sum of kept subjects only.
+    //   4. average_divisor = min_subjects (always, even if < min scored).
+    //   5. If no limit configured → standard behaviour (sum all / count scored).
+    // ──────────────────────────────────────────────────────────────────────────
+    private function applySubjectLimit($results, int $classId): array
+    {
+        $limit = ClassSubjectLimit::where('school_class_id', $classId)->first();
+
+        if (!$limit) {
+            $scored  = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
+            $divisor = $scored->count() > 0 ? $scored->count() : 1;
+            return [
+                'adjusted_total'  => $results->sum('final_obtained'),
+                'average_divisor' => $divisor,
+                'dropped_course'  => null,
+            ];
+        }
+
+        $minSubjects   = (int) $limit->min_subjects;
+        $scored        = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
+        $droppedCourse = null;
+
+        if ($scored->count() > $minSubjects) {
+            $lowestKey     = $scored->sortBy('final_obtained')->keys()->first();
+            $droppedCourse = $results[$lowestKey]['course_name'] ?? null;
+            $adjustedTotal = $scored->except([$lowestKey])->sum('final_obtained');
+        } else {
+            $adjustedTotal = $scored->sum('final_obtained');
+        }
+
+        return [
+            'adjusted_total'  => $adjustedTotal,
+            'average_divisor' => $minSubjects,
+            'dropped_course'  => $droppedCourse,
+        ];
     }
 
 
@@ -63,12 +113,10 @@ class ParentReportCardController extends Controller
         $parent  = Auth::user();
         $student = User::findOrFail($request->student_id);
 
-        // ── Parent-ward relationship check ────────────────────────────────────
         if (!$parent->students()->where('student_id', $student->id)->exists()) {
             return back()->with('error', 'You do not have permission to view this ward\'s report.');
         }
 
-        // ── Block check BEFORE pin validation ────────────────────────────────
         $block = $this->getBlock($student->id, $request->session_id, $request->term_id);
         if ($block) {
             $reason = $block->reason ?: 'This ward has been restricted from accessing their result.';
@@ -78,7 +126,6 @@ class ParentReportCardController extends Controller
             );
         }
 
-        // ── PIN existence check ───────────────────────────────────────────────
         $issuedPin = IssuedPin::where('student_id', $student->id)
             ->where('session_id', $request->session_id)
             ->where('term_id', $request->term_id)
@@ -120,7 +167,6 @@ class ParentReportCardController extends Controller
     {
         $access = session('parent_verified_report');
 
-        // ── Session / expiry guard ────────────────────────────────────────────
         if (!$access || ($access['expires_at'] ?? null) < now()) {
             return redirect()->route('parents.wards.reportcards')
                 ->with('error', 'Session expired. Please verify PIN again.');
@@ -129,12 +175,10 @@ class ParentReportCardController extends Controller
         $student = User::findOrFail($access['student_id']);
         $parent  = Auth::user();
 
-        // ── Parent-ward relationship guard ────────────────────────────────────
         if (!$parent->students()->where('student_id', $student->id)->exists()) {
             abort(403);
         }
 
-        // ── Block check ───────────────────────────────────────────────────────
         $block = $this->getBlock($student->id, $access['session_id'], $access['term_id']);
         if ($block) {
             session()->forget('parent_verified_report');
@@ -183,13 +227,12 @@ class ParentReportCardController extends Controller
 
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Download PDF — same data as showReport(), rendered via DomPDF
+    // Download PDF
     // ──────────────────────────────────────────────────────────────────────────
     public function downloadPdf()
     {
         $access = session('parent_verified_report');
 
-        // ── Session / expiry guard ────────────────────────────────────────────
         if (!$access || ($access['expires_at'] ?? null) < now()) {
             return redirect()->route('parents.wards.reportcards')
                 ->with('error', 'Session expired. Please verify PIN again.');
@@ -198,12 +241,10 @@ class ParentReportCardController extends Controller
         $student = User::findOrFail($access['student_id']);
         $parent  = Auth::user();
 
-        // ── Parent-ward relationship guard ────────────────────────────────────
         if (!$parent->students()->where('student_id', $student->id)->exists()) {
             abort(403);
         }
 
-        // ── Block check ───────────────────────────────────────────────────────
         $block = $this->getBlock($student->id, $access['session_id'], $access['term_id']);
         if ($block) {
             session()->forget('parent_verified_report');
@@ -221,7 +262,6 @@ class ParentReportCardController extends Controller
             ->where('term_id', $currentTerm->id)
             ->first();
 
-        // ── Build view data (same logic as showReport) ────────────────────────
         $sheetTemplate = DB::table('result_sheet_templates')
             ->where('is_active', 1)
             ->get()
@@ -257,7 +297,7 @@ class ParentReportCardController extends Controller
 
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // NURSERY — custom result sheet (ratings/checkboxes)
+    // NURSERY — custom result sheet
     // ═══════════════════════════════════════════════════════════════════════════
     private function showResultSheet($student, $class, $section, $session, $term, $sheetTemplate, $termSettings)
     {
@@ -297,8 +337,6 @@ class ParentReportCardController extends Controller
             ->where('template_id', $sheetTemplate->id)
             ->first();
 
-        $attendanceSummary = $this->getAttendance($student->id, $class->id, $session->id, $term->id);
-
         return [
             'student'              => $student,
             'class'                => $class,
@@ -325,13 +363,14 @@ class ParentReportCardController extends Controller
             'teacherRemark'        => '',
             'principalRemark'      => '',
             'headmasterRemark'     => '',
-            'attendanceSummary'    => $attendanceSummary,
+            'attendanceSummary'    => $this->getAttendance($student->id, $class->id, $session->id, $term->id),
+            'droppedCourse'        => null,
         ];
     }
 
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PRIMARY SCHOOL — 1st Half / 2nd Half / Total / Grade
+    // PRIMARY SCHOOL
     // ═══════════════════════════════════════════════════════════════════════════
     private function showPrimaryReport($student, $class, $section, $session, $term, $termSettings)
     {
@@ -420,12 +459,13 @@ class ParentReportCardController extends Controller
             'subjects'             => collect(),
             'ratings'              => [],
             'footerData'           => null,
+            'droppedCourse'        => null,
         ];
     }
 
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // SECONDARY SCHOOL — 1st Half / 2nd Half / Total / Grade
+    // SECONDARY SCHOOL
     // ═══════════════════════════════════════════════════════════════════════════
     private function showSecondaryReport($student, $class, $section, $session, $term, $termSettings)
     {
@@ -460,24 +500,37 @@ class ParentReportCardController extends Controller
             ];
         });
 
-        $overallTotal   = $results->sum('final_obtained');
-        $subjectCount   = $allSubjects->count();
-        $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
+        // ── Apply custom subject limit ────────────────────────────────────────
+        $limitData      = $this->applySubjectLimit($results, $class->id);
+        $overallTotal   = $limitData['adjusted_total'];
+        $averageDivisor = $limitData['average_divisor'];
+        $droppedCourse  = $limitData['dropped_course'];
+
+        $overallAverage = $averageDivisor > 0 ? round($overallTotal / $averageDivisor, 2) : 0;
         $overallGrade   = $this->calculateGrade($overallAverage);
+        $subjectCount   = $averageDivisor;
 
         $classStudents        = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
         $totalStudentsInClass = $classStudents->count();
 
-        $studentsScores = Result::where('session_id', $session->id)
+        // ── Position ranking: apply same drop-lowest logic per classmate ──────
+        $allClassResults = Result::where('session_id', $session->id)
             ->where('term_id', $term->id)
             ->whereIn('student_id', $classStudents)
             ->whereIn('course_id', $allSubjects->pluck('id'))
-            ->select('student_id', DB::raw('SUM(total) as total_score'))
-            ->groupBy('student_id')
-            ->orderByDesc('total_score')
-            ->get();
+            ->get()
+            ->groupBy('student_id');
 
-        $studentPosition   = $studentsScores->search(fn($item) => $item->student_id == $student->id);
+        $studentRankTotals = $classStudents->map(function ($sid) use ($allClassResults, $class) {
+            $sResults = $allClassResults->get($sid, collect())->map(fn($r) => [
+                'course_name'    => '',
+                'final_obtained' => (float) ($r->final_obtained ?? 0),
+            ]);
+            $ld = $this->applySubjectLimit(collect($sResults), $class->id);
+            return ['student_id' => $sid, 'adjusted_total' => $ld['adjusted_total']];
+        })->sortByDesc('adjusted_total')->values();
+
+        $studentPosition   = $studentRankTotals->search(fn($item) => $item['student_id'] == $student->id);
         $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
@@ -514,6 +567,7 @@ class ParentReportCardController extends Controller
             'subjects'             => collect(),
             'ratings'              => [],
             'footerData'           => null,
+            'droppedCourse'        => $droppedCourse,
         ];
     }
 
