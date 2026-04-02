@@ -6,107 +6,53 @@
     <title>Report Card - {{ strtoupper($student->name) }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
             font-size: 11px;
         }
         .container { border: 2px solid #000; padding: 15px; }
-
-        /* ── Header ─────────────────────────────────────────────────────────
-           Original used display:table — replaced with overflow:hidden + floats
-           so DomPDF renders it correctly                                     */
-        .header {
-            overflow: hidden;
-            width: 100%;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
-        }
-        .header-left {
-            float: left;
-            width: 120px;
-            text-align: center;
-        }
+        .header { display: table; width: 100%; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
+        .header-left { display: table-cell; width: 120px; text-align: center; vertical-align: middle; }
         .logo { width: 90px; height: 90px; object-fit: contain; }
-        .header-center {
-            /* sits between left and right floats */
-            text-align: center;
-            padding: 0 10px;
-        }
+        .header-center { display: table-cell; text-align: center; vertical-align: middle; padding: 0 10px; }
         .school-name { font-size: 18px; font-weight: bold; margin-bottom: 3px; }
         .school-motto { font-style: italic; font-size: 10px; margin-bottom: 2px; }
         .school-address { font-size: 9px; margin-bottom: 5px; }
         .report-title { font-size: 11px; font-weight: bold; margin-top: 5px; }
-        .header-right {
-            float: right;
-            width: 80px;
-            text-align: center;
-        }
+        .header-right { display: table-cell; width: 80px; text-align: center; vertical-align: middle; }
         .student-photo { width: 70px; height: 80px; border: 1px solid #000; background-color: #f0f0f0; }
-        .class-badge {
-            display: inline-block;
-            background-color: #f0f0f0;
-            padding: 3px 10px;
-            border-radius: 3px;
-            font-weight: bold;
-            margin-top: 5px;
-        }
+        .class-badge { display: inline-block; background-color: #f0f0f0; padding: 3px 10px; border-radius: 3px; font-weight: bold; margin-top: 5px; }
 
-        /* ── Student name ── */
         .student-name-section { text-align: center; padding: 8px 0; border-bottom: 2px solid #000; }
         .student-name { font-size: 16px; font-weight: bold; margin-bottom: 3px; }
         .student-basic-info { font-size: 10px; }
 
-        /* ── Term info ───────────────────────────────────────────────────────
-           Original used display:table / display:table-cell — replaced with
-           float: left; width: 25% per column                                */
-        .term-info-section {
-            overflow: hidden;
-            width: 100%;
-            margin: 10px 0;
-            border-bottom: 1px solid #000;
-            padding-bottom: 8px;
-        }
-        .term-info-col {
-            float: left;
-            width: 25%;
-            vertical-align: top;
-            font-size: 10px;
-            padding-right: 4px;
-        }
+        .term-info-section { display: table; width: 100%; margin: 10px 0; border-bottom: 1px solid #000; padding-bottom: 8px; }
+        .term-info-left, .term-info-center, .term-info-right { display: table-cell; width: 25%; vertical-align: top; font-size: 10px; }
         .info-item { margin-bottom: 3px; }
         .info-label { font-weight: bold; }
 
-        /* ── Main content ────────────────────────────────────────────────────
-           Original used display:table / display:table-cell — replaced with
-           floats so DomPDF renders side-by-side columns correctly.
-           Content still flows naturally and overflows to page 2 when needed. */
-        .main-content { overflow: hidden; width: 100%; margin-top: 10px; }
-        .left-section  { float: left;  width: 65%; padding-right: 10px; }
-        .right-section { float: right; width: 33%; border-left: 1px solid #000; padding-left: 10px; }
+        .main-content { display: table; width: 100%; margin-top: 10px; }
+        .left-section { display: table-cell; width: 65%; vertical-align: top; padding-right: 10px; }
+        .right-section { display: table-cell; width: 35%; vertical-align: top; border-left: 1px solid #000; padding-left: 10px; }
 
-        /* ── Tables ── */
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
         th, td { border: 1px solid #000; padding: 5px 3px; text-align: center; font-size: 9px; }
         th { background-color: #f0f0f0; font-weight: bold; }
         .subject-name { text-align: left; padding-left: 5px; }
-        .rotate-text {
-            writing-mode: vertical-lr;
+        .rotate-text { 
+            writing-mode: vertical-lr; 
             text-orientation: mixed;
-            font-size: 8px;
-            padding: 3px 2px;
+            font-size: 8px; 
+            padding: 3px 2px; 
             white-space: nowrap;
         }
         .no-score-row { background-color: #fff9e62b; }
 
         .summary-table td { padding: 5px; }
         .skills-section { margin-bottom: 10px; }
-        .section-title {
-            font-weight: bold; font-size: 10px;
-            background-color: #f0f0f0; padding: 4px;
-            border: 1px solid #000; text-align: center; margin-bottom: 3px;
-        }
+        .section-title { font-weight: bold; font-size: 10px; background-color: #f0f0f0; padding: 4px; border: 1px solid #000; text-align: center; margin-bottom: 3px; }
         .skills-table td { padding: 3px 5px; font-size: 9px; }
         .skill-name { text-align: left; border-right: 1px solid #000; }
         .skill-rating { text-align: center; width: 30px; font-weight: bold; }
@@ -116,28 +62,22 @@
         .remark-label { font-weight: bold; }
 
         .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #000; font-size: 9px; text-align: center; }
-
-        /* clearfix so parent containers wrap their floated children */
-        .clearfix::after { content: ''; display: table; clear: both; }
     </style>
 </head>
 <body>
     <div class="container">
 
         {{-- ── Header ──────────────────────────────────────────────────────── --}}
-        <div class="header clearfix">
+        <div class="header">
             {{-- <div class="header-left">
                 @php
                     $settings = school_settings();
-                    $logoPath = $settings && $settings->logo
+                    $logoPath = $settings && $settings->logo 
                         ? public_path('storage/logos/' . $settings->logo)
                         : public_path('images/school_management_logo__1_-removebg-preview.png');
                 @endphp
                 <img src="{{ $logoPath }}" alt="School Logo" class="logo">
             </div> --}}
-            <div class="header-right">
-                <div class="class-badge">{{ $class->name }}</div>
-            </div>
             <div class="header-center">
                 <div class="school-name">{{ strtoupper(school_name()) }}</div>
                 {{-- <div class="school-motto">Motto: Excellence Personified</div> --}}
@@ -145,6 +85,9 @@
                     {{ $settings->address ?? 'School Address' }}<br>
                 </div>
                 <div class="report-title">«« STUDENT'S ACADEMIC REPORT CARD »»</div>
+            </div>
+            <div class="header-right">
+                <div class="class-badge">{{ $class->name }}</div>
             </div>
         </div>
 
@@ -157,21 +100,21 @@
             </div>
         </div>
 
-        {{-- ── Term & Class Info ────────────────────────────────────────────── --}}
-        <div class="term-info-section clearfix">
-            <div class="term-info-col">
+        {{-- ── Term & Class Info (4 columns — last column is attendance) ──────── --}}
+        <div class="term-info-section">
+            <div class="term-info-left">
                 <div class="info-item"><span class="info-label">Term:</span> {{ $currentTerm->name }}</div>
                 <div class="info-item"><span class="info-label">Session:</span> {{ $currentSession->name }}</div>
             </div>
-            <div class="term-info-col">
+            <div class="term-info-center">
                 <div class="info-item"><span class="info-label">Class:</span> {{ $class->name }}</div>
                 <div class="info-item"><span class="info-label">Class Teacher:</span> {{ $classTeacher?->name ?? 'Not Assigned' }}</div>
             </div>
-            <div class="term-info-col">
+            <div class="term-info-right">
                 <div class="info-item"><span class="info-label">No. in Class:</span> {{ $totalStudentsInClass }}</div>
                 <div class="info-item"><span class="info-label">Position:</span> <strong>{{ $formattedPosition }}</strong></div>
             </div>
-            <div class="term-info-col">
+            <div class="term-info-right">
                 <div class="info-item">
                     <span class="info-label">Times Present:</span>
                     {{ $attendanceSummary->present ?? '-' }} / {{ $attendanceSummary->total_days ?? '-' }}
@@ -184,7 +127,7 @@
         </div>
 
         {{-- ── Main Content ─────────────────────────────────────────────────── --}}
-        <div class="main-content clearfix">
+        <div class="main-content">
 
             {{-- Left: Academic Results --}}
             <div class="left-section">
@@ -311,12 +254,13 @@
                 </table>
                 @endif
 
-                {{-- ── Remarks ── --}}
+                {{-- ── Remarks (always shown, label changes by class type) ─── --}}
                 <div class="remarks-section">
                     <div class="remark-item">
                         <span class="remark-label">CLASS TEACHER'S REMARK:</span><br>
                         {{ $teacherRemark ?: '_________________________________________________' }}
                     </div>
+
                     @if(isset($isPrimary) && $isPrimary)
                     <div class="remark-item">
                         <span class="remark-label">HEAD MASTER/MISTRESS REMARK:</span><br>
@@ -415,7 +359,7 @@
                             <td class="skill-rating">{{ $psychomotorRatings['handling_tools'] ?? '-' }}</td>
                         </tr>
                         <tr>
-                            <td class="skill-name">Drawing &amp; Painting</td>
+                            <td class="skill-name">Drawing & Painting</td>
                             <td class="skill-rating">{{ $psychomotorRatings['drawing_painting'] ?? '-' }}</td>
                         </tr>
                         <tr>
@@ -437,7 +381,6 @@
                 </div>
 
             </div>{{-- /right-section --}}
-
         </div>{{-- /main-content --}}
 
         {{-- ── Watermark (teachers / admins preview only) ───────────────────── --}}
@@ -458,6 +401,7 @@
         ">
             PREVIEW ONLY
         </div>
+
         <div style="
             position: absolute;
             bottom: 30px;
