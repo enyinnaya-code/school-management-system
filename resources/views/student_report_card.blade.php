@@ -15,7 +15,10 @@
             min-height: 0;
         }
         @page {
-            margin: 15px;
+            margin: 20px;
+        }
+        body {
+            padding: 10px;
         }
         .container { border: 2px solid #000; padding: 15px; }
         .header { display: table; width: 100%; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
