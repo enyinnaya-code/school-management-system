@@ -218,7 +218,7 @@ class StudentController extends Controller
 
     public function resetPassword(User $student)
     {
-        $student->password = bcrypt('123456');
+        $student->password = bcrypt('12345');
         $student->save();
 
         $filters = $this->getFilterParams();
