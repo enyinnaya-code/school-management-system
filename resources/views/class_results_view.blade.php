@@ -203,9 +203,8 @@
                                         @endforeach
 
                                     {{-- ══════════════════════════════════════════════════════
-                                         PRIMARY & SECONDARY: Total / Grade only
-                                         (1st Half and 2nd Half commented out — uncomment
-                                          and change colspan to 7/8 to restore them)
+                                         PRIMARY & SECONDARY: numeric results table
+                                         Both now show Grade (with coloured badge).
                                          ══════════════════════════════════════════════════════ --}}
                                     @else
 
@@ -217,9 +216,7 @@
                                                     <th rowspan="2" style="vertical-align:middle; min-width:130px;">Student Name</th>
                                                     <th rowspan="2" style="vertical-align:middle; white-space:nowrap;">Adm No</th>
                                                     @foreach($subjects as $subject)
-                                                        {{-- colspan=3 for secondary (Total Obtainable + Total Obtained + Grade)  --}}
-                                                        {{-- colspan=3 for primary  (Total Obtainable + Total Obtained + Remark)  --}}
-                                                        {{-- Change to 7 / 8 when restoring 1st & 2nd Half columns               --}}
+                                                        {{-- colspan=3: Total Obtainable + Total Obtained + Grade (same for both primary & secondary) --}}
                                                         <th colspan="3" style="font-size:10px; white-space:nowrap;">
                                                             {{ $subject->course_name }}
                                                         </th>
@@ -228,21 +225,9 @@
                                                 {{-- Row 2: sub-headers per subject --}}
                                                 <tr>
                                                     @foreach($subjects as $subject)
-                                                        {{-- 1st Half — uncomment to restore
-                                                        <th style="font-size:9px; min-width:28px;">1st<br>Obtainable</th>
-                                                        <th style="font-size:9px; min-width:28px;">1st<br>Obtained</th>
-                                                        --}}
-                                                        {{-- 2nd Half — uncomment to restore
-                                                        <th style="font-size:9px; min-width:28px;">2nd<br>Obtainable</th>
-                                                        <th style="font-size:9px; min-width:28px;">2nd<br>Obtained</th>
-                                                        --}}
                                                         <th style="font-size:9px; min-width:28px;">Total<br>Obtainable</th>
                                                         <th style="font-size:9px; min-width:28px;">Total<br>Obtained</th>
-                                                        @if(!$isPrimary)
-                                                            <th style="font-size:9px; min-width:28px;">Grade</th>
-                                                        @else
-                                                            <th style="font-size:9px; min-width:40px;">Remark</th>
-                                                        @endif
+                                                        <th style="font-size:9px; min-width:28px;">Grade</th>
                                                     @endforeach
                                                 </tr>
                                             </thead>
@@ -256,31 +241,17 @@
                                                         @foreach($subjects as $subject)
                                                             @php
                                                                 $r               = $resultsMatrix[$student->id][$subject->id] ?? null;
-                                                                // $firstObtainable  = $r?->first_half_obtainable  ?? 30;  // uncomment to restore
-                                                                // $firstObtained    = $r?->first_half_obtained    ?? 0;   // uncomment to restore
-                                                                // $secondObtainable = $r?->second_half_obtainable ?? 70;  // uncomment to restore
-                                                                // $secondObtained   = $r?->second_half_obtained   ?? 0;   // uncomment to restore
                                                                 $finalObtainable = $r?->final_obtainable ?? 100;
                                                                 $finalObtained   = $r?->final_obtained   ?? 0;
                                                                 $grade           = $r?->grade            ?? '-';
-                                                                $teacherRemark   = $r?->teacher_remark   ?? '-';
                                                             @endphp
 
-                                                            {{-- 1st Half cells — uncomment to restore
-                                                            <td class="text-center">{{ $firstObtainable }}</td>
-                                                            <td class="text-center">{{ $firstObtained ?: '-' }}</td>
-                                                            --}}
-                                                            {{-- 2nd Half cells — uncomment to restore
-                                                            <td class="text-center">{{ $secondObtainable }}</td>
-                                                            <td class="text-center">{{ $secondObtained ?: '-' }}</td>
-                                                            --}}
                                                             <td class="text-center">{{ $finalObtainable }}</td>
                                                             <td class="text-center font-weight-bold">{{ $finalObtained ?: '-' }}</td>
 
-                                                            @if($isPrimary)
-                                                                <td class="text-center" style="font-size:10px;">{{ $teacherRemark }}</td>
-                                                            @else
-                                                                <td class="text-center">
+                                                            {{-- Grade badge — identical style for both primary and secondary --}}
+                                                            <td class="text-center">
+                                                                @if($grade !== '-')
                                                                     <span class="badge
                                                                         @if($grade == 'A') badge-success
                                                                         @elseif($grade == 'B') badge-info
@@ -290,8 +261,10 @@
                                                                         @else badge-danger @endif">
                                                                         {{ $grade }}
                                                                     </span>
-                                                                </td>
-                                                            @endif
+                                                                @else
+                                                                    <span class="text-muted">—</span>
+                                                                @endif
+                                                            </td>
 
                                                         @endforeach
                                                     </tr>
