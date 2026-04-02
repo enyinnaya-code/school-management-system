@@ -48,11 +48,13 @@
         th { background-color: #f0f0f0; font-weight: bold; }
         .subject-name { text-align: left; padding-left: 5px; }
         .rotate-text { 
-            writing-mode: vertical-lr; 
-            text-orientation: mixed;
             font-size: 8px; 
-            padding: 3px 2px; 
-            white-space: nowrap;
+            padding: 3px 2px;
+            white-space: normal;
+            word-break: break-word;
+            text-align: center;
+            vertical-align: bottom;
+            max-width: 30px;
         }
         .no-score-row { background-color: #fff9e62b; }
 
