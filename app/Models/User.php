@@ -32,7 +32,7 @@ class User extends Authenticatable
         'is_form_teacher',
         'is_librarian',
         'hostel_id',
-        'login_attempts'
+        'login_attempts',
         'form_class_id'
     ];
 
