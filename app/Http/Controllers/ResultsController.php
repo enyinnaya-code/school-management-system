@@ -616,7 +616,7 @@ class ResultsController extends Controller
     private function applySubjectLimit($results, int $classId): array
     {
         $limit = \App\Models\ClassSubjectLimit::where('school_class_id', $classId)->first();
- 
+
         if (!$limit) {
             $scored  = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
             $divisor = $scored->count() > 0 ? $scored->count() : 1;
@@ -626,19 +626,20 @@ class ResultsController extends Controller
                 'dropped_course'  => null,
             ];
         }
- 
+
         $minSubjects   = (int) $limit->min_subjects;
         $scored        = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
         $droppedCourse = null;
- 
+
         if ($scored->count() > $minSubjects) {
-            $lowestKey     = $scored->sortBy('final_obtained')->keys()->first();
-            $droppedCourse = $results[$lowestKey]['course_name'] ?? null;
-            $adjustedTotal = $scored->except([$lowestKey])->sum('final_obtained');
-        } else {
-            $adjustedTotal = $scored->sum('final_obtained');
+            $excessCount = $scored->count() - $minSubjects; // how many to drop
+            $sorted      = $scored->sortBy('final_obtained'); // lowest first
+
+            $droppedKeys   = $sorted->keys()->take($excessCount)->toArray();
+            $droppedCourse = $results[$droppedKeys[0]]['course_name'] ?? null; // first/lowest dropped
+            $adjustedTotal = $scored->except($droppedKeys)->sum('final_obtained');
         }
- 
+
         return [
             'adjusted_total'  => $adjustedTotal,
             'average_divisor' => $minSubjects,
@@ -647,12 +648,12 @@ class ResultsController extends Controller
     }
 
 
-   public function masterList(Request $request, $classId)
+    public function masterList(Request $request, $classId)
     {
         $class   = SchoolClass::findOrFail($classId);
         $section = Section::find($class->section_id);
         $user    = Auth::user();
- 
+
         if (!in_array($user->user_type, [1, 2])) {
             $allowed = $this->isTeacherAssignedToClass($user->id, $classId);
             if (!$allowed && $user->is_form_teacher && $user->form_class_id == $classId) {
@@ -662,11 +663,11 @@ class ResultsController extends Controller
                 abort(403, 'You are not authorized to view the master list for this class.');
             }
         }
- 
+
         $isPrimary = DB::table('primary_result_classes')
             ->where('school_class_id', $classId)
             ->exists();
- 
+
         $sessions          = Session::orderByDesc('name')->get();
         $selectedSessionId = $request->input('session_id');
         if (!$selectedSessionId) {
@@ -677,7 +678,7 @@ class ResultsController extends Controller
         if (!$selectedSession) {
             return redirect()->back()->with('error', 'Selected session not found.');
         }
- 
+
         $terms          = $selectedSession->terms()->orderBy('name')->get();
         $selectedTermId = $request->input('term_id');
         if (!$selectedTermId) {
@@ -688,15 +689,15 @@ class ResultsController extends Controller
         if (!$selectedTerm) {
             return redirect()->back()->with('error', 'Selected term not found.');
         }
- 
+
         $subjects = Course::whereHas('schoolClasses', function ($query) use ($class) {
             $query->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
- 
+
         $students   = User::where('user_type', 4)->where('class_id', $classId)->orderBy('name')->get();
         $studentIds = $students->pluck('id');
         $subjectIds = $subjects->pluck('id');
- 
+
         // ══════════════════════════════════════════════════════════════════════
         // PRIMARY PATH
         // ══════════════════════════════════════════════════════════════════════
@@ -707,22 +708,22 @@ class ResultsController extends Controller
                 ->whereIn('course_id', $subjectIds)
                 ->get()
                 ->groupBy(['student_id', 'course_id']);
- 
+
             $studentSummaries = $students->map(function ($student) use ($results, $subjects) {
                 $studentResults = $results->get($student->id, collect());
                 $totalScore     = 0;
- 
+
                 foreach ($subjects as $subject) {
                     $result = $studentResults->get($subject->id)?->first();
                     if ($result && $result->final_obtained > 0) {
                         $totalScore += $result->final_obtained;
                     }
                 }
- 
+
                 $average = $subjects->count() > 0
                     ? round($totalScore / $subjects->count(), 2)
                     : 0;
- 
+
                 return [
                     'student'     => $student,
                     'total_score' => $totalScore,
@@ -730,10 +731,10 @@ class ResultsController extends Controller
                     'grade'       => $this->calculateGrade($average),
                 ];
             });
- 
-        // ══════════════════════════════════════════════════════════════════════
-        // SECONDARY PATH — apply subject limit for totals and ranking
-        // ══════════════════════════════════════════════════════════════════════
+
+            // ══════════════════════════════════════════════════════════════════════
+            // SECONDARY PATH — apply subject limit for totals and ranking
+            // ══════════════════════════════════════════════════════════════════════
         } else {
             $results = Result::where('session_id', $selectedSession->id)
                 ->where('term_id', $selectedTerm->id)
@@ -741,22 +742,22 @@ class ResultsController extends Controller
                 ->whereIn('course_id', $subjectIds)
                 ->get()
                 ->groupBy('student_id');
- 
+
             $studentSummaries = $students->map(function ($student) use ($results, $subjects, $class) {
                 $studentResults = $results->get($student->id, collect());
- 
+
                 // Build the same shape that applySubjectLimit expects
                 $mapped = $studentResults->map(fn($r) => [
                     'course_name'    => '',
                     'final_obtained' => (float) ($r->final_obtained ?? 0),
                 ]);
- 
+
                 $limitData = $this->applySubjectLimit(collect($mapped), $class->id);
- 
+
                 $average = $limitData['average_divisor'] > 0
                     ? round($limitData['adjusted_total'] / $limitData['average_divisor'], 2)
                     : 0;
- 
+
                 return [
                     'student'     => $student,
                     'total_score' => $limitData['adjusted_total'],
@@ -765,7 +766,7 @@ class ResultsController extends Controller
                 ];
             });
         }
- 
+
         // Sort and assign positions (shared for both paths)
         $sortedStudents = $studentSummaries->sortByDesc('total_score')->values()
             ->map(function ($item, $index) {
@@ -773,10 +774,19 @@ class ResultsController extends Controller
                 $item['formatted_position'] = ($index + 1) . $this->getPositionSuffix($index + 1);
                 return $item;
             });
- 
+
         return view('results.master_list', compact(
-            'class', 'section', 'subjects', 'students', 'results',
-            'sortedStudents', 'sessions', 'selectedSession', 'terms', 'selectedTerm', 'isPrimary'
+            'class',
+            'section',
+            'subjects',
+            'students',
+            'results',
+            'sortedStudents',
+            'sessions',
+            'selectedSession',
+            'terms',
+            'selectedTerm',
+            'isPrimary'
         ));
     }
 
@@ -1028,75 +1038,84 @@ class ResultsController extends Controller
     }
 
 
-       public function printStudent($studentId, Request $request, $action = 'stream')
+    public function printStudent($studentId, Request $request, $action = 'stream')
     {
         $student = User::where('user_type', 4)->findOrFail($studentId);
         $class   = SchoolClass::findOrFail($student->class_id);
         $section = Section::find($class->section_id);
- 
+
         $sessionId = $request->query('session_id');
         $termId    = $request->query('term_id');
- 
+
         $currentSession = $sessionId
             ? Session::findOrFail($sessionId)
             : Session::where('is_current', true)->first();
- 
+
         $currentTerm = $termId
             ? Term::findOrFail($termId)
             : $currentSession?->terms()->where('is_current', true)->first();
- 
+
         if (!$currentSession || !$currentTerm) {
             abort(404, 'No current session or term is set.');
         }
- 
+
         // ── Determine class type ──────────────────────────────────────────────
         $isPrimary = DB::table('primary_result_classes')
             ->where('school_class_id', $class->id)
             ->exists();
- 
+
         // ── Shared: class teacher, remarks, ratings ───────────────────────────
         $classTeacher = User::where('is_form_teacher', true)
             ->where('form_class_id', $class->id)
             ->first();
- 
+
         $remark = StudentRemark::where('student_id', $student->id)
             ->where('class_id', $class->id)
             ->where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
             ->first();
- 
+
         $defaultAffective = [
-            'punctuality'          => null, 'politeness'           => null,
-            'neatness'             => null, 'honesty'              => null,
-            'leadership_skill'     => null, 'cooperation'          => null,
-            'attentiveness'        => null, 'perseverance'         => null,
-            'attitude_to_work'     => null, 'helping_other'        => null,
-            'emotional_stability'  => null, 'health'               => null,
+            'punctuality'          => null,
+            'politeness'           => null,
+            'neatness'             => null,
+            'honesty'              => null,
+            'leadership_skill'     => null,
+            'cooperation'          => null,
+            'attentiveness'        => null,
+            'perseverance'         => null,
+            'attitude_to_work'     => null,
+            'helping_other'        => null,
+            'emotional_stability'  => null,
+            'health'               => null,
             'speaking_handwriting' => null,
         ];
- 
+
         $defaultPsychomotor = [
-            'handwriting'      => null, 'verbal_fluency'   => null,
-            'sports'           => null, 'handling_tools'   => null,
-            'drawing_painting' => null, 'games'            => null,
+            'handwriting'      => null,
+            'verbal_fluency'   => null,
+            'sports'           => null,
+            'handling_tools'   => null,
+            'drawing_painting' => null,
+            'games'            => null,
             'musical_skills'   => null,
         ];
- 
+
         $affectiveRatings   = array_merge($defaultAffective,   $remark?->affective_ratings   ?? []);
         $psychomotorRatings = array_merge($defaultPsychomotor, $remark?->psychomotor_ratings ?? []);
- 
+
         $teacherRemark    = $remark?->teacher_remark    ?? '';
         $principalRemark  = $remark?->principal_remark  ?? '';
         $headmasterRemark = $remark?->headmaster_remark ?? '';
- 
+
         // ── Watermark flag ────────────────────────────────────────────────────
         $isTeacherOrAdmin = in_array(Auth::user()->user_type, [1, 2, 3]);
         $showWatermark    = $isTeacherOrAdmin;
- 
+
         // ── Total students in class ───────────────────────────────────────────
         $classStudentIds      = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
         $totalStudentsInClass = $classStudentIds->count();
- 
+
         // ── Attendance ────────────────────────────────────────────────────────
         $attendanceSummary = \App\Models\StudentAttendance::where('student_id', $studentId)
             ->where('class_id', $class->id)
@@ -1108,22 +1127,22 @@ class ResultsController extends Controller
                 SUM(CASE WHEN attendance = 'Absent'  THEN 1 ELSE 0 END) as absent
             ")
             ->first();
- 
+
         // ══════════════════════════════════════════════════════════════════════
         // PRIMARY PATH
         // ══════════════════════════════════════════════════════════════════════
         if ($isPrimary) {
- 
+
             $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
                 $q->where('school_classes.id', $class->id);
             })->orderBy('course_name')->get();
- 
+
             $studentPrimaryResults = \App\Models\PrimarySchoolResult::where('student_id', $studentId)
                 ->where('session_id', $currentSession->id)
                 ->where('term_id', $currentTerm->id)
                 ->get()
                 ->keyBy('course_id');
- 
+
             $results = $allSubjects->map(function ($subject) use ($studentPrimaryResults) {
                 $r = $studentPrimaryResults->get($subject->id);
                 return [
@@ -1138,12 +1157,12 @@ class ResultsController extends Controller
                     'teacher_remark'         => $r?->teacher_remark         ?? '',
                 ];
             });
- 
+
             $overallTotal   = $results->sum('final_obtained');
             $subjectCount   = $allSubjects->count();
             $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
             $overallGrade   = $this->calculateGrade($overallAverage);
- 
+
             $allStudentTotals = \App\Models\PrimarySchoolResult::where('session_id', $currentSession->id)
                 ->where('term_id', $currentTerm->id)
                 ->whereIn('student_id', $classStudentIds)
@@ -1151,11 +1170,11 @@ class ResultsController extends Controller
                 ->groupBy('student_id')
                 ->orderByDesc('total_score')
                 ->get();
- 
+
             $studentPosition   = $allStudentTotals->search(fn($item) => $item->student_id == $studentId);
             $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
             $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
- 
+
             $pdf = Pdf::loadView('student_report_card', [
                 'student'              => $student,
                 'class'                => $class,
@@ -1180,30 +1199,30 @@ class ResultsController extends Controller
                 'attendanceSummary'    => $attendanceSummary,
                 'droppedCourse'        => null,
             ])->setPaper('a4', 'portrait');
- 
+
             $filename = strtoupper($student->name) . '_Primary_Report_Card_' . $currentTerm->name . '.pdf';
- 
+
             if ($action === 'download' && $isTeacherOrAdmin) {
                 abort(403, 'Download not allowed for preview mode.');
             }
- 
+
             return $action === 'download' ? $pdf->download($filename) : $pdf->stream($filename);
         }
- 
+
         // ══════════════════════════════════════════════════════════════════════
         // SECONDARY PATH
         // ══════════════════════════════════════════════════════════════════════
- 
+
         $allSubjects = Course::whereHas('schoolClasses', function ($q) use ($class) {
             $q->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
- 
+
         $studentResults = Result::where('student_id', $studentId)
             ->where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
             ->get()
             ->keyBy('course_id');
- 
+
         $results = $allSubjects->map(function ($subject) use ($studentResults) {
             $result = $studentResults->get($subject->id);
             return [
@@ -1218,17 +1237,17 @@ class ResultsController extends Controller
                 'grade'                  => $result?->grade                  ?? '-',
             ];
         });
- 
+
         // ── Apply custom subject limit ────────────────────────────────────────
         $limitData      = $this->applySubjectLimit($results, $class->id);
         $overallTotal   = $limitData['adjusted_total'];
         $averageDivisor = $limitData['average_divisor'];
         $droppedCourse  = $limitData['dropped_course'];
- 
+
         $overallAverage = $averageDivisor > 0 ? round($overallTotal / $averageDivisor, 2) : 0;
         $overallGrade   = $this->calculateGrade($overallAverage);
         $subjectCount   = $averageDivisor;
- 
+
         // ── Position ranking: apply same drop-lowest logic per classmate ──────
         $allClassResults = Result::where('session_id', $currentSession->id)
             ->where('term_id', $currentTerm->id)
@@ -1236,7 +1255,7 @@ class ResultsController extends Controller
             ->whereIn('course_id', $allSubjects->pluck('id'))
             ->get()
             ->groupBy('student_id');
- 
+
         $studentRankTotals = $classStudentIds->map(function ($sid) use ($allClassResults, $class) {
             $sResults = $allClassResults->get($sid, collect())->map(fn($r) => [
                 'course_name'    => '',
@@ -1245,11 +1264,11 @@ class ResultsController extends Controller
             $ld = $this->applySubjectLimit(collect($sResults), $class->id);
             return ['student_id' => $sid, 'adjusted_total' => $ld['adjusted_total']];
         })->sortByDesc('adjusted_total')->values();
- 
+
         $studentPosition   = $studentRankTotals->search(fn($item) => $item['student_id'] == $studentId);
         $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
- 
+
         $pdf = Pdf::loadView('student_report_card', [
             'student'              => $student,
             'class'                => $class,
@@ -1274,13 +1293,13 @@ class ResultsController extends Controller
             'attendanceSummary'    => $attendanceSummary,
             'droppedCourse'        => $droppedCourse,
         ])->setPaper('a4', 'portrait');
- 
+
         $filename = strtoupper($student->name) . '_Report_Card_' . $currentTerm->name . '.pdf';
- 
+
         if ($action === 'download' && $isTeacherOrAdmin) {
             abort(403, 'Download not allowed for preview mode.');
         }
- 
+
         return $action === 'download' ? $pdf->download($filename) : $pdf->stream($filename);
     }
 
