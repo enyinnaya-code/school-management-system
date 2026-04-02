@@ -350,7 +350,8 @@ class StudentReportCardController extends Controller
                 ->keyBy('course_id');
 
             $results = $allSubjects->map(function ($subject) use ($studentPrimaryResults) {
-                $r = $studentPrimaryResults->get($subject->id);
+                $r            = $studentPrimaryResults->get($subject->id);
+                $finalObtained = $r?->final_obtained ?? 0;
                 return [
                     'course_name'            => $subject->course_name,
                     'first_half_obtainable'  => $r?->first_half_obtainable  ?? 30,
@@ -358,7 +359,8 @@ class StudentReportCardController extends Controller
                     'second_half_obtainable' => $r?->second_half_obtainable ?? 70,
                     'second_half_obtained'   => $r?->second_half_obtained   ?? 0,
                     'final_obtainable'       => $r?->final_obtainable       ?? 100,
-                    'final_obtained'         => $r?->final_obtained         ?? 0,
+                    'final_obtained'         => $finalObtained,
+                    'grade'                  => $finalObtained > 0 ? $this->calculateGrade($finalObtained) : '-',
                     'teacher_remark'         => $r?->teacher_remark         ?? '',
                 ];
             });
@@ -400,7 +402,7 @@ class StudentReportCardController extends Controller
                 'subjectCount'         => $subjectCount,
                 'isPrimary'            => true,
                 'attendanceSummary'    => $attendanceSummary,
-                'termSettings'         => $termSettings,  // ← term settings
+                'termSettings'         => $termSettings,
             ]);
         }
 
@@ -467,7 +469,7 @@ class StudentReportCardController extends Controller
             'subjectCount'         => $subjectCount,
             'isPrimary'            => false,
             'attendanceSummary'    => $attendanceSummary,
-            'termSettings'         => $termSettings,  // ← term settings
+            'termSettings'         => $termSettings,
         ]);
     }
 
