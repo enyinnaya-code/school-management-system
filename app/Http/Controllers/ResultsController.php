@@ -1132,6 +1132,7 @@ class ResultsController extends Controller
                     'second_half_obtained'   => $r?->second_half_obtained   ?? 0,
                     'final_obtainable'       => $r?->final_obtainable       ?? 100,
                     'final_obtained'         => $r?->final_obtained         ?? 0,
+                    'grade'                  => $r?->grade                  ?? null,  // ← added
                     'teacher_remark'         => $r?->teacher_remark         ?? '',
                 ];
             });

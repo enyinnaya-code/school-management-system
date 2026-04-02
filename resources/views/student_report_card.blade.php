@@ -134,7 +134,7 @@
 
                 @if(isset($isPrimary) && $isPrimary)
                 {{-- ════════════════════════════════════════════════════════════
-                     PRIMARY SCHOOL — 1st Half / 2nd Half / Total table
+                     PRIMARY SCHOOL — 1st Half / 2nd Half / Total / Grade
                      ════════════════════════════════════════════════════════════ --}}
                 <table>
                     <thead>
@@ -146,13 +146,14 @@
                             <th class="rotate-text">2nd Half Obtained</th>
                             <th class="rotate-text">Total Obtainable</th>
                             <th class="rotate-text">Total Obtained</th>
-                            <th class="rotate-text">Remark</th>
+                            <th class="rotate-text">Grade</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($results as $result)
                         @php
                             $hasScore = ($result['first_half_obtained'] > 0 || $result['second_half_obtained'] > 0 || $result['final_obtained'] > 0);
+                            $grade    = $result['grade'] ?? null;
                         @endphp
                         <tr class="{{ !$hasScore ? 'no-score-row' : '' }}">
                             <td class="subject-name">{{ $result['course_name'] }}</td>
@@ -162,7 +163,7 @@
                             <td>{{ $result['second_half_obtained'] > 0 ? $result['second_half_obtained'] : '-' }}</td>
                             <td>{{ $result['final_obtainable'] }}</td>
                             <td><strong>{{ $result['final_obtained'] > 0 ? $result['final_obtained'] : '-' }}</strong></td>
-                            <td>{{ $result['teacher_remark'] ?: '-' }}</td>
+                            <td><strong>{{ $hasScore ? ($grade ?: '-') : '-' }}</strong></td>
                         </tr>
                         @empty
                         <tr><td colspan="8" style="text-align:center;">No subjects recorded.</td></tr>
@@ -185,10 +186,10 @@
                         <td><strong>{{ $overallAverage }}</strong></td>
                     </tr>
                     <tr style="background-color:#f0f0f0;">
+                        <td><strong>GRADE:</strong></td>
+                        <td><strong>{{ $overallGrade }}</strong></td>
                         <td><strong>POSITION:</strong></td>
-                        <td><strong>{{ $formattedPosition }}</strong></td>
-                        <td><strong>OUT OF:</strong></td>
-                        <td><strong>{{ $totalStudentsInClass }}</strong></td>
+                        <td><strong>{{ $formattedPosition }} / {{ $totalStudentsInClass }}</strong></td>
                     </tr>
                 </table>
 
