@@ -613,39 +613,41 @@ class ResultsController extends Controller
     }
 
 
-    private function applySubjectLimit($results, int $classId): array
-    {
-        $limit = \App\Models\ClassSubjectLimit::where('school_class_id', $classId)->first();
+   private function applySubjectLimit($results, int $classId): array
+{
+    $limit = \App\Models\ClassSubjectLimit::where('school_class_id', $classId)->first();
 
-        if (!$limit) {
-            $scored  = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
-            $divisor = $scored->count() > 0 ? $scored->count() : 1;
-            return [
-                'adjusted_total'  => $results->sum('final_obtained'),
-                'average_divisor' => $divisor,
-                'dropped_course'  => null,
-            ];
-        }
-
-        $minSubjects   = (int) $limit->min_subjects;
-        $scored        = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
-        $droppedCourse = null;
-
-        if ($scored->count() > $minSubjects) {
-            $excessCount = $scored->count() - $minSubjects; // how many to drop
-            $sorted      = $scored->sortBy('final_obtained'); // lowest first
-
-            $droppedKeys   = $sorted->keys()->take($excessCount)->toArray();
-            $droppedCourse = $results[$droppedKeys[0]]['course_name'] ?? null; // first/lowest dropped
-            $adjustedTotal = $scored->except($droppedKeys)->sum('final_obtained');
-        }
-
+    if (!$limit) {
+        $scored  = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
+        $divisor = $scored->count() > 0 ? $scored->count() : 1;
         return [
-            'adjusted_total'  => $adjustedTotal,
-            'average_divisor' => $minSubjects,
-            'dropped_course'  => $droppedCourse,
+            'adjusted_total'  => $results->sum('final_obtained'),
+            'average_divisor' => $divisor,
+            'dropped_course'  => null,
         ];
     }
+
+    $minSubjects   = (int) $limit->min_subjects;
+    $scored        = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
+    $droppedCourse = null;
+
+    if ($scored->count() > $minSubjects) {
+        $excessCount   = $scored->count() - $minSubjects;
+        $sorted        = $scored->sortBy('final_obtained');
+        $droppedKeys   = $sorted->keys()->take($excessCount)->toArray();
+        $droppedCourse = $results[$droppedKeys[0]]['course_name'] ?? null;
+        $adjustedTotal = $scored->except($droppedKeys)->sum('final_obtained');
+    } else {
+        // No drop needed — sum all scored subjects
+        $adjustedTotal = $scored->sum('final_obtained');
+    }
+
+    return [
+        'adjusted_total'  => $adjustedTotal,
+        'average_divisor' => $minSubjects,
+        'dropped_course'  => $droppedCourse,
+    ];
+}
 
 
     public function masterList(Request $request, $classId)
