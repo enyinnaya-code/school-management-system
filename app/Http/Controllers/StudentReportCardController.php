@@ -214,18 +214,26 @@ class StudentReportCardController extends Controller
             ->where('term_id', $term->id)
             ->first();
 
-        $sheetTemplate = DB::table('result_sheet_templates')
-            ->where('term_id', $term->id)
-            ->where('is_active', 1)
-            ->get()
-            ->first(function ($t) use ($class) {
-                $classes = json_decode($t->applicable_classes ?? '[]', true);
-                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-            });
+       $sheetTemplate = DB::table('result_sheet_templates')
+    ->where('is_active', 1)
+    ->get()
+    ->first(function ($t) use ($class, $term) {
+        $classes     = json_decode($t->applicable_classes ?? '[]', true);
+        $classMatch  = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+        $termMatch   = !empty($t->term_name) && $t->term_name === $term->name;
+        return $classMatch && $termMatch;
+    });
 
-        if ($sheetTemplate) {
-            return $this->showResultSheet($student, $class, $session, $term, $sheetTemplate);
-        }
+// Fallback: any active template for this class regardless of term
+if (!$sheetTemplate) {
+    $sheetTemplate = DB::table('result_sheet_templates')
+        ->where('is_active', 1)
+        ->get()
+        ->first(function ($t) use ($class) {
+            $classes = json_decode($t->applicable_classes ?? '[]', true);
+            return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+        });
+}
 
         return $this->showStandardReport($student, $class, $session, $term, $termSettings);
     }
