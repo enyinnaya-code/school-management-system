@@ -8,40 +8,89 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
-            padding: 12px;
+            padding: 20px;
             font-size: 11px;
         }
-        .container { border: 2px solid #000; padding: 12px; }
+        .container { border: 2px solid #000; padding: 15px; }
 
-        /* ── Header ── */
-        .header { width: 100%; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 8px; overflow: hidden; }
-        .header-center { text-align: center; }
-        .school-name { font-size: 16px; font-weight: bold; margin-bottom: 2px; }
-        .school-address { font-size: 9px; margin-bottom: 4px; }
-        .report-title { font-size: 11px; font-weight: bold; }
-        .class-badge { float: right; background-color: #f0f0f0; padding: 3px 10px; border-radius: 3px; font-weight: bold; margin-top: -30px; }
+        /* ── Header ─────────────────────────────────────────────────────────
+           Original used display:table — replaced with overflow:hidden + floats
+           so DomPDF renders it correctly                                     */
+        .header {
+            overflow: hidden;
+            width: 100%;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .header-left {
+            float: left;
+            width: 120px;
+            text-align: center;
+        }
+        .logo { width: 90px; height: 90px; object-fit: contain; }
+        .header-center {
+            /* sits between left and right floats */
+            text-align: center;
+            padding: 0 10px;
+        }
+        .school-name { font-size: 18px; font-weight: bold; margin-bottom: 3px; }
+        .school-motto { font-style: italic; font-size: 10px; margin-bottom: 2px; }
+        .school-address { font-size: 9px; margin-bottom: 5px; }
+        .report-title { font-size: 11px; font-weight: bold; margin-top: 5px; }
+        .header-right {
+            float: right;
+            width: 80px;
+            text-align: center;
+        }
+        .student-photo { width: 70px; height: 80px; border: 1px solid #000; background-color: #f0f0f0; }
+        .class-badge {
+            display: inline-block;
+            background-color: #f0f0f0;
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
 
         /* ── Student name ── */
-        .student-name-section { text-align: center; padding: 6px 0; border-bottom: 2px solid #000; }
-        .student-name { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
+        .student-name-section { text-align: center; padding: 8px 0; border-bottom: 2px solid #000; }
+        .student-name { font-size: 16px; font-weight: bold; margin-bottom: 3px; }
         .student-basic-info { font-size: 10px; }
 
-        /* ── Term info — 4 equal float columns ── */
-        .term-info-section { overflow: hidden; margin: 8px 0; border-bottom: 1px solid #000; padding-bottom: 6px; }
-        .term-info-col { float: left; width: 25%; font-size: 10px; padding-right: 4px; }
-        .info-item { margin-bottom: 2px; }
+        /* ── Term info ───────────────────────────────────────────────────────
+           Original used display:table / display:table-cell — replaced with
+           float: left; width: 25% per column                                */
+        .term-info-section {
+            overflow: hidden;
+            width: 100%;
+            margin: 10px 0;
+            border-bottom: 1px solid #000;
+            padding-bottom: 8px;
+        }
+        .term-info-col {
+            float: left;
+            width: 25%;
+            vertical-align: top;
+            font-size: 10px;
+            padding-right: 4px;
+        }
+        .info-item { margin-bottom: 3px; }
         .info-label { font-weight: bold; }
 
-        /* ── Main content — left 63%, right 35% via float ── */
-        .main-content { overflow: hidden; margin-top: 8px; }
-        .left-section { float: left; width: 63%; padding-right: 8px; }
-        .right-section { float: right; width: 35%; border-left: 1px solid #000; padding-left: 8px; }
+        /* ── Main content ────────────────────────────────────────────────────
+           Original used display:table / display:table-cell — replaced with
+           floats so DomPDF renders side-by-side columns correctly.
+           Content still flows naturally and overflows to page 2 when needed. */
+        .main-content { overflow: hidden; width: 100%; margin-top: 10px; }
+        .left-section  { float: left;  width: 65%; padding-right: 10px; }
+        .right-section { float: right; width: 33%; border-left: 1px solid #000; padding-left: 10px; }
 
         /* ── Tables ── */
-        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-        th, td { border: 1px solid #000; padding: 4px 2px; text-align: center; font-size: 9px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        th, td { border: 1px solid #000; padding: 5px 3px; text-align: center; font-size: 9px; }
         th { background-color: #f0f0f0; font-weight: bold; }
-        .subject-name { text-align: left; padding-left: 4px; }
+        .subject-name { text-align: left; padding-left: 5px; }
         .rotate-text {
             writing-mode: vertical-lr;
             text-orientation: mixed;
@@ -49,39 +98,57 @@
             padding: 3px 2px;
             white-space: nowrap;
         }
-        .no-score-row { background-color: #fffbe6; }
-        .summary-table td { padding: 4px 5px; }
+        .no-score-row { background-color: #fff9e62b; }
 
-        /* ── Skills ── */
-        .skills-section { margin-bottom: 8px; }
-        .section-title { font-weight: bold; font-size: 10px; background-color: #f0f0f0; padding: 3px; border: 1px solid #000; text-align: center; margin-bottom: 2px; }
-        .skills-table td { padding: 2px 4px; font-size: 9px; }
+        .summary-table td { padding: 5px; }
+        .skills-section { margin-bottom: 10px; }
+        .section-title {
+            font-weight: bold; font-size: 10px;
+            background-color: #f0f0f0; padding: 4px;
+            border: 1px solid #000; text-align: center; margin-bottom: 3px;
+        }
+        .skills-table td { padding: 3px 5px; font-size: 9px; }
         .skill-name { text-align: left; border-right: 1px solid #000; }
-        .skill-rating { text-align: center; width: 28px; font-weight: bold; }
+        .skill-rating { text-align: center; width: 30px; font-weight: bold; }
 
-        /* ── Remarks ── */
-        .remarks-section { margin-top: 8px; border-top: 1px solid #000; padding-top: 6px; }
-        .remark-item { margin-bottom: 6px; font-size: 10px; }
+        .remarks-section { margin-top: 10px; border-top: 1px solid #000; padding-top: 8px; }
+        .remark-item { margin-bottom: 8px; font-size: 10px; }
         .remark-label { font-weight: bold; }
 
-        /* ── Clearfix ── */
+        .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #000; font-size: 9px; text-align: center; }
+
+        /* clearfix so parent containers wrap their floated children */
         .clearfix::after { content: ''; display: table; clear: both; }
     </style>
 </head>
 <body>
     <div class="container">
 
-        {{-- ── Header ── --}}
+        {{-- ── Header ──────────────────────────────────────────────────────── --}}
         <div class="header clearfix">
+            {{-- <div class="header-left">
+                @php
+                    $settings = school_settings();
+                    $logoPath = $settings && $settings->logo
+                        ? public_path('storage/logos/' . $settings->logo)
+                        : public_path('images/school_management_logo__1_-removebg-preview.png');
+                @endphp
+                <img src="{{ $logoPath }}" alt="School Logo" class="logo">
+            </div> --}}
+            <div class="header-right">
+                <div class="class-badge">{{ $class->name }}</div>
+            </div>
             <div class="header-center">
                 <div class="school-name">{{ strtoupper(school_name()) }}</div>
-                <div class="school-address">{{ $settings->address ?? 'School Address' }}</div>
+                {{-- <div class="school-motto">Motto: Excellence Personified</div> --}}
+                <div class="school-address">
+                    {{ $settings->address ?? 'School Address' }}<br>
+                </div>
                 <div class="report-title">«« STUDENT'S ACADEMIC REPORT CARD »»</div>
             </div>
-            <div class="class-badge">{{ $class->name }}</div>
         </div>
 
-        {{-- ── Student Name ── --}}
+        {{-- ── Student Name ─────────────────────────────────────────────────── --}}
         <div class="student-name-section">
             <div class="student-name">{{ strtoupper($student->name) }}</div>
             <div class="student-basic-info">
@@ -90,7 +157,7 @@
             </div>
         </div>
 
-        {{-- ── Term Info ── --}}
+        {{-- ── Term & Class Info ────────────────────────────────────────────── --}}
         <div class="term-info-section clearfix">
             <div class="term-info-col">
                 <div class="info-item"><span class="info-label">Term:</span> {{ $currentTerm->name }}</div>
@@ -116,20 +183,20 @@
             </div>
         </div>
 
-        {{-- ── Main Content ── --}}
+        {{-- ── Main Content ─────────────────────────────────────────────────── --}}
         <div class="main-content clearfix">
 
-            {{-- Left: Results --}}
+            {{-- Left: Academic Results --}}
             <div class="left-section">
 
                 @if(isset($isPrimary) && $isPrimary)
-                {{-- ══════════════════════════════════════════════
-                     PRIMARY SCHOOL
-                     ══════════════════════════════════════════════ --}}
+                {{-- ════════════════════════════════════════════════════════════
+                     PRIMARY SCHOOL — 1st Half / 2nd Half / Total / Grade
+                     ════════════════════════════════════════════════════════════ --}}
                 <table>
                     <thead>
                         <tr>
-                            <th style="width:30%; text-align:left; padding-left:4px;">SUBJECTS</th>
+                            <th style="width:28%; text-align:left; padding-left:4px;">SUBJECTS</th>
                             <th class="rotate-text">1st Half Obtainable</th>
                             <th class="rotate-text">1st Half Obtained</th>
                             <th class="rotate-text">2nd Half Obtainable</th>
@@ -161,6 +228,7 @@
                     </tbody>
                 </table>
 
+                {{-- Primary Summary --}}
                 <table class="summary-table">
                     <tr style="background-color:#f0f0f0; font-weight:bold;">
                         <td>NO. OF SUBJECTS:</td>
@@ -183,13 +251,13 @@
                 </table>
 
                 @else
-                {{-- ══════════════════════════════════════════════
-                     SECONDARY SCHOOL
-                     ══════════════════════════════════════════════ --}}
+                {{-- ════════════════════════════════════════════════════════════
+                     SECONDARY SCHOOL — 1st Half / 2nd Half / Total / Grade
+                     ════════════════════════════════════════════════════════════ --}}
                 <table>
                     <thead>
                         <tr>
-                            <th style="width:30%; text-align:left; padding-left:4px;">SUBJECTS</th>
+                            <th style="width:28%; text-align:left; padding-left:4px;">SUBJECTS</th>
                             <th class="rotate-text">1st Half Obtainable</th>
                             <th class="rotate-text">1st Half Obtained</th>
                             <th class="rotate-text">2nd Half Obtainable</th>
@@ -220,6 +288,7 @@
                     </tbody>
                 </table>
 
+                {{-- Secondary Summary --}}
                 <table class="summary-table">
                     <tr style="background-color:#f0f0f0; font-weight:bold;">
                         <td>NO. OF SUBJECTS:</td>
@@ -263,42 +332,105 @@
 
             </div>{{-- /left-section --}}
 
-            {{-- Right: Skills --}}
+            {{-- Right: Skills ──────────────────────────────────────────────── --}}
             <div class="right-section">
 
+                {{-- Affective Skills --}}
                 <div class="skills-section">
                     <div class="section-title">AFFECTIVE SKILLS</div>
                     <table class="skills-table">
-                        <tr><td class="skill-name">Punctuality</td><td class="skill-rating">{{ $affectiveRatings['punctuality'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Politeness</td><td class="skill-rating">{{ $affectiveRatings['politeness'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Neatness</td><td class="skill-rating">{{ $affectiveRatings['neatness'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Honesty</td><td class="skill-rating">{{ $affectiveRatings['honesty'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Leadership Skill</td><td class="skill-rating">{{ $affectiveRatings['leadership_skill'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Cooperation</td><td class="skill-rating">{{ $affectiveRatings['cooperation'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Attentiveness</td><td class="skill-rating">{{ $affectiveRatings['attentiveness'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Perseverance</td><td class="skill-rating">{{ $affectiveRatings['perseverance'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Attitude to Work</td><td class="skill-rating">{{ $affectiveRatings['attitude_to_work'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Helping Others</td><td class="skill-rating">{{ $affectiveRatings['helping_other'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Emotional Stability</td><td class="skill-rating">{{ $affectiveRatings['emotional_stability'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Health</td><td class="skill-rating">{{ $affectiveRatings['health'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Speaking/Handwriting</td><td class="skill-rating">{{ $affectiveRatings['speaking_handwriting'] ?? '-' }}</td></tr>
+                        <tr>
+                            <td class="skill-name">Punctuality</td>
+                            <td class="skill-rating">{{ $affectiveRatings['punctuality'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Politeness</td>
+                            <td class="skill-rating">{{ $affectiveRatings['politeness'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Neatness</td>
+                            <td class="skill-rating">{{ $affectiveRatings['neatness'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Honesty</td>
+                            <td class="skill-rating">{{ $affectiveRatings['honesty'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Leadership Skill</td>
+                            <td class="skill-rating">{{ $affectiveRatings['leadership_skill'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Cooperation</td>
+                            <td class="skill-rating">{{ $affectiveRatings['cooperation'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Attentiveness</td>
+                            <td class="skill-rating">{{ $affectiveRatings['attentiveness'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Perseverance</td>
+                            <td class="skill-rating">{{ $affectiveRatings['perseverance'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Attitude to Work</td>
+                            <td class="skill-rating">{{ $affectiveRatings['attitude_to_work'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Helping Others</td>
+                            <td class="skill-rating">{{ $affectiveRatings['helping_other'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Emotional Stability</td>
+                            <td class="skill-rating">{{ $affectiveRatings['emotional_stability'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Health</td>
+                            <td class="skill-rating">{{ $affectiveRatings['health'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Speaking/Handwriting</td>
+                            <td class="skill-rating">{{ $affectiveRatings['speaking_handwriting'] ?? '-' }}</td>
+                        </tr>
                     </table>
                 </div>
 
+                {{-- Psychomotor Skills --}}
                 <div class="skills-section">
                     <div class="section-title">PSYCHOMOTOR SKILLS</div>
                     <table class="skills-table">
-                        <tr><td class="skill-name">Handwriting</td><td class="skill-rating">{{ $psychomotorRatings['handwriting'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Verbal Fluency</td><td class="skill-rating">{{ $psychomotorRatings['verbal_fluency'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Sports</td><td class="skill-rating">{{ $psychomotorRatings['sports'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Handling Tools</td><td class="skill-rating">{{ $psychomotorRatings['handling_tools'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Drawing &amp; Painting</td><td class="skill-rating">{{ $psychomotorRatings['drawing_painting'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Games</td><td class="skill-rating">{{ $psychomotorRatings['games'] ?? '-' }}</td></tr>
-                        <tr><td class="skill-name">Musical Skills</td><td class="skill-rating">{{ $psychomotorRatings['musical_skills'] ?? '-' }}</td></tr>
+                        <tr>
+                            <td class="skill-name">Handwriting</td>
+                            <td class="skill-rating">{{ $psychomotorRatings['handwriting'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Verbal Fluency</td>
+                            <td class="skill-rating">{{ $psychomotorRatings['verbal_fluency'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Sports</td>
+                            <td class="skill-rating">{{ $psychomotorRatings['sports'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Handling Tools</td>
+                            <td class="skill-rating">{{ $psychomotorRatings['handling_tools'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Drawing &amp; Painting</td>
+                            <td class="skill-rating">{{ $psychomotorRatings['drawing_painting'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Games</td>
+                            <td class="skill-rating">{{ $psychomotorRatings['games'] ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="skill-name">Musical Skills</td>
+                            <td class="skill-rating">{{ $psychomotorRatings['musical_skills'] ?? '-' }}</td>
+                        </tr>
                     </table>
                 </div>
 
-                <div style="margin-top:8px; font-size:8px; border:1px solid #000; padding:4px;">
+                {{-- Rating Key --}}
+                <div style="margin-top:10px; font-size:8px; border:1px solid #000; padding:5px;">
                     <strong>RATING KEY:</strong><br>
                     5 - Excellent | 4 - Very Good<br>
                     3 - Good | 2 - Fair | 1 - Poor
@@ -308,21 +440,37 @@
 
         </div>{{-- /main-content --}}
 
-        {{-- ── Watermark ── --}}
+        {{-- ── Watermark (teachers / admins preview only) ───────────────────── --}}
         @if(isset($showWatermark) && $showWatermark)
         <div style="
-            position: absolute; top: 50%; left: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
             transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 80px; font-weight: bold;
-            color: rgba(255,0,0,0.15); pointer-events: none;
-            z-index: 999; white-space: nowrap;
-            text-transform: uppercase; letter-spacing: 10px;
-        ">PREVIEW ONLY</div>
+            font-size: 80px;
+            font-weight: bold;
+            color: rgba(255, 0, 0, 0.15);
+            pointer-events: none;
+            z-index: 999;
+            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 10px;
+        ">
+            PREVIEW ONLY
+        </div>
         <div style="
-            position: absolute; bottom: 30px; left: 0; right: 0;
-            text-align: center; font-size: 18px; color: red;
-            font-weight: bold; z-index: 999;
-        ">This is a preview copy – not for official use or distribution</div>
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 18px;
+            color: red;
+            font-weight: bold;
+            z-index: 999;
+        ">
+            This is a preview copy – not for official use or distribution
+        </div>
         @endif
 
     </div>
