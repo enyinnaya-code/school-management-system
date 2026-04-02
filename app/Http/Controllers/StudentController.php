@@ -208,7 +208,8 @@ class StudentController extends Controller
 
     public function activate(User $student)
     {
-        $student->is_active = 1;
+        $student->is_active       = 1;
+        $student->login_attempts  = 3;
         $student->save();
 
         $filters = $this->getFilterParams();
