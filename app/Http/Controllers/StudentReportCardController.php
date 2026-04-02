@@ -214,17 +214,16 @@ class StudentReportCardController extends Controller
             ->where('term_id', $term->id)
             ->first();
 
-       $sheetTemplate = DB::table('result_sheet_templates')
+        $sheetTemplate = DB::table('result_sheet_templates')
     ->where('is_active', 1)
     ->get()
     ->first(function ($t) use ($class, $term) {
-        $classes     = json_decode($t->applicable_classes ?? '[]', true);
-        $classMatch  = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-        $termMatch   = !empty($t->term_name) && $t->term_name === $term->name;
+        $classes    = json_decode($t->applicable_classes ?? '[]', true);
+        $classMatch = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+        $termMatch  = !empty($t->term_name) && $t->term_name === $term->name;
         return $classMatch && $termMatch;
     });
 
-// Fallback: any active template for this class regardless of term
 if (!$sheetTemplate) {
     $sheetTemplate = DB::table('result_sheet_templates')
         ->where('is_active', 1)
@@ -297,51 +296,55 @@ if (!$sheetTemplate) {
 
 
     private function showResultSheet($student, $class, $session, $term, $sheetTemplate)
-    {
-        $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
-        $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
+{
+    $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
+    $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
 
-        $service  = new ResultSheetService();
-        $subjects = $service->loadTemplateStructure($sheetTemplate->id);
+    $service  = new ResultSheetService();
+    $subjects = $service->loadTemplateStructure($sheetTemplate->id);
 
-        $allItemIds = collect($subjects)->flatMap(function ($subject) {
-            $ids = collect($subject->items)->pluck('id');
-            foreach ($subject->subcategories as $sub) {
-                $ids = $ids->merge(collect($sub->items)->pluck('id'));
-            }
-            return $ids;
-        });
+    $allItemIds = collect($subjects)->flatMap(function ($subject) {
+        $ids = collect($subject->items)->pluck('id');
+        foreach ($subject->subcategories as $sub) {
+            $ids = $ids->merge(collect($sub->items)->pluck('id'));
+        }
+        return $ids;
+    });
 
-        $ratings = DB::table('result_sheet_ratings')
-            ->where('student_id', $student->id)
-            ->where('session_id', $session->id)
-            ->where('term_id', $term->id)
-            ->whereIn('item_id', $allItemIds)
-            ->get(['item_id', 'rating_value'])
-            ->mapWithKeys(fn($row) => [(int) $row->item_id => trim($row->rating_value)])
-            ->toArray();
+    $ratings = DB::table('result_sheet_ratings')
+        ->where('student_id', $student->id)
+        ->where('session_id', $session->id)
+        ->where('term_id', $term->id)
+        ->whereIn('item_id', $allItemIds)
+        ->get(['item_id', 'rating_value'])
+        ->mapWithKeys(fn($row) => [(int) $row->item_id => trim($row->rating_value)])
+        ->toArray();
 
-        $footerData = DB::table('result_sheet_footer_data')
-            ->where('student_id', $student->id)
-            ->where('session_id', $session->id)
-            ->where('term_id', $term->id)
-            ->where('template_id', $sheetTemplate->id)
-            ->first();
+    $footerData = DB::table('result_sheet_footer_data')
+        ->where('student_id', $student->id)
+        ->where('session_id', $session->id)
+        ->where('term_id', $term->id)
+        ->where('template_id', $sheetTemplate->id)
+        ->first();
 
-        $section = \App\Models\Section::find($class->section_id);
+    $section = \App\Models\Section::find($class->section_id);
 
-        return view('students.report_cards.result_sheet_view', [
-            'student'        => $student,
-            'class'          => $class,
-            'section'        => $section,
-            'currentSession' => $session,
-            'currentTerm'    => $term,
-            'sheetTemplate'  => $sheetTemplate,
-            'subjects'       => $subjects,
-            'ratings'        => $ratings,
-            'footerData'     => $footerData,
-        ]);
-    }
+    // ── Use $term as $selectedTerm to match result_sheet_student_print variable names ──
+    $selectedTerm    = $term;
+    $currentSession  = $session;
+
+    return view('result_sheet_student_print', compact(
+        'student',
+        'class',
+        'section',
+        'sheetTemplate',
+        'subjects',
+        'ratings',
+        'currentSession',
+        'selectedTerm',
+        'footerData'
+    ));
+}
 
 
     /**
