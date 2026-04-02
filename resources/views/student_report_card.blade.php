@@ -6,10 +6,16 @@
     <title>Report Card - {{ strtoupper($student->name) }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
+        html, body { 
             font-family: Arial, sans-serif; 
-            padding: 20px; 
             font-size: 11px;
+            margin: 0;
+            padding: 0;
+            height: auto;
+            min-height: 0;
+        }
+        @page {
+            margin: 15px;
         }
         .container { border: 2px solid #000; padding: 15px; }
         .header { display: table; width: 100%; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
