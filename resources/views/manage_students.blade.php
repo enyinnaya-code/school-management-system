@@ -314,7 +314,7 @@
                 </div>
                 <div class="modal-body">
                     Are you sure you want to reset the password for <strong>{{ $student->name }}</strong>?
-                    <p class="text-info mt-2">Password will be reset to <strong>123456</strong></p>
+                    <p class="text-info mt-2">Password will be reset to <strong>12345</strong></p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
