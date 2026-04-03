@@ -171,6 +171,9 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('students/reactivate-all', [StudentController::class, 'reactivateAll'])
     ->name('students.reactivate_all');
 
+    Route::patch('students/reset-all-passwords', [StudentController::class, 'resetAllPasswords'])
+    ->name('students.reset_all_passwords');
+
     Route::get('/get-classes/{section_id}', [StudentController::class, 'getClasses']);
     Route::post('/students', [StudentController::class, 'store'])->name('students.store');
     Route::get('/students/{student}/edit', [StudentController::class, 'edit'])->name('students.edit');

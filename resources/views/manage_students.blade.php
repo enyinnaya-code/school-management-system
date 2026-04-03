@@ -24,7 +24,8 @@
                                     </a>
 
                                     {{-- Reactivate All: only for admins AND only when filtering by suspended --}}
-                                    @if(in_array(Auth::user()->user_type, [1, 2]) && request('filter_status') === 'suspended')
+                                    @if(in_array(Auth::user()->user_type, [1, 2]) && request('filter_status') ===
+                                    'suspended')
                                     <form action="{{ route('students.reactivate_all') }}" method="POST"
                                         onsubmit="return confirm('Are you sure you want to reactivate ALL suspended student accounts?')">
                                         @csrf
@@ -32,6 +33,19 @@
                                         <button type="submit" class="btn btn-success btn-sm mr-2"
                                             title="Reactivate all suspended students">
                                             <i class="fas fa-users"></i> Reactivate All Suspended
+                                        </button>
+                                    </form>
+                                    @endif
+
+
+                                    @if(in_array(Auth::user()->user_type, [1, 2]))
+                                    <form action="{{ route('students.reset_all_passwords') }}" method="POST"
+                                        onsubmit="return confirm('Are you sure you want to reset ALL student passwords to 12345?')">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="btn btn-warning btn-sm mr-2"
+                                            title="Reset all student passwords">
+                                            <i class="fas fa-key"></i> Reset All Passwords
                                         </button>
                                     </form>
                                     @endif
@@ -51,24 +65,22 @@
                                         <div class="form-group col-md-3">
                                             <label>Student Name</label>
                                             <input type="text" class="form-control" name="filter_name"
-                                                value="{{ request('filter_name') }}"
-                                                placeholder="Search by name...">
+                                                value="{{ request('filter_name') }}" placeholder="Search by name...">
                                         </div>
                                         <div class="form-group col-md-3">
                                             <label>Student ID (Admission No.)</label>
                                             <input type="text" class="form-control" name="filter_admission_no"
-                                                value="{{ request('filter_admission_no') }}"
-                                                placeholder="e.g. 0042">
+                                                value="{{ request('filter_admission_no') }}" placeholder="e.g. 0042">
                                         </div>
                                         <div class="form-group col-md-3">
                                             <label>Section</label>
                                             <select class="form-control" name="filter_section" id="sectionSelect">
                                                 <option value="">-- All Sections --</option>
                                                 @foreach($sections as $section)
-                                                    <option value="{{ $section->id }}"
-                                                        {{ request('filter_section') == $section->id ? 'selected' : '' }}>
-                                                        {{ $section->section_name }}
-                                                    </option>
+                                                <option value="{{ $section->id }}" {{
+                                                    request('filter_section')==$section->id ? 'selected' : '' }}>
+                                                    {{ $section->section_name }}
+                                                </option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -77,10 +89,10 @@
                                             <select class="form-control" name="filter_class" id="classSelect">
                                                 <option value="">-- Select Class --</option>
                                                 @foreach($classes as $class)
-                                                    <option value="{{ $class->id }}"
-                                                        {{ request('filter_class') == $class->id ? 'selected' : '' }}>
-                                                        {{ $class->name }}
-                                                    </option>
+                                                <option value="{{ $class->id }}" {{ request('filter_class')==$class->id
+                                                    ? 'selected' : '' }}>
+                                                    {{ $class->name }}
+                                                </option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -88,16 +100,20 @@
                                             <label>Gender</label>
                                             <select class="form-control" name="filter_gender">
                                                 <option value="">-- Select Gender --</option>
-                                                <option value="Male"   {{ request('filter_gender') == 'Male'   ? 'selected' : '' }}>Male</option>
-                                                <option value="Female" {{ request('filter_gender') == 'Female' ? 'selected' : '' }}>Female</option>
+                                                <option value="Male" {{ request('filter_gender')=='Male' ? 'selected'
+                                                    : '' }}>Male</option>
+                                                <option value="Female" {{ request('filter_gender')=='Female'
+                                                    ? 'selected' : '' }}>Female</option>
                                             </select>
                                         </div>
                                         <div class="form-group col-md-3">
                                             <label>Account Status</label>
                                             <select class="form-control" name="filter_status">
                                                 <option value="">-- All Statuses --</option>
-                                                <option value="active"    {{ request('filter_status') == 'active'    ? 'selected' : '' }}>Active</option>
-                                                <option value="suspended" {{ request('filter_status') == 'suspended' ? 'selected' : '' }}>Suspended</option>
+                                                <option value="active" {{ request('filter_status')=='active'
+                                                    ? 'selected' : '' }}>Active</option>
+                                                <option value="suspended" {{ request('filter_status')=='suspended'
+                                                    ? 'selected' : '' }}>Suspended</option>
                                             </select>
                                         </div>
                                         <div class="form-group col-md-3">
@@ -125,40 +141,47 @@
                                     <h6>Active Filters:</h6>
                                     <div class="active-filters">
                                         @if(request('filter_name'))
-                                            <span class="badge badge-info mr-2">Name: {{ request('filter_name') }}</span>
+                                        <span class="badge badge-info mr-2">Name: {{ request('filter_name') }}</span>
                                         @endif
 
                                         @if(request('filter_admission_no'))
-                                            <span class="badge badge-info mr-2">Student ID: {{ request('filter_admission_no') }}</span>
+                                        <span class="badge badge-info mr-2">Student ID: {{
+                                            request('filter_admission_no') }}</span>
                                         @endif
 
                                         @if(request('filter_section'))
-                                            @php $selectedSection = $sections->firstWhere('id', request('filter_section')); @endphp
-                                            <span class="badge badge-info mr-2">
-                                                Section: {{ $selectedSection ? $selectedSection->section_name : 'N/A' }}
-                                            </span>
+                                        @php $selectedSection = $sections->firstWhere('id', request('filter_section'));
+                                        @endphp
+                                        <span class="badge badge-info mr-2">
+                                            Section: {{ $selectedSection ? $selectedSection->section_name : 'N/A' }}
+                                        </span>
                                         @endif
 
                                         @if(request('filter_class'))
-                                            @php $selectedClass = $classes->firstWhere('id', request('filter_class')); @endphp
-                                            <span class="badge badge-info mr-2">
-                                                Class: {{ $selectedClass ? $selectedClass->name : 'N/A' }}
-                                            </span>
+                                        @php $selectedClass = $classes->firstWhere('id', request('filter_class'));
+                                        @endphp
+                                        <span class="badge badge-info mr-2">
+                                            Class: {{ $selectedClass ? $selectedClass->name : 'N/A' }}
+                                        </span>
                                         @endif
 
                                         @if(request('filter_status'))
-                                            <span class="badge badge-info mr-2">Status: {{ ucfirst(request('filter_status')) }}</span>
+                                        <span class="badge badge-info mr-2">Status: {{ ucfirst(request('filter_status'))
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_gender'))
-                                            <span class="badge badge-info mr-2">Gender: {{ request('filter_gender') }}</span>
+                                        <span class="badge badge-info mr-2">Gender: {{ request('filter_gender')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_date_added'))
-                                            <span class="badge badge-info mr-2">Date Added: {{ request('filter_date_added') }}</span>
+                                        <span class="badge badge-info mr-2">Date Added: {{ request('filter_date_added')
+                                            }}</span>
                                         @endif
 
-                                        <a href="{{ route('students.index') }}" class="btn btn-sm m-1 btn-outline-danger">
+                                        <a href="{{ route('students.index') }}"
+                                            class="btn btn-sm m-1 btn-outline-danger">
                                             <i class="fas fa-times"></i> Clear All
                                         </a>
                                     </div>
@@ -196,9 +219,9 @@
                                                 <td>{{ $student->created_at->format('d M, Y') }}</td>
                                                 <td>
                                                     @if($student->is_active)
-                                                        <span class="badge badge-success">Active</span>
+                                                    <span class="badge badge-success">Active</span>
                                                     @else
-                                                        <span class="badge badge-danger">Suspended</span>
+                                                    <span class="badge badge-danger">Suspended</span>
                                                     @endif
                                                 </td>
                                                 <td>
@@ -266,15 +289,17 @@
     </div>
 
     {{-- ============================================================
-         MODALS — one set per student
+    MODALS — one set per student
     ============================================================ --}}
     @foreach($students as $student)
 
     {{-- Current filters as hidden inputs (reused in all action forms for this student) --}}
     @php
-        $filterInputs = '';
-        foreach (request()->only(['filter_name','filter_admission_no','filter_section','filter_class','filter_gender','filter_date_added','filter_status','page']) as $key => $val)
-            if ($val) $filterInputs .= '<input type="hidden" name="' . $key . '" value="' . htmlspecialchars($val) . '">';
+    $filterInputs = '';
+    foreach
+    (request()->only(['filter_name','filter_admission_no','filter_section','filter_class','filter_gender','filter_date_added','filter_status','page'])
+    as $key => $val)
+    if ($val) $filterInputs .= '<input type="hidden" name="' . $key . '" value="' . htmlspecialchars($val) . '">';
     @endphp
 
     <!-- Suspend Modal -->
@@ -384,7 +409,7 @@
     @include('includes.edit_footer')
 
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function () {
         const sectionSelect = document.getElementById('sectionSelect');
         const classSelect   = document.getElementById('classSelect');
 

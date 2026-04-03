@@ -131,6 +131,23 @@ class StudentController extends Controller
         return response()->json(['classes' => $classes]);
     }
 
+
+    public function resetAllPasswords()
+    {
+        if (!in_array(Auth::user()->user_type, [1, 2])) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $count = User::where('user_type', 4)->count();
+
+        User::where('user_type', 4)->each(function ($student) {
+            $student->update(['password' => bcrypt('12345')]);
+        });
+
+        return redirect()->route('students.index')
+            ->with('success', "{$count} student password(s) have been reset to 12345.");
+    }
+
     /**
      * Helper: build the filter query string array from request for redirect persistence
      */
@@ -208,25 +225,25 @@ class StudentController extends Controller
 
 
     public function reactivateAll()
-{
-    if (!in_array(Auth::user()->user_type, [1, 2])) {
-        abort(403, 'Unauthorized access.');
+    {
+        if (!in_array(Auth::user()->user_type, [1, 2])) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $count = User::where('user_type', 4)
+            ->where('is_active', 0)
+            ->count();
+
+        User::where('user_type', 4)
+            ->where('is_active', 0)
+            ->update([
+                'is_active'      => 1,
+                'login_attempts' => 3,
+            ]);
+
+        return redirect()->route('students.index')
+            ->with('success', "{$count} suspended student account(s) have been reactivated.");
     }
-
-    $count = User::where('user_type', 4)
-        ->where('is_active', 0)
-        ->count();
-
-    User::where('user_type', 4)
-        ->where('is_active', 0)
-        ->update([
-            'is_active'      => 1,
-            'login_attempts' => 3,
-        ]);
-
-    return redirect()->route('students.index')
-        ->with('success', "{$count} suspended student account(s) have been reactivated.");
-}
 
     public function suspend(User $student)
     {
