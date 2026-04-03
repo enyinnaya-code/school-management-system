@@ -26,8 +26,7 @@
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-danger btn-sm">
-                                            <i data-feather="trash-2" style="width:14px;height:14px;"></i> Clear All
-                                            Logs
+                                            <i data-feather="trash-2" style="width:14px;height:14px;"></i> Clear All Logs
                                         </button>
                                     </form>
                                     @endif
@@ -52,23 +51,26 @@
                                 <form method="GET" action="{{ route('activity.log') }}">
                                     <div class="row align-items-end">
                                         <div class="form-group col-md-3">
+                                            <label class="text-sm font-weight-bold">User (Name or Email)</label>
+                                            <input type="text" name="user_search" class="form-control form-control-sm"
+                                                value="{{ request('user_search') }}"
+                                                placeholder="Search by name or email...">
+                                        </div>
+                                        <div class="form-group col-md-2">
                                             <label class="text-sm font-weight-bold">Action Type</label>
                                             <select name="action" class="form-control form-control-sm">
                                                 <option value="">All Actions</option>
-                                                <option value="Created" {{ request('action')=='Created' ? 'selected'
-                                                    : '' }}>Created</option>
-                                                <option value="Updated" {{ request('action')=='Updated' ? 'selected'
-                                                    : '' }}>Updated</option>
-                                                <option value="Deleted" {{ request('action')=='Deleted' ? 'selected'
-                                                    : '' }}>Deleted</option>
+                                                <option value="Created" {{ request('action') == 'Created' ? 'selected' : '' }}>Created</option>
+                                                <option value="Updated" {{ request('action') == 'Updated' ? 'selected' : '' }}>Updated</option>
+                                                <option value="Deleted" {{ request('action') == 'Deleted' ? 'selected' : '' }}>Deleted</option>
                                             </select>
                                         </div>
-                                        <div class="form-group col-md-3">
+                                        <div class="form-group col-md-2">
                                             <label class="text-sm font-weight-bold">From Date</label>
                                             <input type="date" name="from" class="form-control form-control-sm"
                                                 value="{{ request('from') }}">
                                         </div>
-                                        <div class="form-group col-md-3">
+                                        <div class="form-group col-md-2">
                                             <label class="text-sm font-weight-bold">To Date</label>
                                             <input type="date" name="to" class="form-control form-control-sm"
                                                 value="{{ request('to') }}">
@@ -86,6 +88,30 @@
                             </div>
                         </div>
 
+                        {{-- Active Filter Badges --}}
+                        @if(request()->hasAny(['user_search', 'action', 'from', 'to']))
+                        <div class="mb-3">
+                            <h6>Active Filters:</h6>
+                            <div class="active-filters">
+                                @if(request('user_search'))
+                                    <span class="badge badge-info mr-2">User: {{ request('user_search') }}</span>
+                                @endif
+                                @if(request('action'))
+                                    <span class="badge badge-info mr-2">Action: {{ request('action') }}</span>
+                                @endif
+                                @if(request('from'))
+                                    <span class="badge badge-info mr-2">From: {{ request('from') }}</span>
+                                @endif
+                                @if(request('to'))
+                                    <span class="badge badge-info mr-2">To: {{ request('to') }}</span>
+                                @endif
+                                <a href="{{ route('activity.log') }}" class="btn btn-sm m-1 btn-outline-danger">
+                                    <i class="fas fa-times"></i> Clear All
+                                </a>
+                            </div>
+                        </div>
+                        @endif
+
                         {{-- Results Summary + Per-page --}}
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <small class="text-muted">
@@ -95,15 +121,15 @@
                             <form method="GET" action="{{ route('activity.log') }}" class="d-flex align-items-center">
                                 {{-- Preserve existing filters --}}
                                 @foreach(request()->except('per_page', 'page') as $key => $val)
-                                <input type="hidden" name="{{ $key }}" value="{{ $val }}">
+                                    <input type="hidden" name="{{ $key }}" value="{{ $val }}">
                                 @endforeach
                                 <label class="text-muted small mr-2 mb-0">Rows per page:</label>
                                 <select name="per_page" class="form-control form-control-sm" style="width:75px;"
                                     onchange="this.form.submit()">
                                     @foreach([25, 50, 100, 200] as $size)
-                                    <option value="{{ $size }}" {{ request('per_page', 50)==$size ? 'selected' : '' }}>
-                                        {{ $size }}
-                                    </option>
+                                        <option value="{{ $size }}" {{ request('per_page', 50) == $size ? 'selected' : '' }}>
+                                            {{ $size }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </form>
@@ -128,25 +154,25 @@
                                         <tbody>
                                             @forelse($logs as $index => $log)
                                             @php
-                                            $props = is_string($log->properties)
-                                            ? json_decode($log->properties)
-                                            : $log->properties;
-                                            $props = $props ?? new stdClass();
+                                                $props = is_string($log->properties)
+                                                    ? json_decode($log->properties)
+                                                    : $log->properties;
+                                                $props = $props ?? new stdClass();
 
-                                            $ip = $props->ip ?? '—';
-                                            $url = $props->url ?? '—';
-                                            $agent = $props->user_agent ?? null;
-                                            $input = (array) ($props->input ?? []);
+                                                $ip    = $props->ip ?? '—';
+                                                $url   = $props->url ?? '—';
+                                                $agent = $props->user_agent ?? null;
+                                                $input = (array) ($props->input ?? []);
 
-                                            $badgeClass = match(true) {
-                                            str_starts_with($log->description, 'Created') => 'badge-success',
-                                            str_starts_with($log->description, 'Updated') => 'badge-warning',
-                                            str_starts_with($log->description, 'Deleted') => 'badge-danger',
-                                            default => 'badge-secondary',
-                                            };
-                                            $actionLabel = explode(':', $log->description)[0] ?? 'Action';
-                                            $causer = $causers[$log->causer_id] ?? null;
-                                            $createdAt = \Carbon\Carbon::parse($log->created_at);
+                                                $badgeClass = match(true) {
+                                                    str_starts_with($log->description, 'Created') => 'badge-success',
+                                                    str_starts_with($log->description, 'Updated') => 'badge-warning',
+                                                    str_starts_with($log->description, 'Deleted') => 'badge-danger',
+                                                    default => 'badge-secondary',
+                                                };
+                                                $actionLabel = explode(':', $log->description)[0] ?? 'Action';
+                                                $causer      = $causers[$log->causer_id] ?? null;
+                                                $createdAt   = \Carbon\Carbon::parse($log->created_at);
                                             @endphp
                                             <tr>
                                                 <td class="text-muted small align-middle">
@@ -154,11 +180,10 @@
                                                 </td>
                                                 <td class="align-middle">
                                                     @if($causer)
-                                                    <div class="font-weight-bold" style="line-height:1.2;">{{
-                                                        $causer->name }}</div>
-                                                    <small class="text-muted">{{ $causer->email }}</small>
+                                                        <div class="font-weight-bold" style="line-height:1.2;">{{ $causer->name }}</div>
+                                                        <small class="text-muted">{{ $causer->email }}</small>
                                                     @else
-                                                    <span class="text-muted">System</span>
+                                                        <span class="text-muted">System</span>
                                                     @endif
                                                 </td>
                                                 <td class="align-middle">
@@ -178,8 +203,7 @@
                                                     <code style="font-size:12px;">{{ $ip }}</code>
                                                 </td>
                                                 <td class="align-middle">
-                                                    <div style="line-height:1.2;">{{ $createdAt->format('M d, Y') }}
-                                                    </div>
+                                                    <div style="line-height:1.2;">{{ $createdAt->format('M d, Y') }}</div>
                                                     <small class="text-muted">{{ $createdAt->format('h:i A') }}</small>
                                                 </td>
                                                 <td class="align-middle text-center">
@@ -190,8 +214,10 @@
                                                         data-email="{{ $causer->email ?? '' }}"
                                                         data-timestamp="{{ $createdAt->format('D, M d Y \a\t h:i:s A') }}"
                                                         data-humantime="{{ $createdAt->diffForHumans() }}"
-                                                        data-action="{{ $actionLabel }}" data-badge="{{ $badgeClass }}"
-                                                        data-ip="{{ $ip }}" data-url="{{ $url }}"
+                                                        data-action="{{ $actionLabel }}"
+                                                        data-badge="{{ $badgeClass }}"
+                                                        data-ip="{{ $ip }}"
+                                                        data-url="{{ $url }}"
                                                         data-agent="{{ $agent }}"
                                                         data-description="{{ $log->description }}"
                                                         data-input="{{ htmlspecialchars(json_encode($input), ENT_QUOTES) }}">
@@ -202,11 +228,9 @@
                                             @empty
                                             <tr>
                                                 <td colspan="7" class="text-center py-5">
-                                                    <i data-feather="inbox"
-                                                        style="width:40px;height:40px;color:#ccc;"></i>
+                                                    <i data-feather="inbox" style="width:40px;height:40px;color:#ccc;"></i>
                                                     <p class="text-muted mt-2 mb-0">No activity logs found.</p>
-                                                    <small class="text-muted">Actions performed by users will appear
-                                                        here.</small>
+                                                    <small class="text-muted">Actions performed by users will appear here.</small>
                                                 </td>
                                             </tr>
                                             @endforelse
@@ -232,7 +256,7 @@
         @include('includes.edit_footer')
     </div>
 
-    {{-- ====== Single Shared Modal (outside loop) ====== --}}
+    {{-- ====== Single Shared Modal ====== --}}
     <div class="modal fade" id="logDetailModal" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
@@ -303,15 +327,12 @@
 
     <script>
         $(document).ready(function () {
-            // Feather icons
             if (typeof feather !== 'undefined') feather.replace();
 
-            // Re-init feather icons when modal opens
             $('#logDetailModal').on('shown.bs.modal', function () {
                 if (typeof feather !== 'undefined') feather.replace();
             });
 
-            // Populate shared modal from row data attributes
             $(document).on('click', '.btn-view-log', function () {
                 var $btn = $(this);
 
@@ -323,12 +344,10 @@
                 $('#modal-url').text($btn.data('url'));
                 $('#modal-description').text($btn.data('description'));
 
-                // Badge
                 var badge = $('#modal-action-badge');
                 badge.text($btn.data('action'));
                 badge.attr('class', 'badge ' + $btn.data('badge'));
 
-                // User agent
                 var agent = $btn.data('agent');
                 if (agent) {
                     $('#modal-agent').text(agent);
@@ -337,7 +356,6 @@
                     $('#modal-agent-row').hide();
                 }
 
-                // Submitted input
                 try {
                     var input = $btn.data('input');
                     if (typeof input === 'string') input = JSON.parse(input);
