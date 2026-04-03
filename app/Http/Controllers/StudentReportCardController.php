@@ -68,10 +68,11 @@ class StudentReportCardController extends Controller
         $droppedCourse = null;
 
         if ($scored->count() > $minSubjects) {
-            // Find the index of the subject with the lowest score
-            $lowestKey = $scored->sortBy('final_obtained')->keys()->first();
-            $droppedCourse  = $results[$lowestKey]['course_name'] ?? null;
-            $adjustedTotal  = $scored->except([$lowestKey])->sum('final_obtained');
+            $excessCount   = $scored->count() - $minSubjects;          // ← how many to drop
+            $sorted        = $scored->sortBy('final_obtained');
+            $droppedKeys   = $sorted->keys()->take($excessCount)->toArray();
+            $droppedCourse = $results[$droppedKeys[0]]['course_name'] ?? null;
+            $adjustedTotal = $scored->except($droppedKeys)->sum('final_obtained');
         } else {
             $adjustedTotal = $scored->sum('final_obtained');
         }
@@ -171,148 +172,148 @@ class StudentReportCardController extends Controller
 
 
     public function showReport()
-{
-    $student = Auth::user();
-    $access  = session('verified_report_access');
+    {
+        $student = Auth::user();
+        $access  = session('verified_report_access');
 
-    if (
-        !$access ||
-        !isset($access['session_id'], $access['term_id']) ||
-        ($access['expires_at'] ?? null) < now()
-    ) {
-        return redirect()->route('students.reportcards.index')
-            ->with('error', 'Unauthorized access. Please verify your PIN again.');
-    }
+        if (
+            !$access ||
+            !isset($access['session_id'], $access['term_id']) ||
+            ($access['expires_at'] ?? null) < now()
+        ) {
+            return redirect()->route('students.reportcards.index')
+                ->with('error', 'Unauthorized access. Please verify your PIN again.');
+        }
 
-    $sessionId = $access['session_id'];
-    $termId    = $access['term_id'];
+        $sessionId = $access['session_id'];
+        $termId    = $access['term_id'];
 
-    $block = $this->getBlock($student->id, $sessionId, $termId);
-    if ($block) {
-        session()->forget('verified_report_access');
-        $reason = $block->reason ?: 'You have been restricted from accessing your result.';
-        return redirect()->route('students.reportcards.index')
-            ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
-    }
+        $block = $this->getBlock($student->id, $sessionId, $termId);
+        if ($block) {
+            session()->forget('verified_report_access');
+            $reason = $block->reason ?: 'You have been restricted from accessing your result.';
+            return redirect()->route('students.reportcards.index')
+                ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
+        }
 
-    $hasValidPin = IssuedPin::where('student_id', $student->id)
-        ->where('session_id', $sessionId)
-        ->where('term_id', $termId)
-        ->exists();
+        $hasValidPin = IssuedPin::where('student_id', $student->id)
+            ->where('session_id', $sessionId)
+            ->where('term_id', $termId)
+            ->exists();
 
-    if (!$hasValidPin) {
-        session()->forget('verified_report_access');
-        return redirect()->route('students.reportcards.index')
-            ->with('error', 'Access denied. Invalid session or term.');
-    }
+        if (!$hasValidPin) {
+            session()->forget('verified_report_access');
+            return redirect()->route('students.reportcards.index')
+                ->with('error', 'Access denied. Invalid session or term.');
+        }
 
-    $session = Session::findOrFail($sessionId);
-    $term    = Term::findOrFail($termId);
-    $class   = SchoolClass::findOrFail($student->class_id);
+        $session = Session::findOrFail($sessionId);
+        $term    = Term::findOrFail($termId);
+        $class   = SchoolClass::findOrFail($student->class_id);
 
-    $termSettings = TermSetting::where('session_id', $session->id)
-        ->where('term_id', $term->id)
-        ->first();
+        $termSettings = TermSetting::where('session_id', $session->id)
+            ->where('term_id', $term->id)
+            ->first();
 
-    // ── Check if this class has a result sheet template (term-name match first, fallback to any) ──
-    $sheetTemplate = DB::table('result_sheet_templates')
-        ->where('is_active', 1)
-        ->get()
-        ->first(function ($t) use ($class, $term) {
-            $classes    = json_decode($t->applicable_classes ?? '[]', true);
-            $classMatch = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-            $termMatch  = !empty($t->term_name) && $t->term_name === $term->name;
-            return $classMatch && $termMatch;
-        });
-
-    // Fallback: any active template for this class regardless of term
-    if (!$sheetTemplate) {
+        // ── Check if this class has a result sheet template (term-name match first, fallback to any) ──
         $sheetTemplate = DB::table('result_sheet_templates')
             ->where('is_active', 1)
             ->get()
-            ->first(function ($t) use ($class) {
-                $classes = json_decode($t->applicable_classes ?? '[]', true);
-                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            ->first(function ($t) use ($class, $term) {
+                $classes    = json_decode($t->applicable_classes ?? '[]', true);
+                $classMatch = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+                $termMatch  = !empty($t->term_name) && $t->term_name === $term->name;
+                return $classMatch && $termMatch;
             });
-    }
 
-    // ── If class has a template, ALWAYS render the result sheet ──────────────
-    // regardless of whether the class is also in primary_result_classes
-    if ($sheetTemplate) {
-        return $this->showResultSheet($student, $class, $session, $term, $sheetTemplate);
-    }
+        // Fallback: any active template for this class regardless of term
+        if (!$sheetTemplate) {
+            $sheetTemplate = DB::table('result_sheet_templates')
+                ->where('is_active', 1)
+                ->get()
+                ->first(function ($t) use ($class) {
+                    $classes = json_decode($t->applicable_classes ?? '[]', true);
+                    return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+                });
+        }
 
-    return $this->showStandardReport($student, $class, $session, $term, $termSettings);
-}
+        // ── If class has a template, ALWAYS render the result sheet ──────────────
+        // regardless of whether the class is also in primary_result_classes
+        if ($sheetTemplate) {
+            return $this->showResultSheet($student, $class, $session, $term, $sheetTemplate);
+        }
+
+        return $this->showStandardReport($student, $class, $session, $term, $termSettings);
+    }
 
 
     public function showSheet()
-{
-    $student = Auth::user();
-    $access  = session('verified_report_access');
+    {
+        $student = Auth::user();
+        $access  = session('verified_report_access');
 
-    if (
-        !$access ||
-        !isset($access['session_id'], $access['term_id']) ||
-        ($access['expires_at'] ?? null) < now()
-    ) {
-        return redirect()->route('students.reportcards.index')
-            ->with('error', 'Unauthorized access. Please verify your PIN again.');
-    }
+        if (
+            !$access ||
+            !isset($access['session_id'], $access['term_id']) ||
+            ($access['expires_at'] ?? null) < now()
+        ) {
+            return redirect()->route('students.reportcards.index')
+                ->with('error', 'Unauthorized access. Please verify your PIN again.');
+        }
 
-    $sessionId = $access['session_id'];
-    $termId    = $access['term_id'];
+        $sessionId = $access['session_id'];
+        $termId    = $access['term_id'];
 
-    $block = $this->getBlock($student->id, $sessionId, $termId);
-    if ($block) {
-        session()->forget('verified_report_access');
-        $reason = $block->reason ?: 'You have been restricted from accessing your result.';
-        return redirect()->route('students.reportcards.index')
-            ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
-    }
+        $block = $this->getBlock($student->id, $sessionId, $termId);
+        if ($block) {
+            session()->forget('verified_report_access');
+            $reason = $block->reason ?: 'You have been restricted from accessing your result.';
+            return redirect()->route('students.reportcards.index')
+                ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
+        }
 
-    $hasValidPin = IssuedPin::where('student_id', $student->id)
-        ->where('session_id', $sessionId)
-        ->where('term_id', $termId)
-        ->exists();
+        $hasValidPin = IssuedPin::where('student_id', $student->id)
+            ->where('session_id', $sessionId)
+            ->where('term_id', $termId)
+            ->exists();
 
-    if (!$hasValidPin) {
-        session()->forget('verified_report_access');
-        return redirect()->route('students.reportcards.index')
-            ->with('error', 'Access denied. Invalid session or term.');
-    }
+        if (!$hasValidPin) {
+            session()->forget('verified_report_access');
+            return redirect()->route('students.reportcards.index')
+                ->with('error', 'Access denied. Invalid session or term.');
+        }
 
-    $session = Session::findOrFail($sessionId);
-    $term    = Term::findOrFail($termId);
-    $class   = SchoolClass::findOrFail($student->class_id);
+        $session = Session::findOrFail($sessionId);
+        $term    = Term::findOrFail($termId);
+        $class   = SchoolClass::findOrFail($student->class_id);
 
-    // ── Check template (term-name match first, then fallback) ────────────────
-    $sheetTemplate = DB::table('result_sheet_templates')
-        ->where('is_active', 1)
-        ->get()
-        ->first(function ($t) use ($class, $term) {
-            $classes    = json_decode($t->applicable_classes ?? '[]', true);
-            $classMatch = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-            $termMatch  = !empty($t->term_name) && $t->term_name === $term->name;
-            return $classMatch && $termMatch;
-        });
-
-    if (!$sheetTemplate) {
+        // ── Check template (term-name match first, then fallback) ────────────────
         $sheetTemplate = DB::table('result_sheet_templates')
             ->where('is_active', 1)
             ->get()
-            ->first(function ($t) use ($class) {
-                $classes = json_decode($t->applicable_classes ?? '[]', true);
-                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            ->first(function ($t) use ($class, $term) {
+                $classes    = json_decode($t->applicable_classes ?? '[]', true);
+                $classMatch = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+                $termMatch  = !empty($t->term_name) && $t->term_name === $term->name;
+                return $classMatch && $termMatch;
             });
-    }
 
-    if (!$sheetTemplate) {
-        return redirect()->route('students.reportcards.show');
-    }
+        if (!$sheetTemplate) {
+            $sheetTemplate = DB::table('result_sheet_templates')
+                ->where('is_active', 1)
+                ->get()
+                ->first(function ($t) use ($class) {
+                    $classes = json_decode($t->applicable_classes ?? '[]', true);
+                    return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+                });
+        }
 
-    return $this->showResultSheet($student, $class, $session, $term, $sheetTemplate);
-}
+        if (!$sheetTemplate) {
+            return redirect()->route('students.reportcards.show');
+        }
+
+        return $this->showResultSheet($student, $class, $session, $term, $sheetTemplate);
+    }
 
 
 
