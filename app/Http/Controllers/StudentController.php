@@ -132,21 +132,25 @@ class StudentController extends Controller
     }
 
 
-    public function resetAllPasswords()
-    {
-        if (!in_array(Auth::user()->user_type, [1, 2])) {
-            abort(403, 'Unauthorized access.');
-        }
-
-        $count = User::where('user_type', 4)->count();
-
-        User::where('user_type', 4)->each(function ($student) {
-            $student->update(['password' => bcrypt('12345')]);
-        });
-
-        return redirect()->route('students.index')
-            ->with('success', "{$count} student password(s) have been reset to 12345.");
+   public function resetAllPasswords()
+{
+    if (!in_array(Auth::user()->user_type, [1, 2])) {
+        abort(403, 'Unauthorized access.');
     }
+
+    $count = User::where('user_type', 4)->count();
+
+    // Hash once, reuse for all — avoids timeout from hashing per row
+    $hashedPassword = bcrypt('12345');
+
+    User::where('user_type', 4)->update([
+        'password'   => $hashedPassword,
+        'updated_at' => now(),
+    ]);
+
+    return redirect()->route('students.index')
+        ->with('success', "{$count} student password(s) have been reset to 12345.");
+}
 
     /**
      * Helper: build the filter query string array from request for redirect persistence
