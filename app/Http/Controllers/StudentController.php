@@ -134,7 +134,7 @@ class StudentController extends Controller
     /**
      * Helper: build the filter query string array from request for redirect persistence
      */
-    private function getFilterParams(Request $request = null)
+    private function getFilterParams(?Request $request = null)
     {
         $req = $request ?? request();
         return array_filter([

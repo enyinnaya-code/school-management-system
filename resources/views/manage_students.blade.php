@@ -23,7 +23,8 @@
                                         <i class="fas fa-file-pdf"></i> Export Credentials PDF
                                     </a>
 
-                                    @if(in_array(Auth::user()->user_type, [1, 2]))
+                                    {{-- Reactivate All: only for admins AND only when filtering by suspended --}}
+                                    @if(in_array(Auth::user()->user_type, [1, 2]) && request('filter_status') === 'suspended')
                                     <form action="{{ route('students.reactivate_all') }}" method="POST"
                                         onsubmit="return confirm('Are you sure you want to reactivate ALL suspended student accounts?')">
                                         @csrf
@@ -43,250 +44,237 @@
                             </div>
 
                             <!-- Filter Collapse Panel -->
-                            {{-- Keep panel open if any filter is active --}}
                             <div class="collapse {{ request()->hasAny(['filter_name','filter_admission_no','filter_section','filter_class','filter_gender','filter_date_added','filter_status']) ? 'show' : '' }}"
+                                id="filterCollapse">
                                 <div class="card-body row px-5 pb-0">
-                                <form action="{{ route('students.index') }}" method="GET" class="row mb-4 w-100">
-                                    <div class="form-group col-md-3">
-                                        <label>Student Name</label>
-                                        <input type="text" class="form-control" name="filter_name"
-                                            value="{{ request('filter_name') }}" placeholder="Search by name...">
-                                    </div>
-                                    <div class="form-group col-md-3">
-                                        <label>Student ID (Admission No.)</label>
-                                        <input type="text" class="form-control" name="filter_admission_no"
-                                            value="{{ request('filter_admission_no') }}" placeholder="e.g. 0042">
-                                    </div>
-                                    <div class="form-group col-md-3">
-                                        <label>Section</label>
-                                        <select class="form-control" name="filter_section" id="sectionSelect">
-                                            <option value="">-- All Sections --</option>
-                                            @foreach($sections as $section)
-                                            <option value="{{ $section->id }}" {{ request('filter_section')==$section->
-                                                id ? 'selected' : '' }}>
-                                                {{ $section->section_name }}
-                                            </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
+                                    <form action="{{ route('students.index') }}" method="GET" class="row mb-4 w-100">
+                                        <div class="form-group col-md-3">
+                                            <label>Student Name</label>
+                                            <input type="text" class="form-control" name="filter_name"
+                                                value="{{ request('filter_name') }}"
+                                                placeholder="Search by name...">
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <label>Student ID (Admission No.)</label>
+                                            <input type="text" class="form-control" name="filter_admission_no"
+                                                value="{{ request('filter_admission_no') }}"
+                                                placeholder="e.g. 0042">
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <label>Section</label>
+                                            <select class="form-control" name="filter_section" id="sectionSelect">
+                                                <option value="">-- All Sections --</option>
+                                                @foreach($sections as $section)
+                                                    <option value="{{ $section->id }}"
+                                                        {{ request('filter_section') == $section->id ? 'selected' : '' }}>
+                                                        {{ $section->section_name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <label>Class</label>
+                                            <select class="form-control" name="filter_class" id="classSelect">
+                                                <option value="">-- Select Class --</option>
+                                                @foreach($classes as $class)
+                                                    <option value="{{ $class->id }}"
+                                                        {{ request('filter_class') == $class->id ? 'selected' : '' }}>
+                                                        {{ $class->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <label>Gender</label>
+                                            <select class="form-control" name="filter_gender">
+                                                <option value="">-- Select Gender --</option>
+                                                <option value="Male"   {{ request('filter_gender') == 'Male'   ? 'selected' : '' }}>Male</option>
+                                                <option value="Female" {{ request('filter_gender') == 'Female' ? 'selected' : '' }}>Female</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <label>Account Status</label>
+                                            <select class="form-control" name="filter_status">
+                                                <option value="">-- All Statuses --</option>
+                                                <option value="active"    {{ request('filter_status') == 'active'    ? 'selected' : '' }}>Active</option>
+                                                <option value="suspended" {{ request('filter_status') == 'suspended' ? 'selected' : '' }}>Suspended</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <label>Date Added</label>
+                                            <input type="date" class="form-control" name="filter_date_added"
+                                                value="{{ request('filter_date_added') }}">
+                                        </div>
+                                        <div class="form-group col-md-6 d-flex align-items-end">
+                                            <button type="submit" class="btn btn-primary mr-2">
+                                                <i class="fas fa-search"></i> Apply Filters
+                                            </button>
+                                            <a href="{{ route('students.index') }}" class="btn btn-light">
+                                                <i class="fas fa-sync"></i> Reset
+                                            </a>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
 
-                                    <div class="form-group col-md-3">
-                                        <label>Account Status</label>
-                                        <select class="form-control" name="filter_status">
-                                            <option value="">-- All Statuses --</option>
-                                            <option value="active" {{ request('filter_status')=='active' ? 'selected'
-                                                : '' }}>Active</option>
-                                            <option value="suspended" {{ request('filter_status')=='suspended'
-                                                ? 'selected' : '' }}>Suspended</option>
-                                        </select>
-                                    </div>
+                            <div class="card-body">
 
-                                    <div class="form-group col-md-3">
-                                        <label>Class</label>
-                                        <select class="form-control" name="filter_class" id="classSelect">
-                                            <option value="">-- Select Class --</option>
-                                            @foreach($classes as $class)
-                                            <option value="{{ $class->id }}" {{ request('filter_class')==$class->id
-                                                ? 'selected' : '' }}>
-                                                {{ $class->name }}
-                                            </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="form-group col-md-3">
-                                        <label>Gender</label>
-                                        <select class="form-control" name="filter_gender">
-                                            <option value="">-- Select Gender --</option>
-                                            <option value="Male" {{ request('filter_gender')=='Male' ? 'selected' : ''
-                                                }}>Male</option>
-                                            <option value="Female" {{ request('filter_gender')=='Female' ? 'selected'
-                                                : '' }}>Female</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group col-md-3">
-                                        <label>Date Added</label>
-                                        <input type="date" class="form-control" name="filter_date_added"
-                                            value="{{ request('filter_date_added') }}">
-                                    </div>
-                                    <div class="form-group col-md-6 d-flex align-items-end">
-                                        <button type="submit" class="btn btn-primary mr-2">
-                                            <i class="fas fa-search"></i> Apply Filters
-                                        </button>
-                                        <a href="{{ route('students.index') }}" class="btn btn-light">
-                                            <i class="fas fa-sync"></i> Reset
+                                {{-- Active filter badges --}}
+                                @if(request()->hasAny(['filter_name','filter_admission_no','filter_section','filter_class','filter_gender','filter_date_added','filter_status']))
+                                <div class="mb-3">
+                                    <h6>Active Filters:</h6>
+                                    <div class="active-filters">
+                                        @if(request('filter_name'))
+                                            <span class="badge badge-info mr-2">Name: {{ request('filter_name') }}</span>
+                                        @endif
+
+                                        @if(request('filter_admission_no'))
+                                            <span class="badge badge-info mr-2">Student ID: {{ request('filter_admission_no') }}</span>
+                                        @endif
+
+                                        @if(request('filter_section'))
+                                            @php $selectedSection = $sections->firstWhere('id', request('filter_section')); @endphp
+                                            <span class="badge badge-info mr-2">
+                                                Section: {{ $selectedSection ? $selectedSection->section_name : 'N/A' }}
+                                            </span>
+                                        @endif
+
+                                        @if(request('filter_class'))
+                                            @php $selectedClass = $classes->firstWhere('id', request('filter_class')); @endphp
+                                            <span class="badge badge-info mr-2">
+                                                Class: {{ $selectedClass ? $selectedClass->name : 'N/A' }}
+                                            </span>
+                                        @endif
+
+                                        @if(request('filter_status'))
+                                            <span class="badge badge-info mr-2">Status: {{ ucfirst(request('filter_status')) }}</span>
+                                        @endif
+
+                                        @if(request('filter_gender'))
+                                            <span class="badge badge-info mr-2">Gender: {{ request('filter_gender') }}</span>
+                                        @endif
+
+                                        @if(request('filter_date_added'))
+                                            <span class="badge badge-info mr-2">Date Added: {{ request('filter_date_added') }}</span>
+                                        @endif
+
+                                        <a href="{{ route('students.index') }}" class="btn btn-sm m-1 btn-outline-danger">
+                                            <i class="fas fa-times"></i> Clear All
                                         </a>
                                     </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div class="card-body">
-
-                            {{-- Active filter badges --}}
-                            @if(request()->hasAny(['filter_name','filter_admission_no','filter_section','filter_class','filter_gender','filter_date_added']))
-                            <div class="mb-3">
-                                <h6>Active Filters:</h6>
-                                <div class="active-filters">
-                                    @if(request('filter_name'))
-                                    <span class="badge badge-info mr-2">Name: {{ request('filter_name') }}</span>
-                                    @endif
-
-                                    @if(request('filter_admission_no'))
-                                    <span class="badge badge-info mr-2">Student ID: {{
-                                        request('filter_admission_no') }}</span>
-                                    @endif
-
-                                    @if(request('filter_section'))
-                                    @php $selectedSection = $sections->firstWhere('id', request('filter_section'));
-                                    @endphp
-                                    <span class="badge badge-info mr-2">
-                                        Section: {{ $selectedSection ? $selectedSection->section_name : 'N/A' }}
-                                    </span>
-                                    @endif
-
-                                    @if(request('filter_class'))
-                                    @php $selectedClass = $classes->firstWhere('id', request('filter_class'));
-                                    @endphp
-                                    <span class="badge badge-info mr-2">
-                                        Class: {{ $selectedClass ? $selectedClass->name : 'N/A' }}
-                                    </span>
-                                    @endif
-
-                                    @if(request('filter_status'))
-                                    <span class="badge badge-info mr-2">
-                                        Status: {{ ucfirst(request('filter_status')) }}
-                                    </span>
-                                    @endif
-
-                                    @if(request('filter_gender'))
-                                    <span class="badge badge-info mr-2">Gender: {{ request('filter_gender')
-                                        }}</span>
-                                    @endif
-
-                                    @if(request('filter_date_added'))
-                                    <span class="badge badge-info mr-2">Date Added: {{ request('filter_date_added')
-                                        }}</span>
-                                    @endif
-
-                                    <a href="{{ route('students.index') }}" class="btn btn-sm m-1 btn-outline-danger">
-                                        <i class="fas fa-times"></i> Clear All
-                                    </a>
                                 </div>
-                            </div>
-                            @endif
+                                @endif
 
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover" style="width:100%;">
-                                    <thead>
-                                        <tr>
-                                            <th>S/N</th>
-                                            <th>Student ID</th>
-                                            <th>Name</th>
-                                            <th>Email</th>
-                                            <th>Gender</th>
-                                            <th>Class</th>
-                                            <th>Date Added</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($students as $index => $student)
-                                        <tr>
-                                            <td>{{ $students->firstItem() + $index }}</td>
-                                            <td>
-                                                <span class="badge badge-secondary">
-                                                    {{ $student->admission_no ?? 'N/A' }}
-                                                </span>
-                                            </td>
-                                            <td>{{ $student->name }}</td>
-                                            <td>{{ $student->email ?? '-' }}</td>
-                                            <td>{{ ucfirst($student->gender ?? '-') }}</td>
-                                            <td>{{ $student->class->name ?? 'N/A' }}</td>
-                                            <td>{{ $student->created_at->format('d M, Y') }}</td>
-                                            <td>
-                                                @if($student->is_active)
-                                                <span class="badge badge-success">Active</span>
-                                                @else
-                                                <span class="badge badge-danger">Deactivated</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                {{-- Edit: pass current filters as query params so edit page can
-                                                relay them back --}}
-                                                <a href="{{ route('students.edit', array_merge(['student' => $student->id], request()->only(['filter_name','filter_admission_no','filter_section','filter_class','filter_gender','filter_date_added','page']))) }}"
-                                                    class="btn m-1 btn-sm btn-info" title="Edit">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <a href="{{ route('students.profile', $student->id) }}"
-                                                    class="btn m-1 btn-sm btn-primary" title="View Profile">
-                                                    <i class="fas fa-user"></i>
-                                                </a>
-                                                <a href="{{ route('students.performance', $student->id) }}"
-                                                    class="btn m-1 btn-sm btn-success" title="View Performance">
-                                                    <i class="fas fa-chart-bar"></i>
-                                                </a>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" style="width:100%;">
+                                        <thead>
+                                            <tr>
+                                                <th>S/N</th>
+                                                <th>Student ID</th>
+                                                <th>Name</th>
+                                                <th>Email</th>
+                                                <th>Gender</th>
+                                                <th>Class</th>
+                                                <th>Date Added</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @forelse($students as $index => $student)
+                                            <tr>
+                                                <td>{{ $students->firstItem() + $index }}</td>
+                                                <td>
+                                                    <span class="badge badge-secondary">
+                                                        {{ $student->admission_no ?? 'N/A' }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ $student->name }}</td>
+                                                <td>{{ $student->email ?? '-' }}</td>
+                                                <td>{{ ucfirst($student->gender ?? '-') }}</td>
+                                                <td>{{ $student->class->name ?? 'N/A' }}</td>
+                                                <td>{{ $student->created_at->format('d M, Y') }}</td>
+                                                <td>
+                                                    @if($student->is_active)
+                                                        <span class="badge badge-success">Active</span>
+                                                    @else
+                                                        <span class="badge badge-danger">Suspended</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <a href="{{ route('students.edit', array_merge(['student' => $student->id], request()->only(['filter_name','filter_admission_no','filter_section','filter_class','filter_gender','filter_date_added','filter_status','page']))) }}"
+                                                        class="btn m-1 btn-sm btn-info" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{{ route('students.profile', $student->id) }}"
+                                                        class="btn m-1 btn-sm btn-primary" title="View Profile">
+                                                        <i class="fas fa-user"></i>
+                                                    </a>
+                                                    <a href="{{ route('students.performance', $student->id) }}"
+                                                        class="btn m-1 btn-sm btn-success" title="View Performance">
+                                                        <i class="fas fa-chart-bar"></i>
+                                                    </a>
 
-                                                @if($student->is_active)
-                                                <button type="button" class="btn m-1 btn-sm btn-warning" title="Suspend"
-                                                    data-toggle="modal" data-target="#suspendModal{{ $student->id }}">
-                                                    <i class="fas fa-user-slash"></i>
-                                                </button>
-                                                @else
-                                                <button type="button" class="btn btn-sm m-1 btn-success"
-                                                    title="Activate" data-toggle="modal"
-                                                    data-target="#activateModal{{ $student->id }}">
-                                                    <i class="fas fa-user-check"></i>
-                                                </button>
-                                                @endif
+                                                    @if($student->is_active)
+                                                    <button type="button" class="btn m-1 btn-sm btn-warning"
+                                                        title="Suspend" data-toggle="modal"
+                                                        data-target="#suspendModal{{ $student->id }}">
+                                                        <i class="fas fa-user-slash"></i>
+                                                    </button>
+                                                    @else
+                                                    <button type="button" class="btn btn-sm m-1 btn-success"
+                                                        title="Activate" data-toggle="modal"
+                                                        data-target="#activateModal{{ $student->id }}">
+                                                        <i class="fas fa-user-check"></i>
+                                                    </button>
+                                                    @endif
 
-                                                <button type="button" class="btn btn-sm m-1 btn-secondary"
-                                                    title="Reset Password" data-toggle="modal"
-                                                    data-target="#resetPasswordModal{{ $student->id }}">
-                                                    <i class="fas fa-key"></i>
-                                                </button>
+                                                    <button type="button" class="btn btn-sm m-1 btn-secondary"
+                                                        title="Reset Password" data-toggle="modal"
+                                                        data-target="#resetPasswordModal{{ $student->id }}">
+                                                        <i class="fas fa-key"></i>
+                                                    </button>
 
-                                                <button type="button" class="btn btn-sm m-1 btn-danger" title="Delete"
-                                                    data-toggle="modal" data-target="#deleteModal{{ $student->id }}">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        @empty
-                                        <tr>
-                                            <td colspan="9" class="text-center text-muted py-4">
-                                                <i class="fas fa-users fa-2x mb-2 d-block"></i>
-                                                No students found matching your filters.
-                                            </td>
-                                        </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
+                                                    <button type="button" class="btn btn-sm m-1 btn-danger"
+                                                        title="Delete" data-toggle="modal"
+                                                        data-target="#deleteModal{{ $student->id }}">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            @empty
+                                            <tr>
+                                                <td colspan="9" class="text-center text-muted py-4">
+                                                    <i class="fas fa-users fa-2x mb-2 d-block"></i>
+                                                    No students found matching your filters.
+                                                </td>
+                                            </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
 
-                                <div class="mt-3">
-                                    {{ $students->appends(request()->query())->links() }}
+                                    <div class="mt-3">
+                                        {{ $students->appends(request()->query())->links() }}
+                                    </div>
                                 </div>
-                            </div>
-                        </div><!-- /.card-body -->
-                    </div><!-- /.card -->
-            </div>
-            </section>
-        </div><!-- /.main-content -->
-    </div>
+                            </div><!-- /.card-body -->
+                        </div><!-- /.card -->
+                    </div>
+                </section>
+            </div><!-- /.main-content -->
+        </div>
     </div>
 
     {{-- ============================================================
-    MODALS — one set per student
+         MODALS — one set per student
     ============================================================ --}}
     @foreach($students as $student)
 
     {{-- Current filters as hidden inputs (reused in all action forms for this student) --}}
     @php
-    $filterInputs = '';
-    foreach
-    (request()->only(['filter_name','filter_admission_no','filter_section','filter_class','filter_gender','filter_date_added','page'])
-    as $key => $val)
-    if ($val) $filterInputs .= '<input type="hidden" name="' . $key . '" value="' . htmlspecialchars($val) . '">';
+        $filterInputs = '';
+        foreach (request()->only(['filter_name','filter_admission_no','filter_section','filter_class','filter_gender','filter_date_added','filter_status','page']) as $key => $val)
+            if ($val) $filterInputs .= '<input type="hidden" name="' . $key . '" value="' . htmlspecialchars($val) . '">';
     @endphp
 
     <!-- Suspend Modal -->
@@ -396,13 +384,12 @@
     @include('includes.edit_footer')
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function () {
         const sectionSelect = document.getElementById('sectionSelect');
         const classSelect   = document.getElementById('classSelect');
 
         if (!sectionSelect || !classSelect) return;
 
-        // Store currently selected class so we can re-select it after ajax load
         const preSelectedClass = '{{ request('filter_class') }}';
 
         function updateClasses(sectionId, selectedClassId) {
@@ -441,13 +428,10 @@
                 });
         }
 
-        // When section changes, reload classes (no pre-selected class needed)
         sectionSelect.addEventListener('change', function () {
             updateClasses(this.value, null);
         });
 
-        // On page load: if a section is already selected, load its classes and
-        // restore the previously selected class
         if (sectionSelect.value) {
             updateClasses(sectionSelect.value, preSelectedClass);
         }
