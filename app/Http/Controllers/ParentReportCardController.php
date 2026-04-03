@@ -69,9 +69,11 @@ class ParentReportCardController extends Controller
         $droppedCourse = null;
 
         if ($scored->count() > $minSubjects) {
-            $lowestKey     = $scored->sortBy('final_obtained')->keys()->first();
-            $droppedCourse = $results[$lowestKey]['course_name'] ?? null;
-            $adjustedTotal = $scored->except([$lowestKey])->sum('final_obtained');
+            $excessCount   = $scored->count() - $minSubjects;
+            $sorted        = $scored->sortBy('final_obtained');
+            $droppedKeys   = $sorted->keys()->take($excessCount)->toArray();
+            $droppedCourse = $results[$droppedKeys[0]]['course_name'] ?? null;
+            $adjustedTotal = $scored->except($droppedKeys)->sum('final_obtained');
         } else {
             $adjustedTotal = $scored->sum('final_obtained');
         }
@@ -206,7 +208,13 @@ class ParentReportCardController extends Controller
 
         if ($sheetTemplate) {
             return $this->showResultSheet(
-                $student, $class, $section, $currentSession, $currentTerm, $sheetTemplate, $termSettings
+                $student,
+                $class,
+                $section,
+                $currentSession,
+                $currentTerm,
+                $sheetTemplate,
+                $termSettings
             );
         }
 
@@ -216,12 +224,22 @@ class ParentReportCardController extends Controller
 
         if ($isPrimary) {
             return $this->showPrimaryReport(
-                $student, $class, $section, $currentSession, $currentTerm, $termSettings
+                $student,
+                $class,
+                $section,
+                $currentSession,
+                $currentTerm,
+                $termSettings
             );
         }
 
         return $this->showSecondaryReport(
-            $student, $class, $section, $currentSession, $currentTerm, $termSettings
+            $student,
+            $class,
+            $section,
+            $currentSession,
+            $currentTerm,
+            $termSettings
         );
     }
 
@@ -272,7 +290,13 @@ class ParentReportCardController extends Controller
 
         if ($sheetTemplate) {
             $viewData = $this->buildResultSheetData(
-                $student, $class, $section, $currentSession, $currentTerm, $sheetTemplate, $termSettings
+                $student,
+                $class,
+                $section,
+                $currentSession,
+                $currentTerm,
+                $sheetTemplate,
+                $termSettings
             );
         } else {
             $isPrimary = DB::table('primary_result_classes')
@@ -609,7 +633,10 @@ class ParentReportCardController extends Controller
     {
         if ($position % 100 >= 11 && $position % 100 <= 13) return 'th';
         return match ($position % 10) {
-            1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th',
+            1 => 'st',
+            2 => 'nd',
+            3 => 'rd',
+            default => 'th',
         };
     }
 
