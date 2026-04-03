@@ -143,6 +143,7 @@ class StudentController extends Controller
             'filter_class'      => $req->get('filter_class'),
             'filter_gender'     => $req->get('filter_gender'),
             'filter_date_added' => $req->get('filter_date_added'),
+            'filter_status'     => $req->get('filter_status'),
             'filter_student_id' => $req->get('filter_student_id'),
         ]);
     }
@@ -180,6 +181,14 @@ class StudentController extends Controller
             });
         }
 
+        if ($filterStatus = request('filter_status')) {
+            if ($filterStatus === 'active') {
+                $query->where('is_active', 1);
+            } elseif ($filterStatus === 'suspended') {
+                $query->where('is_active', 0);
+            }
+        }
+
         if ($filterClass = request('filter_class')) {
             $query->where('class_id', $filterClass);
         }
@@ -196,6 +205,28 @@ class StudentController extends Controller
 
         return view('manage_students', compact('students', 'classes', 'sections'));
     }
+
+
+    public function reactivateAll()
+{
+    if (!in_array(Auth::user()->user_type, [1, 2])) {
+        abort(403, 'Unauthorized access.');
+    }
+
+    $count = User::where('user_type', 4)
+        ->where('is_active', 0)
+        ->count();
+
+    User::where('user_type', 4)
+        ->where('is_active', 0)
+        ->update([
+            'is_active'      => 1,
+            'login_attempts' => 3,
+        ]);
+
+    return redirect()->route('students.index')
+        ->with('success', "{$count} suspended student account(s) have been reactivated.");
+}
 
     public function suspend(User $student)
     {
@@ -222,7 +253,7 @@ class StudentController extends Controller
         $student->save();
 
         $filters = $this->getFilterParams();
-        return redirect()->route('students.index', $filters)->with('success', 'Password reset to 123456.');
+        return redirect()->route('students.index', $filters)->with('success', 'Password reset to 12345.');
     }
 
     public function destroy(User $student)
