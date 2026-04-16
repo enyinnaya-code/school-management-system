@@ -42,7 +42,7 @@ class FinanceReportController extends Controller
         if ($request->filled('filter_search')) {
             $studentPaymentsQuery->whereHas('student', function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->filter_search . '%')
-                  ->orWhere('admission_no', 'like', '%' . $request->filter_search . '%');
+                    ->orWhere('admission_no', 'like', '%' . $request->filter_search . '%');
             });
         }
         if ($request->filled('filter_type') && $request->filter_type === 'expense') {
@@ -85,7 +85,7 @@ class FinanceReportController extends Controller
         if ($request->filled('filter_search')) {
             $miscPaymentsQuery->whereHas('student', function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->filter_search . '%')
-                  ->orWhere('admission_no', 'like', '%' . $request->filter_search . '%');
+                    ->orWhere('admission_no', 'like', '%' . $request->filter_search . '%');
             });
         }
         if ($request->filled('filter_type') && $request->filter_type === 'expense') {
@@ -115,11 +115,11 @@ class FinanceReportController extends Controller
 
         if ($request->filled('filter_date_from')) {
             $salaryQuery->whereYear('processed_at', '>=', explode('-', $request->filter_date_from)[0])
-                        ->whereMonth('processed_at', '>=', explode('-', $request->filter_date_from)[1]);
+                ->whereMonth('processed_at', '>=', explode('-', $request->filter_date_from)[1]);
         }
         if ($request->filled('filter_date_to')) {
             $salaryQuery->whereYear('processed_at', '<=', explode('-', $request->filter_date_to)[0])
-                        ->whereMonth('processed_at', '<=', explode('-', $request->filter_date_to)[1]);
+                ->whereMonth('processed_at', '<=', explode('-', $request->filter_date_to)[1]);
         }
         if ($request->filled('filter_section')) {
             $salaryQuery->where('section_id', $request->filter_section);
@@ -192,13 +192,16 @@ class FinanceReportController extends Controller
 
         // Manual pagination
         $total = $allTransactions->count();
-        $paginated = (new LengthAwarePaginator(
-            $allTransactions->forPage($currentPage, $perPage),
+        // After
+        $pageItems = $allTransactions->forPage($currentPage, $perPage)->values();
+
+        $paginated = new LengthAwarePaginator(
+            $pageItems,
             $total,
             $perPage,
             $currentPage,
-            ['path' => $request->url(), 'pageName' => 'page']
-        ))->appends($filters);
+            ['path' => $request->url(), 'query' => $filters]
+        );
 
         // Calculate totals
         $totalIncome = $incomeStudent->sum('amount') + $incomeMisc->sum('amount');
@@ -223,7 +226,7 @@ class FinanceReportController extends Controller
 
         // Base query for total expected fees
         $prospectusQuery = FeeProspectus::query();
-        
+
         // Base query for total payments
         $paymentsQuery = Payment::query();
 
@@ -234,7 +237,7 @@ class FinanceReportController extends Controller
         }
 
         if ($sessionId) {
-            $prospectusQuery->whereHas('term', function($q) use ($sessionId) {
+            $prospectusQuery->whereHas('term', function ($q) use ($sessionId) {
                 $q->where('session_id', $sessionId);
             });
             $paymentsQuery->where('session_id', $sessionId);
@@ -279,21 +282,21 @@ class FinanceReportController extends Controller
         // Filter options
         $sections = Section::orderBy('section_name')->get();
         $sessions = Session::select('id', 'name', 'section_id')
-            ->when($sectionId, function($q) use ($sectionId) {
+            ->when($sectionId, function ($q) use ($sectionId) {
                 return $q->where('section_id', $sectionId);
             })
             ->orderBy('name', 'desc')
             ->get();
-        
+
         $terms = Term::select('terms.id', 'terms.name', 'terms.session_id')
-            ->when($sessionId, function($q) use ($sessionId) {
+            ->when($sessionId, function ($q) use ($sessionId) {
                 return $q->where('session_id', $sessionId);
             })
             ->orderBy('name')
             ->get();
 
         $classes = SchoolClass::select('id', 'name', 'section_id')
-            ->when($sectionId, function($q) use ($sectionId) {
+            ->when($sectionId, function ($q) use ($sectionId) {
                 return $q->where('section_id', $sectionId);
             })
             ->orderBy('name')
@@ -324,16 +327,16 @@ class FinanceReportController extends Controller
     private function getSectionBreakdown($sectionId, $sessionId, $termId, $classId)
     {
         $query = Section::select('sections.id', 'sections.section_name')
-            ->when($sectionId, function($q) use ($sectionId) {
+            ->when($sectionId, function ($q) use ($sectionId) {
                 return $q->where('sections.id', $sectionId);
             });
 
-        return $query->get()->map(function($section) use ($sessionId, $termId, $classId) {
+        return $query->get()->map(function ($section) use ($sessionId, $termId, $classId) {
             $prospectusQuery = FeeProspectus::where('section_id', $section->id);
             $paymentsQuery = Payment::where('section_id', $section->id);
 
             if ($sessionId) {
-                $prospectusQuery->whereHas('term', function($q) use ($sessionId) {
+                $prospectusQuery->whereHas('term', function ($q) use ($sessionId) {
                     $q->where('session_id', $sessionId);
                 });
                 $paymentsQuery->where('session_id', $sessionId);
@@ -359,7 +362,7 @@ class FinanceReportController extends Controller
                 'outstanding' => $expected - $paid,
                 'rate' => $expected > 0 ? ($paid / $expected) * 100 : 0
             ];
-        })->filter(function($item) {
+        })->filter(function ($item) {
             return $item['expected'] > 0;
         });
     }
@@ -367,15 +370,15 @@ class FinanceReportController extends Controller
     private function getSessionBreakdown($sectionId, $sessionId, $termId, $classId)
     {
         $query = Session::select('school_sessions.id', 'school_sessions.name', 'school_sessions.section_id')
-            ->when($sectionId, function($q) use ($sectionId) {
+            ->when($sectionId, function ($q) use ($sectionId) {
                 return $q->where('section_id', $sectionId);
             })
-            ->when($sessionId, function($q) use ($sessionId) {
+            ->when($sessionId, function ($q) use ($sessionId) {
                 return $q->where('school_sessions.id', $sessionId);
             });
 
-        return $query->get()->map(function($session) use ($sectionId, $termId, $classId) {
-            $prospectusQuery = FeeProspectus::whereHas('term', function($q) use ($session) {
+        return $query->get()->map(function ($session) use ($sectionId, $termId, $classId) {
+            $prospectusQuery = FeeProspectus::whereHas('term', function ($q) use ($session) {
                 $q->where('session_id', $session->id);
             });
             $paymentsQuery = Payment::where('session_id', $session->id);
@@ -405,7 +408,7 @@ class FinanceReportController extends Controller
                 'outstanding' => $expected - $paid,
                 'rate' => $expected > 0 ? ($paid / $expected) * 100 : 0
             ];
-        })->filter(function($item) {
+        })->filter(function ($item) {
             return $item['expected'] > 0;
         });
     }
@@ -414,14 +417,14 @@ class FinanceReportController extends Controller
     {
         $query = Term::select('terms.id', 'terms.name', 'terms.session_id')
             ->with('session')
-            ->when($sessionId, function($q) use ($sessionId) {
+            ->when($sessionId, function ($q) use ($sessionId) {
                 return $q->where('session_id', $sessionId);
             })
-            ->when($termId, function($q) use ($termId) {
+            ->when($termId, function ($q) use ($termId) {
                 return $q->where('terms.id', $termId);
             });
 
-        return $query->get()->map(function($term) use ($sectionId, $classId) {
+        return $query->get()->map(function ($term) use ($sectionId, $classId) {
             $prospectusQuery = FeeProspectus::where('term_id', $term->id);
             $paymentsQuery = Payment::where('term_id', $term->id);
 
@@ -445,7 +448,7 @@ class FinanceReportController extends Controller
                 'outstanding' => $expected - $paid,
                 'rate' => $expected > 0 ? ($paid / $expected) * 100 : 0
             ];
-        })->filter(function($item) {
+        })->filter(function ($item) {
             return $item['expected'] > 0;
         });
     }
@@ -453,19 +456,19 @@ class FinanceReportController extends Controller
     private function getClassBreakdown($sectionId, $sessionId, $termId, $classId)
     {
         $query = SchoolClass::select('school_classes.id', 'school_classes.name', 'school_classes.section_id')
-            ->when($sectionId, function($q) use ($sectionId) {
+            ->when($sectionId, function ($q) use ($sectionId) {
                 return $q->where('section_id', $sectionId);
             })
-            ->when($classId, function($q) use ($classId) {
+            ->when($classId, function ($q) use ($classId) {
                 return $q->where('school_classes.id', $classId);
             });
 
-        return $query->get()->map(function($class) use ($sessionId, $termId) {
+        return $query->get()->map(function ($class) use ($sessionId, $termId) {
             $prospectusQuery = FeeProspectus::where('class_id', $class->id);
             $paymentsQuery = Payment::where('class_id', $class->id);
 
             if ($sessionId) {
-                $prospectusQuery->whereHas('term', function($q) use ($sessionId) {
+                $prospectusQuery->whereHas('term', function ($q) use ($sessionId) {
                     $q->where('session_id', $sessionId);
                 });
                 $paymentsQuery->where('session_id', $sessionId);
@@ -486,83 +489,83 @@ class FinanceReportController extends Controller
                 'outstanding' => $expected - $paid,
                 'rate' => $expected > 0 ? ($paid / $expected) * 100 : 0
             ];
-        })->filter(function($item) {
+        })->filter(function ($item) {
             return $item['expected'] > 0;
         });
     }
 
     private function getTopDebtors($sectionId, $sessionId, $termId, $classId, $limit = 10)
-{
-    // Get all students with fee prospectus
-    $studentsQuery = User::where('user_type', 4)
-        ->with(['section', 'schoolClass']);
+    {
+        // Get all students with fee prospectus
+        $studentsQuery = User::where('user_type', 4)
+            ->with(['section', 'schoolClass']);
 
-    // Filter by class if specified
-    if ($classId) {
-        $studentsQuery->where('class_id', $classId);
+        // Filter by class if specified
+        if ($classId) {
+            $studentsQuery->where('class_id', $classId);
+        }
+
+        // If section is specified but not class, get all classes in that section first
+        if ($sectionId && !$classId) {
+            $classIds = SchoolClass::where('section_id', $sectionId)->pluck('id');
+            $studentsQuery->whereIn('class_id', $classIds);
+        }
+
+        $students = $studentsQuery->get()->map(function ($student) use ($sessionId, $termId) {
+            // Skip if student doesn't have class_id or section_id
+            if (!$student->class_id || !$student->section_id) {
+                return null;
+            }
+
+            // Calculate expected fees
+            $prospectusQuery = FeeProspectus::where('section_id', $student->section_id)
+                ->where('class_id', $student->class_id);
+
+            if ($sessionId) {
+                $prospectusQuery->whereHas('term', function ($q) use ($sessionId) {
+                    $q->where('session_id', $sessionId);
+                });
+            }
+
+            if ($termId) {
+                $prospectusQuery->where('term_id', $termId);
+            }
+
+            $totalExpected = $prospectusQuery->sum('total_amount');
+
+            // Calculate payments
+            $paymentsQuery = Payment::where('student_id', $student->id)
+                ->where('section_id', $student->section_id)
+                ->where('class_id', $student->class_id);
+
+            if ($sessionId) {
+                $paymentsQuery->where('session_id', $sessionId);
+            }
+
+            if ($termId) {
+                $paymentsQuery->where('term_id', $termId);
+            }
+
+            $totalPaid = $paymentsQuery->sum('amount');
+            $outstanding = $totalExpected - $totalPaid;
+
+            return [
+                'student_id' => $student->id,
+                'name' => $student->name,
+                'admission_no' => $student->admission_no,
+                'class' => $student->schoolClass->name ?? 'N/A',
+                'section' => $student->section->section_name ?? 'N/A',
+                'expected' => $totalExpected,
+                'paid' => $totalPaid,
+                'outstanding' => $outstanding
+            ];
+        })->filter(function ($item) {
+            // Remove null items and items with no outstanding balance
+            return $item !== null && $item['outstanding'] > 0;
+        })->sortByDesc('outstanding')->take($limit)->values();
+
+        return $students;
     }
-    
-    // If section is specified but not class, get all classes in that section first
-    if ($sectionId && !$classId) {
-        $classIds = SchoolClass::where('section_id', $sectionId)->pluck('id');
-        $studentsQuery->whereIn('class_id', $classIds);
-    }
-
-    $students = $studentsQuery->get()->map(function($student) use ($sessionId, $termId) {
-        // Skip if student doesn't have class_id or section_id
-        if (!$student->class_id || !$student->section_id) {
-            return null;
-        }
-
-        // Calculate expected fees
-        $prospectusQuery = FeeProspectus::where('section_id', $student->section_id)
-            ->where('class_id', $student->class_id);
-
-        if ($sessionId) {
-            $prospectusQuery->whereHas('term', function($q) use ($sessionId) {
-                $q->where('session_id', $sessionId);
-            });
-        }
-
-        if ($termId) {
-            $prospectusQuery->where('term_id', $termId);
-        }
-
-        $totalExpected = $prospectusQuery->sum('total_amount');
-
-        // Calculate payments
-        $paymentsQuery = Payment::where('student_id', $student->id)
-            ->where('section_id', $student->section_id)
-            ->where('class_id', $student->class_id);
-
-        if ($sessionId) {
-            $paymentsQuery->where('session_id', $sessionId);
-        }
-
-        if ($termId) {
-            $paymentsQuery->where('term_id', $termId);
-        }
-
-        $totalPaid = $paymentsQuery->sum('amount');
-        $outstanding = $totalExpected - $totalPaid;
-
-        return [
-            'student_id' => $student->id,
-            'name' => $student->name,
-            'admission_no' => $student->admission_no,
-            'class' => $student->schoolClass->name ?? 'N/A',
-            'section' => $student->section->section_name ?? 'N/A',
-            'expected' => $totalExpected,
-            'paid' => $totalPaid,
-            'outstanding' => $outstanding
-        ];
-    })->filter(function($item) {
-        // Remove null items and items with no outstanding balance
-        return $item !== null && $item['outstanding'] > 0;
-    })->sortByDesc('outstanding')->take($limit)->values();
-
-    return $students;
-}
 
     private function getPaymentTrends($sectionId, $sessionId, $termId, $classId)
     {
@@ -570,22 +573,22 @@ class FinanceReportController extends Controller
             DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
             DB::raw('SUM(amount) as total')
         )
-        ->when($sectionId, function($q) use ($sectionId) {
-            return $q->where('section_id', $sectionId);
-        })
-        ->when($sessionId, function($q) use ($sessionId) {
-            return $q->where('session_id', $sessionId);
-        })
-        ->when($termId, function($q) use ($termId) {
-            return $q->where('term_id', $termId);
-        })
-        ->when($classId, function($q) use ($classId) {
-            return $q->where('class_id', $classId);
-        })
-        ->where('created_at', '>=', now()->subMonths(12))
-        ->groupBy('month')
-        ->orderBy('month')
-        ->get();
+            ->when($sectionId, function ($q) use ($sectionId) {
+                return $q->where('section_id', $sectionId);
+            })
+            ->when($sessionId, function ($q) use ($sessionId) {
+                return $q->where('session_id', $sessionId);
+            })
+            ->when($termId, function ($q) use ($termId) {
+                return $q->where('term_id', $termId);
+            })
+            ->when($classId, function ($q) use ($classId) {
+                return $q->where('class_id', $classId);
+            })
+            ->where('created_at', '>=', now()->subMonths(12))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
 
         return $query;
     }
@@ -608,7 +611,7 @@ class FinanceReportController extends Controller
         }
 
         if ($sessionId) {
-            $prospectusQuery->whereHas('term', function($q) use ($sessionId) {
+            $prospectusQuery->whereHas('term', function ($q) use ($sessionId) {
                 $q->where('session_id', $sessionId);
             });
             $paymentsQuery->where('session_id', $sessionId);
@@ -650,7 +653,7 @@ class FinanceReportController extends Controller
             'termId',
             'classId'
         ));
-        
+
         return $pdf->download('financial-analysis-' . now()->format('Y-m-d') . '.pdf');
     }
 }
