@@ -278,34 +278,72 @@ class BursarController extends Controller
     }
 
     public function managePayments(Request $request)
-    {
-        $query = Payment::with(['student', 'section', 'schoolClass', 'term.session', 'createdBy']);
+{
+    $query = Payment::with(['student', 'section', 'schoolClass', 'term.session', 'createdBy']);
 
-        if ($request->filled('filter_section')) {
-            $query->where('section_id', $request->filter_section);
-        }
-        if ($request->filled('filter_term')) {
-            $query->where('term_id', $request->filter_term);
-        }
-        if ($request->filled('filter_session')) {
-            $query->where('session_id', $request->filter_session);
-        }
-        if ($request->filled('filter_student')) {
-            $query->whereHas('student', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->filter_student . '%')
-                    ->orWhere('admission_no', 'like', '%' . $request->filter_student . '%');
-            });
-        }
-
-        $payments = $query->orderBy('created_at', 'desc')->paginate(20)->onEachSide(0);
-
-        $sections = Section::select('id', 'section_name')->orderBy('section_name')->get();
-        $terms    = Term::selectRaw('MIN(id) as id, name')->groupBy('name')->orderBy('name')->get();
-        $sessions = Session::selectRaw('MIN(id) as id, name')->groupBy('name')->orderBy('name')->get();
-        $students = User::where('user_type', 4)->select('id', 'name', 'admission_no')->orderBy('name')->limit(50)->get();
-
-        return view('manage_payments', compact('payments', 'sections', 'terms', 'sessions', 'students'));
+    if ($request->filled('filter_section')) {
+        $query->where('section_id', $request->filter_section);
     }
+    if ($request->filled('filter_class')) {
+        $query->where('class_id', $request->filter_class);
+    }
+    if ($request->filled('filter_term')) {
+        $query->where('term_id', $request->filter_term);
+    }
+    if ($request->filled('filter_session')) {
+        $query->where('session_id', $request->filter_session);
+    }
+    if ($request->filled('filter_student')) {
+        $query->whereHas('student', function ($q) use ($request) {
+            $q->where('name', 'like', '%' . $request->filter_student . '%')
+              ->orWhere('admission_no', 'like', '%' . $request->filter_student . '%');
+        });
+    }
+
+    $payments = $query->orderBy('created_at', 'desc')->paginate(20)->onEachSide(0);
+
+    $sections = Section::select('id', 'section_name')->orderBy('section_name')->get();
+    $terms    = Term::selectRaw('MIN(id) as id, name')->groupBy('name')->orderBy('name')->get();
+    $sessions = Session::selectRaw('MIN(id) as id, name')->groupBy('name')->orderBy('name')->get();
+    $students = User::where('user_type', 4)->select('id', 'name', 'admission_no')->orderBy('name')->limit(50)->get();
+
+    $allClasses = SchoolClass::select('id', 'name', 'section_id')->orderBy('name')->get();
+
+    // Class filter summary
+    $classSummary = null;
+    if ($request->filled('filter_class')) {
+        $currentSession = Session::where('is_current', true)->first();
+        $currentTerm    = $currentSession
+            ? Term::where('session_id', $currentSession->id)->where('is_current', true)->first()
+            : null;
+
+        $classId        = $request->filter_class;
+        $totalStudents  = User::where('user_type', 4)->where('class_id', $classId)->count();
+
+        $paidStudentIds = Payment::where('class_id', $classId)
+            ->when($currentTerm,    fn($q) => $q->where('term_id', $currentTerm->id))
+            ->when($currentSession, fn($q) => $q->where('session_id', $currentSession->id))
+            ->distinct()
+            ->pluck('student_id');
+
+        $paidCount   = $paidStudentIds->count();
+        $unpaidCount = $totalStudents - $paidCount;
+
+        $classSummary = [
+            'class'        => SchoolClass::find($classId),
+            'term'         => $currentTerm,
+            'total'        => $totalStudents,
+            'paid'         => $paidCount,
+            'unpaid'       => max(0, $unpaidCount),
+            'paid_pct'     => $totalStudents > 0 ? round(($paidCount / $totalStudents) * 100) : 0,
+        ];
+    }
+
+    return view('manage_payments', compact(
+        'payments', 'sections', 'terms', 'sessions',
+        'students', 'allClasses', 'classSummary'
+    ));
+}
 
     public function viewTransactionHistory(Request $request, $studentId)
     {

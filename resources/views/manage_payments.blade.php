@@ -36,80 +36,104 @@
                                             <select class="form-control" name="filter_section">
                                                 <option value="">All Sections</option>
                                                 @foreach($sections as $section)
-                                                <option value="{{ $section->id }}" {{ request('filter_section') == $section->id ? 'selected' : '' }}>
+                                                <option value="{{ $section->id }}" {{
+                                                    request('filter_section')==$section->id ? 'selected' : '' }}>
                                                     {{ $section->section_name }}
                                                 </option>
                                                 @endforeach
                                             </select>
                                         </div>
-                                        <div class="form-group col-md-3">
-                                            <label>Term</label>
-                                            <select class="form-control" name="filter_term">
-                                                <option value="">All Terms</option>
-                                                @foreach($terms as $term)
-                                                <option value="{{ $term->id }}" {{ request('filter_term') == $term->id ? 'selected' : '' }}>
-                                                    {{ $term->name }}
-                                                </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="form-group col-md-3">
-                                            <label>Session</label>
-                                            <select class="form-control" name="filter_session">
-                                                <option value="">All Sessions</option>
-                                                @foreach($sessions as $session)
-                                                <option value="{{ $session->id }}" {{ request('filter_session') == $session->id ? 'selected' : '' }}>
-                                                    {{ $session->name }}
-                                                </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="form-group col-md-3">
-                                            <label>Date From</label>
-                                            <input type="date" class="form-control" name="filter_date_from"
-                                                value="{{ request('filter_date_from') }}">
-                                        </div>
-                                        <div class="form-group col-md-3">
-                                            <label>Date To</label>
-                                            <input type="date" class="form-control" name="filter_date_to"
-                                                value="{{ request('filter_date_to') }}">
-                                        </div>
-                                        <div class="form-group col-md-12 d-flex align-items-end">
-                                            <button type="submit" class="btn btn-primary mr-2">
-                                                <i class="fas fa-search"></i> Apply Filters
-                                            </button>
-                                            <a href="{{ route('payment.manage') }}" class="btn btn-light">
-                                                <i class="fas fa-sync"></i> Reset
-                                            </a>
-                                        </div>
+                                        {{-- After the Section <div class="form-group col-md-3"> block --}}
+                                            <div class="form-group col-md-3">
+                                                <label>Class</label>
+                                                <select class="form-control" name="filter_class" id="filter_class">
+                                                    <option value="">All Classes</option>
+                                                    @foreach($allClasses as $cls)
+                                                    <option value="{{ $cls->id }}" data-section="{{ $cls->section_id }}"
+                                                        {{ request('filter_class')==$cls->id ? 'selected' : '' }}>
+                                                        {{ $cls->name }}
+                                                    </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group col-md-3">
+                                                <label>Term</label>
+                                                <select class="form-control" name="filter_term">
+                                                    <option value="">All Terms</option>
+                                                    @foreach($terms as $term)
+                                                    <option value="{{ $term->id }}" {{ request('filter_term')==$term->id
+                                                        ? 'selected' : '' }}>
+                                                        {{ $term->name }}
+                                                    </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="form-group col-md-3">
+                                                <label>Session</label>
+                                                <select class="form-control" name="filter_session">
+                                                    <option value="">All Sessions</option>
+                                                    @foreach($sessions as $session)
+                                                    <option value="{{ $session->id }}" {{
+                                                        request('filter_session')==$session->id ? 'selected' : '' }}>
+                                                        {{ $session->name }}
+                                                    </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="form-group col-md-3">
+                                                <label>Date From</label>
+                                                <input type="date" class="form-control" name="filter_date_from"
+                                                    value="{{ request('filter_date_from') }}">
+                                            </div>
+                                            <div class="form-group col-md-3">
+                                                <label>Date To</label>
+                                                <input type="date" class="form-control" name="filter_date_to"
+                                                    value="{{ request('filter_date_to') }}">
+                                            </div>
+                                            <div class="form-group col-md-12 d-flex align-items-end">
+                                                <button type="submit" class="btn btn-primary mr-2">
+                                                    <i class="fas fa-search"></i> Apply Filters
+                                                </button>
+                                                <a href="{{ route('payment.manage') }}" class="btn btn-light">
+                                                    <i class="fas fa-sync"></i> Reset
+                                                </a>
+                                            </div>
                                     </form>
                                 </div>
                             </div>
 
                             <div class="card-body">
                                 <!-- Display Active Filters -->
-                                @if(request('filter_student') || request('filter_section') || request('filter_term') !== null ||
-                                request('filter_session') !== null || request('filter_date_from') || request('filter_date_to'))
+                                @if(request('filter_student') || request('filter_section') || request('filter_term') !==
+                                null ||
+                                request('filter_session') !== null || request('filter_date_from') ||
+                                request('filter_date_to'))
                                 <div class="mb-3">
                                     <h6>Active Filters:</h6>
                                     <div class="active-filters">
                                         @if(request('filter_student'))
-                                        <span class="badge badge-info mr-2">Student: {{ request('filter_student') }}</span>
+                                        <span class="badge badge-info mr-2">Student: {{ request('filter_student')
+                                            }}</span>
                                         @endif
 
                                         @if(request('filter_section'))
-                                        <span class="badge badge-info mr-2">Section: {{ $sections->where('id', request('filter_section'))->first()->section_name ?? 'N/A' }}</span>
+                                        <span class="badge badge-info mr-2">Section: {{ $sections->where('id',
+                                            request('filter_section'))->first()->section_name ?? 'N/A' }}</span>
                                         @endif
 
                                         @if(request('filter_term') !== null && request('filter_term') !== '')
-                                        <span class="badge badge-info mr-2">Term: {{ $terms->where('id', request('filter_term'))->first()->name ?? 'N/A' }}</span>
+                                        <span class="badge badge-info mr-2">Term: {{ $terms->where('id',
+                                            request('filter_term'))->first()->name ?? 'N/A' }}</span>
                                         @endif
 
                                         @if(request('filter_session') !== null && request('filter_session') !== '')
-                                        <span class="badge badge-info mr-2">Session: {{ $sessions->where('id', request('filter_session'))->first()->name ?? 'N/A' }}</span>
+                                        <span class="badge badge-info mr-2">Session: {{ $sessions->where('id',
+                                            request('filter_session'))->first()->name ?? 'N/A' }}</span>
                                         @endif
                                         @if(request('filter_date_from'))
-                                        <span class="badge badge-info mr-2">From: {{ request('filter_date_from') }}</span>
+                                        <span class="badge badge-info mr-2">From: {{ request('filter_date_from')
+                                            }}</span>
                                         @endif
                                         @if(request('filter_date_to'))
                                         <span class="badge badge-info mr-2">To: {{ request('filter_date_to') }}</span>
@@ -121,8 +145,49 @@
                                 </div>
                                 @endif
 
+
+                                @if($classSummary)
+                                <div class="alert alert-light border mb-3 p-3">
+                                    <p class="mb-2 text-muted" style="font-size: 13px;">
+                                        Payment summary for <strong>{{ $classSummary['class']->name }}</strong>
+                                        @if($classSummary['term'])
+                                        — {{ $classSummary['term']->name }}
+                                        ({{ $classSummary['term']->session->name ?? '' }})
+                                        @endif
+                                    </p>
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <div class="card py-2">
+                                                <div class="text-muted" style="font-size: 11px;">Total students</div>
+                                                <div class="font-weight-bold" style="font-size: 22px;">{{
+                                                    $classSummary['total'] }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="card py-2 border-success">
+                                                <div class="text-success" style="font-size: 11px;">Paid</div>
+                                                <div class="font-weight-bold text-success" style="font-size: 22px;">{{
+                                                    $classSummary['paid'] }}</div>
+                                                <div class="text-muted" style="font-size: 11px;">{{
+                                                    $classSummary['paid_pct'] }}%</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="card py-2 border-danger">
+                                                <div class="text-danger" style="font-size: 11px;">Yet to pay</div>
+                                                <div class="font-weight-bold text-danger" style="font-size: 22px;">{{
+                                                    $classSummary['unpaid'] }}</div>
+                                                <div class="text-muted" style="font-size: 11px;">{{ 100 -
+                                                    $classSummary['paid_pct'] }}%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endif
+
                                 <div class="table-responsive">
-                                    <table class="table table-striped table-hover" id="payments-table" style="width:100%;">
+                                    <table class="table table-striped table-hover" id="payments-table"
+                                        style="width:100%;">
                                         <thead>
                                             <tr>
                                                 <th>S/N</th>
@@ -140,7 +205,8 @@
                                         <tbody>
                                             @forelse($payments as $index => $payment)
                                             <tr>
-                                                <td>{{ ($payments->currentPage() - 1) * $payments->perPage() + $index + 1 }}</td>
+                                                <td>{{ ($payments->currentPage() - 1) * $payments->perPage() + $index +
+                                                    1 }}</td>
                                                 <td>{{ $payment->student->name ?? 'N/A' }}</td>
                                                 <td>{{ $payment->student->admission_no ?? 'N/A' }}</td>
                                                 <td>{{ $payment->section->section_name ?? 'N/A' }}</td>
@@ -177,5 +243,27 @@
         </div>
     </div>
 
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+    const sectionSelect = document.querySelector('[name="filter_section"]');
+    const classSelect   = document.getElementById('filter_class');
+
+    function filterClasses() {
+        const sectionId = sectionSelect.value;
+        Array.from(classSelect.options).forEach(opt => {
+            if (!opt.value) return; // keep "All Classes"
+            opt.hidden = sectionId && opt.dataset.section !== sectionId;
+        });
+        // If the currently selected class is now hidden, reset it
+        if (classSelect.selectedOptions[0]?.hidden) {
+            classSelect.value = '';
+        }
+    }
+
+    sectionSelect.addEventListener('change', filterClasses);
+    filterClasses(); // run on page load to respect pre-selected section
+});
+    </script>
     @include('includes.edit_footer')
 </body>

@@ -20,40 +20,82 @@ class MiscFeePaymentController extends Controller
      * Display a listing of misc fee payments.
      */
     public function index(Request $request)
-    {
-        $query = MiscFeePayment::with(['miscFeeType', 'student', 'paidBy'])
-            ->orderBy('payment_date', 'desc')
-            ->orderBy('created_at', 'desc');
+{
+    $query = MiscFeePayment::with(['miscFeeType', 'student', 'paidBy'])
+        ->orderBy('payment_date', 'desc')
+        ->orderBy('created_at', 'desc');
 
-        if ($request->filled('filter_student')) {
-            $query->whereHas('student', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->filter_student . '%')
-                  ->orWhere('admission_no', 'like', '%' . $request->filter_student . '%');
-            });
-        }
-
-        if ($request->filled('filter_fee_type')) {
-            $query->where('misc_fee_type_id', $request->filter_fee_type);
-        }
-
-        if ($request->filled('filter_date_from')) {
-            $query->whereDate('payment_date', '>=', $request->filter_date_from);
-        }
-
-        if ($request->filled('filter_date_to')) {
-            $query->whereDate('payment_date', '<=', $request->filter_date_to);
-        }
-
-        if ($request->filled('filter_status')) {
-            $query->where('status', $request->filter_status);
-        }
-
-        $payments  = $query->paginate(10);
-        $students  = User::where('user_type', 4)->orderBy('name')->get();
-        $feeTypes  = MiscFee::orderBy('name')->get();
-
-        return view('misc_fee_payments_manage', compact('payments', 'students', 'feeTypes'));
+    if ($request->filled('filter_student')) {
+        $query->where('student_id', $request->filter_student);
     }
+
+    if ($request->filled('filter_fee_type')) {
+        $query->where('misc_fee_type_id', $request->filter_fee_type);
+    }
+
+    if ($request->filled('filter_date_from')) {
+        $query->whereDate('payment_date', '>=', $request->filter_date_from);
+    }
+
+    if ($request->filled('filter_date_to')) {
+        $query->whereDate('payment_date', '<=', $request->filter_date_to);
+    }
+
+    if ($request->filled('filter_status')) {
+        $query->where('status', $request->filter_status);
+    }
+
+    if ($request->filled('filter_section')) {
+        $query->whereHas('student', fn($q) => $q->whereHas('schoolClass', fn($q2) =>
+            $q2->where('section_id', $request->filter_section)
+        ));
+    }
+
+    if ($request->filled('filter_class')) {
+        $query->whereHas('student', fn($q) =>
+            $q->where('class_id', $request->filter_class)
+        );
+    }
+
+    $payments  = $query->paginate(10);
+    $students  = User::where('user_type', 4)->orderBy('name')->get();
+    $feeTypes  = MiscFee::orderBy('name')->get();
+    $sections  = Section::orderBy('section_name')->get();
+    $allClasses = SchoolClass::select('id', 'name', 'section_id')->orderBy('name')->get();
+
+    // Class summary
+    $classSummary = null;
+    if ($request->filled('filter_class')) {
+        $classId       = $request->filter_class;
+        $feeTypeId     = $request->filter_fee_type ?: null;
+        $totalStudents = User::where('user_type', 4)->where('class_id', $classId)->count();
+
+        $paidQuery = MiscFeePayment::whereHas('student', fn($q) =>
+            $q->where('class_id', $classId)
+        )->where('status', 'paid');
+
+        if ($feeTypeId) {
+            $paidQuery->where('misc_fee_type_id', $feeTypeId);
+        }
+
+        $paidCount   = $paidQuery->distinct('student_id')->count('student_id');
+        $unpaidCount = max(0, $totalStudents - $paidCount);
+
+        $classSummary = [
+            'class'    => SchoolClass::find($classId),
+            'fee_type' => $feeTypeId ? MiscFee::find($feeTypeId) : null,
+            'total'    => $totalStudents,
+            'paid'     => $paidCount,
+            'unpaid'   => $unpaidCount,
+            'paid_pct' => $totalStudents > 0 ? round(($paidCount / $totalStudents) * 100) : 0,
+        ];
+    }
+
+    return view('misc_fee_payments_manage', compact(
+        'payments', 'students', 'feeTypes',
+        'sections', 'allClasses', 'classSummary'
+    ));
+}
 
     /**
      * Show the form for creating a new payment.
