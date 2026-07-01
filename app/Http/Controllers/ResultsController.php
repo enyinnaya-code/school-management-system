@@ -110,6 +110,27 @@ class ResultsController extends Controller
         return view('upload_result', compact('sections', 'sessions', 'terms', 'selectedSession', 'selectedTerm'));
     }
 
+    /**
+     * Find the active result-sheet template for a class, strictly scoped to the given term.
+     * Returns null if no template matches this exact class + term combination.
+     */
+    private function getSheetTemplateForClassAndTerm($class, $term)
+    {
+        if (!$term) {
+            return null;
+        }
+
+        return DB::table('result_sheet_templates')
+            ->where('is_active', 1)
+            ->get()
+            ->first(function ($t) use ($class, $term) {
+                $classes      = json_decode($t->applicable_classes ?? '[]', true);
+                $classMatches = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+                $termMatches  = !empty($t->term_name) && $t->term_name === $term->name;
+                return $classMatches && $termMatches;
+            });
+    }
+
 
     // public function selectClassGet(Request $request)
     // {
@@ -237,27 +258,8 @@ class ResultsController extends Controller
         ] = $this->getAdjacentStudents($class->id, $student->id);
         // ──────────────────────────────────────────────────────────────────────
 
-        // ── NURSERY: Custom result sheet template ──────────────────────────────
-        $sheetTemplate = DB::table('result_sheet_templates')
-            ->where('is_active', 1)
-            ->get()
-            ->first(function ($t) use ($class, $currentTerm) {
-                $classes      = json_decode($t->applicable_classes ?? '[]', true);
-                $classMatches = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-                $termMatches  = !empty($t->term_name) && $t->term_name === $currentTerm->name;
-                return $classMatches && $termMatches;
-            });
-
-        // Fallback: any active template for this class regardless of term
-        if (!$sheetTemplate) {
-            $sheetTemplate = DB::table('result_sheet_templates')
-                ->where('is_active', 1)
-                ->get()
-                ->first(function ($t) use ($class) {
-                    $classes = json_decode($t->applicable_classes ?? '[]', true);
-                    return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-                });
-        }
+        // ── NURSERY: Custom result sheet template — strictly for the selected term ──
+        $sheetTemplate = $this->getSheetTemplateForClassAndTerm($class, $currentTerm);
 
         if ($sheetTemplate) {
             $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
@@ -1093,13 +1095,8 @@ class ResultsController extends Controller
         abort_if(!$selectedTerm, 404, 'No term found.');
 
         // Find active template for this class
-        $sheetTemplate = DB::table('result_sheet_templates')
-            ->where('is_active', 1)
-            ->get()
-            ->first(function ($t) use ($class) {
-                $classes = json_decode($t->applicable_classes ?? '[]', true);
-                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-            });
+        // Find active template for this class, scoped to the selected term
+        $sheetTemplate = $this->getSheetTemplateForClassAndTerm($class, $selectedTerm);
 
         abort_if(!$sheetTemplate, 404, 'No active skill sheet template for this class.');
 
@@ -1493,26 +1490,22 @@ class ResultsController extends Controller
 
         // ── Detect class type ────────────────────────────────────────────────────
 
-        // NURSERY: check if this class has an active result sheet template
-        $sheetTemplate = DB::table('result_sheet_templates')
+        // ── NURSERY: Custom result sheet template — strictly for the selected term ──
+        $sheetTemplate = $this->getSheetTemplateForClassAndTerm($class, $selectedTerm);
+
+        $isNurseryClass = DB::table('result_sheet_templates')
             ->where('is_active', 1)
             ->get()
-            ->first(function ($t) use ($class, $selectedTerm) {
-                $classes     = json_decode($t->applicable_classes ?? '[]', true);
-                $classMatch  = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-                $termMatch   = !empty($t->term_name) && $t->term_name === $selectedTerm->name;
-                return $classMatch && $termMatch;
+            ->contains(function ($t) use ($class) {
+                $classes = json_decode($t->applicable_classes ?? '[]', true);
+                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
             });
 
-        // Fallback: any active template for this class regardless of term
-        if (!$sheetTemplate) {
-            $sheetTemplate = DB::table('result_sheet_templates')
-                ->where('is_active', 1)
-                ->get()
-                ->first(function ($t) use ($class) {
-                    $classes = json_decode($t->applicable_classes ?? '[]', true);
-                    return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
-                });
+        if ($isNurseryClass && !$sheetTemplate) {
+            return redirect()->back()->with(
+                'error',
+                'No skill sheet template is configured for this class in ' . $selectedTerm->name . '.'
+            );
         }
 
         $isNursery = (bool) $sheetTemplate;
