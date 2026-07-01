@@ -1671,6 +1671,39 @@ class ResultsController extends Controller
         ];
     }
 
+    private function calculateTermlyScores($studentId, $sessionId, $termId)
+    {
+        $session = Session::find($sessionId);
+        if (!$session) {
+            return [];
+        }
+
+        $terms = $session->terms()->orderBy('name')->get();
+
+        $results = \App\Models\PrimarySchoolResult::where('student_id', $studentId)
+            ->where('session_id', $sessionId)
+            ->whereIn('term_id', $terms->pluck('id'))
+            ->get()
+            ->groupBy('course_id');
+
+        $termlyScores = [];
+
+        foreach ($results as $courseId => $courseResults) {
+            $termlyScores[$courseId] = [];
+
+            foreach ($terms as $term) {
+                $result = $courseResults->firstWhere('term_id', $term->id);
+
+                $termlyScores[$courseId][$term->id] = [
+                    'term_name'      => $term->name,
+                    'final_obtained' => $result->final_obtained ?? null,
+                    'grade'          => $result->grade ?? null,
+                ];
+            }
+        }
+
+        return $termlyScores;
+    }
 
     public function editRemarks($studentId)
     {
