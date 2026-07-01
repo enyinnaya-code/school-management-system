@@ -1847,120 +1847,140 @@ class ResultsController extends Controller
     }
 
     public function cumulativeResults(Request $request, $classId)
-    {
-        $class = SchoolClass::findOrFail($classId);
-        $section = Section::find($class->section_id);
-        $user = Auth::user();
+{
+    $class   = SchoolClass::findOrFail($classId);
+    $section = Section::find($class->section_id);
+    $user    = Auth::user();
 
-        // Security check for non-admin users
-        if (!in_array($user->user_type, [1, 2])) {
-            $allowed = $this->isTeacherAssignedToClass($user->id, $classId);
-            if (!$allowed && $user->is_form_teacher && $user->form_class_id == $classId) {
-                $allowed = true;
-            }
-            if (!$allowed) {
-                abort(403, 'You are not authorized to view cumulative results for this class.');
-            }
+    // Security check for non-admin users
+    if (!in_array($user->user_type, [1, 2])) {
+        $allowed = $this->isTeacherAssignedToClass($user->id, $classId);
+        if (!$allowed && $user->is_form_teacher && $user->form_class_id == $classId) {
+            $allowed = true;
         }
-
-        // Fetch all sessions
-        $sessions = Session::orderByDesc('name')->get();
-
-        // Get selected session or default to current
-        $selectedSessionId = $request->input('session_id');
-        if (!$selectedSessionId) {
-            $currentSession = Session::where('is_current', true)->first();
-            $selectedSessionId = $currentSession?->id;
+        if (!$allowed) {
+            abort(403, 'You are not authorized to view cumulative results for this class.');
         }
-        $selectedSession = Session::find($selectedSessionId);
+    }
 
-        if (!$selectedSession) {
-            return redirect()->back()->with('error', 'Selected session not found.');
-        }
+    // ── Determine class type ────────────────────────────────────────────────
+    $isPrimary = DB::table('primary_result_classes')
+        ->where('school_class_id', $classId)
+        ->exists();
 
-        // Get all terms for the selected session
-        $terms = $selectedSession->terms()->orderBy('name')->get();
+    // Fetch all sessions
+    $sessions = Session::orderByDesc('name')->get();
 
-        if ($terms->isEmpty()) {
-            return redirect()->back()->with('error', 'No terms found for this session.');
-        }
+    // Get selected session or default to current
+    $selectedSessionId = $request->input('session_id');
+    if (!$selectedSessionId) {
+        $currentSession    = Session::where('is_current', true)->first();
+        $selectedSessionId = $currentSession?->id;
+    }
+    $selectedSession = Session::find($selectedSessionId);
 
-        // Get all subjects offered by this class
-        $subjects = Course::whereHas('schoolClasses', function ($query) use ($class) {
-            $query->where('school_classes.id', $class->id);
-        })->orderBy('course_name')->get();
+    if (!$selectedSession) {
+        return redirect()->back()->with('error', 'Selected session not found.');
+    }
 
-        // Fetch all students in the class
-        $students = User::where('user_type', 4)
-            ->where('class_id', $classId)
-            ->orderBy('name')
-            ->get();
+    // Get all terms for the selected session
+    $terms = $selectedSession->terms()->orderBy('name')->get();
 
-        // Fetch results for all terms in the session
+    if ($terms->isEmpty()) {
+        return redirect()->back()->with('error', 'No terms found for this session.');
+    }
+
+    // Get all subjects offered by this class
+    $subjects = Course::whereHas('schoolClasses', function ($query) use ($class) {
+        $query->where('school_classes.id', $class->id);
+    })->orderBy('course_name')->get();
+
+    // Fetch all students in the class
+    $students = User::where('user_type', 4)
+        ->where('class_id', $classId)
+        ->orderBy('name')
+        ->get();
+
+    // ── Fetch results for all terms in the session — branch by class type ───
+    if ($isPrimary) {
+        $allResults = \App\Models\PrimarySchoolResult::where('session_id', $selectedSession->id)
+            ->whereIn('term_id', $terms->pluck('id'))
+            ->whereIn('student_id', $students->pluck('id'))
+            ->whereIn('course_id', $subjects->pluck('id'))
+            ->get()
+            ->groupBy(['student_id', 'term_id', 'course_id']);
+    } else {
         $allResults = Result::where('session_id', $selectedSession->id)
             ->whereIn('term_id', $terms->pluck('id'))
             ->whereIn('student_id', $students->pluck('id'))
             ->whereIn('course_id', $subjects->pluck('id'))
             ->get()
             ->groupBy(['student_id', 'term_id', 'course_id']);
+    }
 
-        // Calculate cumulative data for each student
-        $cumulativeData = $students->map(function ($student) use ($allResults, $subjects, $terms) {
-            $studentResults = $allResults->get($student->id, collect());
+    // ── Calculate cumulative data for each student ────────────────────────────
+    $cumulativeData = $students->map(function ($student) use ($allResults, $subjects, $terms, $isPrimary) {
+        $studentResults = $allResults->get($student->id, collect());
 
-            $termTotals = [];
-            $cumulativeTotal = 0;
+        $termTotals      = [];
+        $cumulativeTotal = 0;
 
-            foreach ($terms as $term) {
-                $termResults = $studentResults->get($term->id, collect());
-                $termTotal = 0;
+        foreach ($terms as $term) {
+            $termResults = $studentResults->get($term->id, collect());
+            $termTotal   = 0;
 
-                foreach ($subjects as $subject) {
-                    $result = $termResults->get($subject->id);
-                    if ($result) {
-                        $termTotal += $result->first()->total;
-                    }
+            foreach ($subjects as $subject) {
+                $result = $termResults->get($subject->id);
+                if ($result) {
+                    // PrimarySchoolResult has no 'total' column — use final_obtained for both.
+                    // Result has a 'total' column kept in sync with final_obtained.
+                    $termTotal += $isPrimary
+                        ? (float) ($result->first()->final_obtained ?? 0)
+                        : (float) ($result->first()->total ?? 0);
                 }
-
-                $termTotals[$term->id] = $termTotal;
-                $cumulativeTotal += $termTotal;
             }
 
-            $totalPossible = $subjects->count() * $terms->count() * 100;
-            $cumulativeAverage = $totalPossible > 0 ? round(($cumulativeTotal / $totalPossible) * 100, 2) : 0;
-            $grade = $this->calculateGrade($cumulativeAverage);
+            $termTotals[$term->id] = $termTotal;
+            $cumulativeTotal      += $termTotal;
+        }
 
-            return [
-                'student' => $student,
-                'term_totals' => $termTotals,
-                'cumulative_total' => $cumulativeTotal,
-                'cumulative_average' => $cumulativeAverage,
-                'grade' => $grade,
-            ];
-        });
+        $totalPossible      = $subjects->count() * $terms->count() * 100;
+        $cumulativeAverage  = $totalPossible > 0 ? round(($cumulativeTotal / $totalPossible) * 100, 2) : 0;
+        $grade              = $this->calculateGrade($cumulativeAverage);
 
-        // Sort by cumulative total descending
-        $sortedStudents = $cumulativeData->sortByDesc('cumulative_total')->values();
+        return [
+            'student'             => $student,
+            'term_totals'         => $termTotals,
+            'cumulative_total'    => $cumulativeTotal,
+            'cumulative_average'  => $cumulativeAverage,
+            'grade'               => $grade,
+        ];
+    });
 
-        // Assign positions
-        $sortedStudents = $sortedStudents->map(function ($item, $index) {
-            $item['position'] = $index + 1;
-            $item['formatted_position'] = ($index + 1) . $this->getPositionSuffix($index + 1);
-            return $item;
-        });
+    // Sort by cumulative total descending
+    $sortedStudents = $cumulativeData->sortByDesc('cumulative_total')->values();
 
-        return view('results.cumulative_results', compact(
-            'class',
-            'section',
-            'students',
-            'subjects',
-            'sortedStudents',
-            'sessions',
-            'selectedSession',
-            'terms',
-            'allResults'
-        ));
-    }
+    // Assign positions
+    $sortedStudents = $sortedStudents->map(function ($item, $index) {
+        $item['position']           = $index + 1;
+        $item['formatted_position'] = ($index + 1) . $this->getPositionSuffix($index + 1);
+        return $item;
+    });
+
+    return view('results.cumulative_results', compact(
+        'class',
+        'section',
+        'students',
+        'subjects',
+        'sortedStudents',
+        'sessions',
+        'selectedSession',
+        'terms',
+        'allResults',
+        'isPrimary'
+    ));
+}
+
 
     public function printTranscript($studentId, $action = 'stream')
     {
