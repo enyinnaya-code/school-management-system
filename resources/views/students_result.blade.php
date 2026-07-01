@@ -53,6 +53,46 @@
                                         </div>
                                     </div>
 
+                                    <!-- Session Selection -->
+                                    <div class="form-group row px-3">
+                                        <label class="col-md-2 col-form-label">Session</label>
+                                        <div class="col-md-6">
+                                            <select class="form-control" name="session_id" id="session_id" required>
+                                                @forelse($sessions as $session)
+                                                    <option value="{{ $session->id }}"
+                                                        {{ (isset($selectedSession) && $selectedSession && $selectedSession->id == $session->id) ? 'selected' : '' }}>
+                                                        {{ $session->name }}
+                                                    </option>
+                                                @empty
+                                                    <option value="">No sessions found</option>
+                                                @endforelse
+                                            </select>
+                                            @error('session_id')
+                                                <span class="text-danger">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+                                    </div>
+
+                                    <!-- Term Selection -->
+                                    <div class="form-group row px-3">
+                                        <label class="col-md-2 col-form-label">Term</label>
+                                        <div class="col-md-6">
+                                            <select class="form-control" name="term_id" id="term_id" required>
+                                                @forelse($terms as $term)
+                                                    <option value="{{ $term->id }}"
+                                                        {{ (isset($selectedTerm) && $selectedTerm && $selectedTerm->id == $term->id) ? 'selected' : '' }}>
+                                                        {{ $term->name }}
+                                                    </option>
+                                                @empty
+                                                    <option value="">Select session first...</option>
+                                                @endforelse
+                                            </select>
+                                            @error('term_id')
+                                                <span class="text-danger">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+                                    </div>
+
                                     <!-- Submit Button -->
                                     <div class="form-group mt-4 pt-4">
                                         <button type="submit" class="btn btn-primary">
@@ -66,6 +106,16 @@
                                     @if($students->count() > 0)
                                         <div class="mt-5">
                                             <h4>Students in {{ $class->name ?? 'Selected Class' }}</h4>
+
+                                            @if(isset($selectedSession) && isset($selectedTerm) && $selectedSession && $selectedTerm)
+                                                <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                                    <span>
+                                                        Uploading results for:
+                                                        <strong>{{ $selectedSession->name }} - {{ $selectedTerm->name }}</strong>
+                                                    </span>
+                                                </div>
+                                            @endif
+
                                             <div class="table-responsive">
                                                 <table class="table table-striped table-hover">
                                                     <thead>
@@ -83,7 +133,8 @@
                                                                 <td>{{ $student->name }}</td>
                                                                 <td>{{ $student->admission_no }}</td>
                                                                 <td>
-                                                                    <a href="{{ route('student.result.upload', $student->id) }}" class="btn btn-sm btn-primary">
+                                                                    <a href="{{ route('student.result.upload', $student->id) }}?session_id={{ $selectedSession->id ?? '' }}&term_id={{ $selectedTerm->id ?? '' }}"
+                                                                       class="btn btn-sm btn-primary">
                                                                         Upload Result
                                                                     </a>
                                                                 </td>
@@ -113,11 +164,18 @@
     <script>
         $(document).ready(function() {
             var currentSectionId = '{{ request()->section_id ?? "" }}';
-            var currentClassId = '{{ request()->class_id ?? "" }}';
+            var currentClassId   = '{{ request()->class_id ?? "" }}';
+            var currentSessionId = '{{ $selectedSession->id ?? "" }}';
+            var currentTermId    = '{{ $selectedTerm->id ?? "" }}';
 
             // If coming back after form submission, pre-load classes and select the class
             if (currentSectionId) {
                 loadClasses(currentSectionId, currentClassId);
+            }
+
+            // If a session is already selected (e.g. default current session), load its terms
+            if (currentSessionId) {
+                loadTerms(currentSessionId, currentTermId);
             }
 
             // Change handler for section
@@ -127,6 +185,16 @@
                     loadClasses(sectionId);
                 } else {
                     $('#class_id').html('<option value="">Select class...</option>').prop('disabled', true);
+                }
+            });
+
+            // Change handler for session
+            $('#session_id').change(function() {
+                var sessionId = $(this).val();
+                if (sessionId) {
+                    loadTerms(sessionId);
+                } else {
+                    $('#term_id').html('<option value="">Select session first...</option>').prop('disabled', true);
                 }
             });
 
@@ -149,6 +217,27 @@
                     })
                     .fail(function() {
                         $('#class_id').html('<option value="">Error loading classes</option>');
+                    });
+            }
+
+            function loadTerms(sessionId, preselectTermId = null) {
+                $('#term_id').html('<option value="">Loading...</option>').prop('disabled', true);
+
+                $.get('/results/sessions/' + sessionId + '/terms')
+                    .done(function(data) {
+                        $('#term_id').html('<option value="">Select term...</option>');
+                        $.each(data, function(index, term) {
+                            $('#term_id').append('<option value="' + term.id + '">' + term.name + '</option>');
+                        });
+
+                        if (preselectTermId || currentTermId) {
+                            $('#term_id').val(preselectTermId || currentTermId);
+                        }
+
+                        $('#term_id').prop('disabled', false);
+                    })
+                    .fail(function() {
+                        $('#term_id').html('<option value="">Error loading terms</option>');
                     });
             }
         });

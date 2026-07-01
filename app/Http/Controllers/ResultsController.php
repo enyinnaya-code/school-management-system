@@ -79,101 +79,100 @@ class ResultsController extends Controller
     public function uploadForm()
     {
         $sections = $this->getAllowedSections();
-        return view('students_result', compact('sections'));
+
+        $sessions        = Session::orderByDesc('name')->get();
+        $selectedSession = Session::where('is_current', true)->first();
+        $terms           = $selectedSession ? $selectedSession->terms()->orderBy('name')->get() : collect();
+        $selectedTerm    = $selectedSession?->terms()->where('is_current', true)->first();
+
+        return view('students_result', compact('sections', 'sessions', 'terms', 'selectedSession', 'selectedTerm'));
+    }
+
+
+    public function getTermsBySession($sessionId)
+    {
+        $terms = Term::where('session_id', $sessionId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'is_current']);
+
+        return response()->json($terms);
     }
 
     public function uploadFormResult()
     {
         $sections = $this->getAllowedSections();
-        return view('upload_result', compact('sections'));
+
+        $sessions        = Session::orderByDesc('name')->get();
+        $selectedSession = Session::where('is_current', true)->first();
+        $terms           = $selectedSession ? $selectedSession->terms()->orderBy('name')->get() : collect();
+        $selectedTerm    = $selectedSession?->terms()->where('is_current', true)->first();
+
+        return view('upload_result', compact('sections', 'sessions', 'terms', 'selectedSession', 'selectedTerm'));
     }
 
-    public function selectClassGet(Request $request)
-    {
-        $sections = Section::all();
-        $class_id = $request->query('class_id') ?? session('selected_class_id');
-        $section_id = $request->query('section_id') ?? session('selected_section_id');
 
-        if (!$class_id || !$section_id) {
-            return redirect()->route('results.uploadFormResult')
-                ->with('error', 'Please select a section and class first.');
-        }
+    // public function selectClassGet(Request $request)
+    // {
+    //     $sections   = Section::all();
+    //     $class_id   = $request->query('class_id')   ?? session('selected_class_id');
+    //     $section_id = $request->query('section_id') ?? session('selected_section_id');
+    //     $session_id = $request->query('session_id') ?? session('selected_session_id');
+    //     $term_id    = $request->query('term_id')    ?? session('selected_term_id');
 
-        $user = Auth::user();
-        $class = SchoolClass::findOrFail($class_id);
+    //     if (!$class_id || !$section_id) {
+    //         return redirect()->route('results.uploadFormResult')
+    //             ->with('error', 'Please select a section and class first.');
+    //     }
 
-        if (!in_array($user->user_type, [1, 2])) {
-            if (!$this->isTeacherAssignedToClass($user->id, $class_id)) {
-                return redirect()->back()->with('error', 'You are not assigned to this class.');
-            }
-        }
+    //     $user  = Auth::user();
+    //     $class = SchoolClass::findOrFail($class_id);
 
-        $students = User::where('user_type', 4)
-            ->where('class_id', $class_id)
-            ->select(
-                'id',
-                'name',
-                'email',
-                'admission_no',
-                'dob',
-                'phone',
-                'guardian_name',
-                'guardian_phone',
-                'guardian_email',
-                'guardian_address',
-                'address',
-                'class_id',
-                'gender'
-            )
-            ->paginate(10);
+    //     if (!in_array($user->user_type, [1, 2])) {
+    //         if (!$this->isTeacherAssignedToClass($user->id, $class_id)) {
+    //             return redirect()->back()->with('error', 'You are not assigned to this class.');
+    //         }
+    //     }
 
-        return view('upload_result', compact('students', 'class', 'sections'));
-    }
+    //     $selectedSession = $session_id
+    //         ? Session::find($session_id)
+    //         : Session::where('is_current', true)->first();
 
-    public function selectClass(Request $request)
-    {
-        $request->validate([
-            'section_id' => 'required|exists:sections,id',
-            'class_id'   => 'required|exists:school_classes,id',
-        ]);
+    //     $selectedTerm = $term_id
+    //         ? Term::find($term_id)
+    //         : $selectedSession?->terms()->where('is_current', true)->first();
 
-        // Store in session so the GET method can retrieve it for pagination
-        session([
-            'selected_class_id'   => $request->class_id,
-            'selected_section_id' => $request->section_id,
-        ]);
+    //     $sessions = Session::orderByDesc('name')->get();
+    //     $terms    = $selectedSession ? $selectedSession->terms()->orderBy('name')->get() : collect();
 
-        $sections = Section::all();
-        $class    = SchoolClass::findOrFail($request->class_id);
-        $user     = Auth::user();
+    //     $students = User::where('user_type', 4)
+    //         ->where('class_id', $class_id)
+    //         ->select(
+    //             'id',
+    //             'name',
+    //             'email',
+    //             'admission_no',
+    //             'dob',
+    //             'phone',
+    //             'guardian_name',
+    //             'guardian_phone',
+    //             'guardian_email',
+    //             'guardian_address',
+    //             'address',
+    //             'class_id',
+    //             'gender'
+    //         )
+    //         ->paginate(10);
 
-        if (!in_array($user->user_type, [1, 2])) {
-            if (!$this->isTeacherAssignedToClass($user->id, $request->class_id)) {
-                return redirect()->back()->with('error', 'You are not assigned to this class.');
-            }
-        }
-
-        $students = User::where('user_type', 4)
-            ->where('class_id', $request->class_id)
-            ->select(
-                'id',
-                'name',
-                'email',
-                'admission_no',
-                'dob',
-                'phone',
-                'guardian_name',
-                'guardian_phone',
-                'guardian_email',
-                'guardian_address',
-                'address',
-                'class_id',
-                'gender'
-            )
-            ->paginate(10);
-
-        return view('upload_result', compact('students', 'class', 'sections'));
-    }
+    //     return view('upload_result', compact(
+    //         'students',
+    //         'class',
+    //         'sections',
+    //         'sessions',
+    //         'terms',
+    //         'selectedSession',
+    //         'selectedTerm'
+    //     ));
+    // }
 
     private function getAdjacentStudents($classId, $currentStudentId)
     {
@@ -204,7 +203,7 @@ class ResultsController extends Controller
     // REPLACE your existing studentResultUpload() with this full version
     // ─────────────────────────────────────────────────────────────────────────────
 
-    public function studentResultUpload($studentId)
+    public function studentResultUpload($studentId, Request $request)
     {
         $student = User::where('user_type', 4)->findOrFail($studentId);
         $class   = SchoolClass::findOrFail($student->class_id);
@@ -217,8 +216,13 @@ class ResultsController extends Controller
             }
         }
 
-        $currentSession = Session::where('is_current', true)->first();
-        $currentTerm    = $currentSession?->terms()->where('is_current', true)->first();
+        $currentSession = $request->query('session_id')
+            ? Session::find($request->query('session_id'))
+            : Session::where('is_current', true)->first();
+
+        $currentTerm = $request->query('term_id')
+            ? Term::find($request->query('term_id'))
+            : $currentSession?->terms()->where('is_current', true)->first();
 
         if (!$currentSession || !$currentTerm) {
             return redirect()->back()->with('error', 'No current academic session or term is set.');
@@ -389,34 +393,141 @@ class ResultsController extends Controller
         ));
     }
 
-    private function calculateTermlyScores($studentId, $sessionId, $currentTermId)
+    public function selectClass(Request $request)
     {
-        $session = Session::find($sessionId);
-        $terms   = $session?->terms()->orderBy('name')->get() ?? collect();
+        $request->validate([
+            'section_id' => 'required|exists:sections,id',
+            'class_id'   => 'required|exists:school_classes,id',
+            'session_id' => 'nullable|exists:school_sessions,id',
+            'term_id'    => 'nullable|exists:terms,id',
+        ]);
 
-        $scores     = [];
-        $cumulative = 0;
+        $selectedSession = $request->session_id
+            ? Session::find($request->session_id)
+            : Session::where('is_current', true)->first();
 
-        foreach ($terms as $term) {
-            $termTotal = \App\Models\PrimarySchoolResult::where('student_id', $studentId)
-                ->where('session_id', $sessionId)
-                ->where('term_id', $term->id)
-                ->sum('final_obtained');
+        $selectedTerm = $request->term_id
+            ? Term::find($request->term_id)
+            : $selectedSession?->terms()->where('is_current', true)->first();
 
-            $scores[$term->id] = [
-                'name'       => $term->name,
-                'total'      => $termTotal,
-                'is_current' => $term->id == $currentTermId,
-            ];
+        // Store in session so the GET method can retrieve it for pagination
+        session([
+            'selected_class_id'   => $request->class_id,
+            'selected_section_id' => $request->section_id,
+            'selected_session_id' => $selectedSession?->id,
+            'selected_term_id'    => $selectedTerm?->id,
+        ]);
 
-            $cumulative += $termTotal;
+        $sections = Section::all();
+        $sessions = Session::orderByDesc('name')->get();
+        $terms    = $selectedSession ? $selectedSession->terms()->orderBy('name')->get() : collect();
+        $class    = SchoolClass::findOrFail($request->class_id);
+        $user     = Auth::user();
+
+        if (!in_array($user->user_type, [1, 2])) {
+            if (!$this->isTeacherAssignedToClass($user->id, $request->class_id)) {
+                return redirect()->back()->with('error', 'You are not assigned to this class.');
+            }
         }
 
-        return [
-            'terms'      => $scores,
-            'cumulative' => $cumulative,
-        ];
+        $students = User::where('user_type', 4)
+            ->where('class_id', $request->class_id)
+            ->orderBy('name')
+            ->select(
+                'id',
+                'name',
+                'email',
+                'admission_no',
+                'dob',
+                'phone',
+                'guardian_name',
+                'guardian_phone',
+                'guardian_email',
+                'guardian_address',
+                'address',
+                'class_id',
+                'gender'
+            )
+            ->paginate(10);
+
+        return view('upload_result', compact(
+            'students',
+            'class',
+            'sections',
+            'sessions',
+            'terms',
+            'selectedSession',
+            'selectedTerm'
+        ));
     }
+
+
+
+    public function selectClassGet(Request $request)
+    {
+        $sections   = Section::all();
+        $class_id   = $request->query('class_id')   ?? session('selected_class_id');
+        $section_id = $request->query('section_id') ?? session('selected_section_id');
+        $session_id = $request->query('session_id') ?? session('selected_session_id');
+        $term_id    = $request->query('term_id')    ?? session('selected_term_id');
+
+        if (!$class_id || !$section_id) {
+            return redirect()->route('results.uploadFormResult')
+                ->with('error', 'Please select a section and class first.');
+        }
+
+        $user  = Auth::user();
+        $class = SchoolClass::findOrFail($class_id);
+
+        if (!in_array($user->user_type, [1, 2])) {
+            if (!$this->isTeacherAssignedToClass($user->id, $class_id)) {
+                return redirect()->back()->with('error', 'You are not assigned to this class.');
+            }
+        }
+
+        $selectedSession = $session_id
+            ? Session::find($session_id)
+            : Session::where('is_current', true)->first();
+
+        $selectedTerm = $term_id
+            ? Term::find($term_id)
+            : $selectedSession?->terms()->where('is_current', true)->first();
+
+        $sessions = Session::orderByDesc('name')->get();
+        $terms    = $selectedSession ? $selectedSession->terms()->orderBy('name')->get() : collect();
+
+        $students = User::where('user_type', 4)
+            ->where('class_id', $class_id)
+            ->orderBy('name')
+            ->select(
+                'id',
+                'name',
+                'email',
+                'admission_no',
+                'dob',
+                'phone',
+                'guardian_name',
+                'guardian_phone',
+                'guardian_email',
+                'guardian_address',
+                'address',
+                'class_id',
+                'gender'
+            )
+            ->paginate(10);
+
+        return view('upload_result', compact(
+            'students',
+            'class',
+            'sections',
+            'sessions',
+            'terms',
+            'selectedSession',
+            'selectedTerm'
+        ));
+    }
+
+
 
 
 
@@ -483,12 +594,26 @@ class ResultsController extends Controller
             }
         }
 
-        $currentSession = Session::where('is_current', true)->first();
-        $currentTerm    = $currentSession?->terms()->where('is_current', true)->first();
+        $request->validate([
+            'session_id' => 'required|exists:school_sessions,id',
+            'term_id'    => 'required|exists:terms,id',
+            'results'                          => 'nullable|array',
+            'results.*.first_half_obtained'    => 'nullable|numeric|min:0|max:30',
+            'results.*.second_half_obtained'   => 'nullable|numeric|min:0|max:70',
+            'results.*.final_obtained'         => 'nullable|numeric|min:0|max:100',
+            'results.*.comment'                => 'nullable|string|max:500',
+            'results.*.first_half_obtainable'  => 'nullable|numeric',
+            'results.*.second_half_obtainable' => 'nullable|numeric',
+            'results.*.final_obtainable'       => 'nullable|numeric',
+        ]);
+
+        $currentSession = Session::find($request->session_id);
+        $currentTerm    = Term::find($request->term_id);
 
         if (!$currentSession || !$currentTerm) {
-            return redirect()->back()->with('error', 'Cannot save results: No current academic session or term is set.');
+            return redirect()->back()->with('error', 'Invalid session or term selected.');
         }
+
 
         $request->validate([
             'results'                          => 'nullable|array',
@@ -613,41 +738,41 @@ class ResultsController extends Controller
     }
 
 
-   private function applySubjectLimit($results, int $classId): array
-{
-    $limit = \App\Models\ClassSubjectLimit::where('school_class_id', $classId)->first();
+    private function applySubjectLimit($results, int $classId): array
+    {
+        $limit = \App\Models\ClassSubjectLimit::where('school_class_id', $classId)->first();
 
-    if (!$limit) {
-        $scored  = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
-        $divisor = $scored->count() > 0 ? $scored->count() : 1;
+        if (!$limit) {
+            $scored  = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
+            $divisor = $scored->count() > 0 ? $scored->count() : 1;
+            return [
+                'adjusted_total'  => $results->sum('final_obtained'),
+                'average_divisor' => $divisor,
+                'dropped_course'  => null,
+            ];
+        }
+
+        $minSubjects   = (int) $limit->min_subjects;
+        $scored        = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
+        $droppedCourse = null;
+
+        if ($scored->count() > $minSubjects) {
+            $excessCount   = $scored->count() - $minSubjects;
+            $sorted        = $scored->sortBy('final_obtained');
+            $droppedKeys   = $sorted->keys()->take($excessCount)->toArray();
+            $droppedCourse = $results[$droppedKeys[0]]['course_name'] ?? null;
+            $adjustedTotal = $scored->except($droppedKeys)->sum('final_obtained');
+        } else {
+            // No drop needed — sum all scored subjects
+            $adjustedTotal = $scored->sum('final_obtained');
+        }
+
         return [
-            'adjusted_total'  => $results->sum('final_obtained'),
-            'average_divisor' => $divisor,
-            'dropped_course'  => null,
+            'adjusted_total'  => $adjustedTotal,
+            'average_divisor' => $minSubjects,
+            'dropped_course'  => $droppedCourse,
         ];
     }
-
-    $minSubjects   = (int) $limit->min_subjects;
-    $scored        = $results->filter(fn($r) => ($r['final_obtained'] ?? 0) > 0);
-    $droppedCourse = null;
-
-    if ($scored->count() > $minSubjects) {
-        $excessCount   = $scored->count() - $minSubjects;
-        $sorted        = $scored->sortBy('final_obtained');
-        $droppedKeys   = $sorted->keys()->take($excessCount)->toArray();
-        $droppedCourse = $results[$droppedKeys[0]]['course_name'] ?? null;
-        $adjustedTotal = $scored->except($droppedKeys)->sum('final_obtained');
-    } else {
-        // No drop needed — sum all scored subjects
-        $adjustedTotal = $scored->sum('final_obtained');
-    }
-
-    return [
-        'adjusted_total'  => $adjustedTotal,
-        'average_divisor' => $minSubjects,
-        'dropped_course'  => $droppedCourse,
-    ];
-}
 
 
     public function masterList(Request $request, $classId)
@@ -1906,22 +2031,15 @@ class ResultsController extends Controller
         $class   = SchoolClass::findOrFail($student->class_id);
         $user    = Auth::user();
 
-        // Authorization
         if (!in_array($user->user_type, [1, 2])) {
             if (!$this->isTeacherAssignedToClass($user->id, $class->id)) {
                 abort(403, 'You are not assigned to this class.');
             }
         }
 
-        $currentSession = Session::where('is_current', true)->first();
-        $currentTerm    = $currentSession?->terms()->where('is_current', true)->first();
-
-        if (!$currentSession || !$currentTerm) {
-            return redirect()->back()->with('error', 'No current academic session or term is set.');
-        }
-
-        // Validation
         $request->validate([
+            'session_id' => 'required|exists:school_sessions,id',
+            'term_id'    => 'required|exists:terms,id',
             'results'                          => 'nullable|array',
             'results.*.first_half_obtained'    => 'nullable|numeric|min:0|max:30',
             'results.*.second_half_obtained'   => 'nullable|numeric|min:0|max:70',
@@ -1932,6 +2050,13 @@ class ResultsController extends Controller
             'results.*.final_obtained'         => 'nullable|numeric|min:0|max:100',
             'results.*.grade'                  => 'nullable|string|max:2',
         ]);
+
+        $currentSession = Session::find($request->session_id);
+        $currentTerm    = Term::find($request->term_id);
+
+        if (!$currentSession || !$currentTerm) {
+            return redirect()->back()->with('error', 'Invalid session or term selected.');
+        }
 
         foreach ($request->input('results', []) as $courseId => $data) {
 

@@ -14,19 +14,34 @@
                     <div class="col-12">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
-    <h4>Students Result For Class {{ $class->name ?? 'Selected Class' }}</h4>
+                                <h4>Students Result For Class {{ $class->name ?? 'Selected Class' }}</h4>
 
-    <a href="{{ route('results.class.view', ['class_id' => $class->id]) }}" 
-       class="btn btn-success btn-sm">
-        <i class="fas fa-eye"></i> View All Class Results
-    </a>
-</div>
+                                <a href="{{ route('results.class.view', ['class_id' => $class->id]) }}" 
+                                   class="btn btn-success btn-sm">
+                                    <i class="fas fa-eye"></i> View All Class Results
+                                </a>
+                            </div>
 
                             <div class="card-body">
                                 @if (session('error'))
                                 <div class="alert alert-danger">
                                     {{ session('error') }}
                                 </div>
+                                @endif
+
+                                @if(isset($selectedSession) && isset($selectedTerm) && $selectedSession && $selectedTerm)
+                                    <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="fas fa-calendar-alt"></i>
+                                            Uploading results for:
+                                            <strong>{{ $selectedSession->name }} - {{ $selectedTerm->name }}</strong>
+                                            @if($selectedSession->is_current && $selectedTerm->is_current)
+                                                <span class="badge badge-success">Current</span>
+                                            @else
+                                                <span class="badge badge-warning">Past / Non-current</span>
+                                            @endif
+                                        </span>
+                                    </div>
                                 @endif
 
                                 <!-- Students Table -->
@@ -54,7 +69,7 @@
                                                 <td>{{ $student->email }}</td>
                                                 <td>{{ $student->admission_no }}</td>
                                                 <td>
-                                                    <a href="{{ route('student.results.upload', $student->id) }}"
+                                                    <a href="{{ route('student.results.upload', $student->id) }}?session_id={{ $selectedSession->id ?? '' }}&term_id={{ $selectedTerm->id ?? '' }}"
                                                         class="btn btn-primary btn-sm">
                                                         <i class="fas fa-upload"></i> Upload Results
                                                     </a>
@@ -71,7 +86,12 @@
 
                                 <!-- Pagination -->
                                 <div class="d-flex justify-content-center">
-                                  {{ $students->appends(['class_id' => $class->id, 'section_id' => $class->section_id])->links() }}
+                                  {{ $students->appends([
+                                      'class_id' => $class->id,
+                                      'section_id' => $class->section_id,
+                                      'session_id' => $selectedSession->id ?? null,
+                                      'term_id' => $selectedTerm->id ?? null,
+                                  ])->links() }}
                                 </div>
                             </div>
                         </div>
