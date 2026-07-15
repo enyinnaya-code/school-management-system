@@ -19,10 +19,13 @@ use App\Models\StudentRemark;
 use App\Exports\MasterListExport;
 use App\Services\ResultSheetService;
 use Illuminate\Support\Facades\Log;
+use App\Traits\ComputesCumulativeResult;
 
 
 class ResultsController extends Controller
 {
+    use ComputesCumulativeResult;
+
     /**
      * Check if teacher is assigned to a specific class
      * Checks both class_user and course_user tables
@@ -1252,6 +1255,12 @@ class ResultsController extends Controller
             ")
             ->first();
 
+        // ── Third Term: also compute the full-session cumulative result ────────
+        $showCumulative = $currentTerm->name === 'Third Term';
+        $cumulative = $showCumulative
+            ? $this->computeCumulativeResult($student, $class, $currentSession, $isPrimary)
+            : null;
+
         // ══════════════════════════════════════════════════════════════════════
         // PRIMARY PATH
         // ══════════════════════════════════════════════════════════════════════
@@ -1322,6 +1331,8 @@ class ResultsController extends Controller
                 'isPrimary'            => true,
                 'attendanceSummary'    => $attendanceSummary,
                 'droppedCourse'        => null,
+                'showCumulative'       => $showCumulative,
+                'cumulative'           => $cumulative,
             ])->setPaper('a4', 'portrait');
 
             $filename = strtoupper($student->name) . '_Primary_Report_Card_' . $currentTerm->name . '.pdf';
@@ -1416,6 +1427,8 @@ class ResultsController extends Controller
             'isPrimary'            => false,
             'attendanceSummary'    => $attendanceSummary,
             'droppedCourse'        => $droppedCourse,
+            'showCumulative'       => $showCumulative,
+            'cumulative'           => $cumulative,
         ])->setPaper('a4', 'portrait');
 
         $filename = strtoupper($student->name) . '_Report_Card_' . $currentTerm->name . '.pdf';

@@ -19,9 +19,12 @@ use App\Models\ClassSubjectLimit;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Services\ResultSheetService;
+use App\Traits\ComputesCumulativeResult;
 
 class StudentReportCardController extends Controller
 {
+    use ComputesCumulativeResult;
+
     // ──────────────────────────────────────────────────────────────────────────
     // Helper: check if the current student is blocked for a session+term.
     // ──────────────────────────────────────────────────────────────────────────
@@ -411,6 +414,12 @@ class StudentReportCardController extends Controller
             ")
             ->first();
 
+        // ── Third Term: also compute the full-session cumulative result ────────
+        $showCumulative = $term->name === 'Third Term';
+        $cumulative = $showCumulative
+            ? $this->computeCumulativeResult($student, $class, $session, $isPrimary)
+            : null;
+
         // ══════════════════════════════════════════════════════════════════════
         // PRIMARY PATH
         // ══════════════════════════════════════════════════════════════════════
@@ -476,6 +485,8 @@ class StudentReportCardController extends Controller
                 'isPrimary'            => true,
                 'attendanceSummary'    => $attendanceSummary,
                 'termSettings'         => $termSettings,
+                'showCumulative'       => $showCumulative,
+                'cumulative'           => $cumulative,
             ]);
         }
 
@@ -557,6 +568,8 @@ class StudentReportCardController extends Controller
             'attendanceSummary'    => $attendanceSummary,
             'termSettings'         => $termSettings,
             'droppedCourse'        => $droppedCourse,
+            'showCumulative'       => $showCumulative,
+            'cumulative'           => $cumulative,
         ]);
     }
 
