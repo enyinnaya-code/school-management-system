@@ -319,59 +319,137 @@ class StudentReportCardController extends Controller
     }
 
 
+    /**
+     * Print entry point — re-validates the same PIN session used by
+     * showReport()/showSheet(), then renders the bare, sidebar-free
+     * print layout so window.print() produces a correctly centered page.
+     */
+   public function printReport()
+{
+    $student = Auth::user();
+    $access  = session('verified_report_access');
 
-    private function showResultSheet($student, $class, $session, $term, $sheetTemplate)
-    {
-        $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
-        $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
-
-        $service  = new ResultSheetService();
-        $subjects = $service->loadTemplateStructure($sheetTemplate->id);
-
-        $allItemIds = collect($subjects)->flatMap(function ($subject) {
-            $ids = collect($subject->items)->pluck('id');
-            foreach ($subject->subcategories as $sub) {
-                $ids = $ids->merge(collect($sub->items)->pluck('id'));
-            }
-            return $ids;
-        });
-
-        $ratings = DB::table('result_sheet_ratings')
-            ->where('student_id', $student->id)
-            ->where('session_id', $session->id)
-            ->where('term_id', $term->id)
-            ->whereIn('item_id', $allItemIds)
-            ->get(['item_id', 'rating_value'])
-            ->mapWithKeys(fn($row) => [(int) $row->item_id => trim($row->rating_value)])
-            ->toArray();
-
-        $footerData = DB::table('result_sheet_footer_data')
-            ->where('student_id', $student->id)
-            ->where('session_id', $session->id)
-            ->where('term_id', $term->id)
-            ->where('template_id', $sheetTemplate->id)
-            ->first();
-
-        $section = \App\Models\Section::find($class->section_id);
-
-        return view('students.report_cards.result_sheet_view', [
-            'student'        => $student,
-            'class'          => $class,
-            'section'        => $section,
-            'currentSession' => $session,
-            'currentTerm'    => $term,
-            'sheetTemplate'  => $sheetTemplate,
-            'subjects'       => $subjects,
-            'ratings'        => $ratings,
-            'footerData'     => $footerData,
-        ]);
+    if (
+        !$access ||
+        !isset($access['session_id'], $access['term_id']) ||
+        ($access['expires_at'] ?? null) < now()
+    ) {
+        return redirect()->route('students.reportcards.index')
+            ->with('error', 'Unauthorized access. Please verify your PIN again.');
     }
 
+    $sessionId = $access['session_id'];
+    $termId    = $access['term_id'];
+
+    $block = $this->getBlock($student->id, $sessionId, $termId);
+    if ($block) {
+        session()->forget('verified_report_access');
+        $reason = $block->reason ?: 'You have been restricted from accessing your result.';
+        return redirect()->route('students.reportcards.index')
+            ->with('error', 'Access denied: ' . $reason . ' Please contact the school administration.');
+    }
+
+    $hasValidPin = IssuedPin::where('student_id', $student->id)
+        ->where('session_id', $sessionId)
+        ->where('term_id', $termId)
+        ->exists();
+
+    if (!$hasValidPin) {
+        session()->forget('verified_report_access');
+        return redirect()->route('students.reportcards.index')
+            ->with('error', 'Access denied. Invalid session or term.');
+    }
+
+    $session = Session::findOrFail($sessionId);
+    $term    = Term::findOrFail($termId);
+    $class   = SchoolClass::findOrFail($student->class_id);
+
+    $termSettings = TermSetting::where('session_id', $session->id)
+        ->where('term_id', $term->id)
+        ->first();
+
+    $sheetTemplate = DB::table('result_sheet_templates')
+        ->where('is_active', 1)
+        ->get()
+        ->first(function ($t) use ($class, $term) {
+            $classes    = json_decode($t->applicable_classes ?? '[]', true);
+            $classMatch = in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            $termMatch  = !empty($t->term_name) && $t->term_name === $term->name;
+            return $classMatch && $termMatch;
+        });
+
+    if (!$sheetTemplate) {
+        $sheetTemplate = DB::table('result_sheet_templates')
+            ->where('is_active', 1)
+            ->get()
+            ->first(function ($t) use ($class) {
+                $classes = json_decode($t->applicable_classes ?? '[]', true);
+                return in_array($class->id, $classes) || in_array((string) $class->id, $classes);
+            });
+    }
+
+    // Result-sheet templates already render as a standalone, sidebar-free
+    // page with their own print styles — send those straight there.
+    if ($sheetTemplate) {
+        return redirect()->route('students.reportcards.sheet');
+    }
+
+    // Standard report card needs the bare print layout to avoid the
+    // sidebar-padding shift.
+    return $this->showStandardReport($student, $class, $session, $term, $termSettings, true);
+}
+
+   private function showResultSheet($student, $class, $session, $term, $sheetTemplate)
+{
+    $sheetTemplate->rating_columns = json_decode($sheetTemplate->rating_columns ?? '[]');
+    $sheetTemplate->footer_fields  = json_decode($sheetTemplate->footer_fields ?? '{}', true);
+
+    $service  = new ResultSheetService();
+    $subjects = $service->loadTemplateStructure($sheetTemplate->id);
+
+    $allItemIds = collect($subjects)->flatMap(function ($subject) {
+        $ids = collect($subject->items)->pluck('id');
+        foreach ($subject->subcategories as $sub) {
+            $ids = $ids->merge(collect($sub->items)->pluck('id'));
+        }
+        return $ids;
+    });
+
+    $ratings = DB::table('result_sheet_ratings')
+        ->where('student_id', $student->id)
+        ->where('session_id', $session->id)
+        ->where('term_id', $term->id)
+        ->whereIn('item_id', $allItemIds)
+        ->get(['item_id', 'rating_value'])
+        ->mapWithKeys(fn($row) => [(int) $row->item_id => trim($row->rating_value)])
+        ->toArray();
+
+    $footerData = DB::table('result_sheet_footer_data')
+        ->where('student_id', $student->id)
+        ->where('session_id', $session->id)
+        ->where('term_id', $term->id)
+        ->where('template_id', $sheetTemplate->id)
+        ->first();
+
+    $section = \App\Models\Section::find($class->section_id);
+
+    return view('students.report_cards.result_sheet_view', [
+        'student'        => $student,
+        'class'          => $class,
+        'section'        => $section,
+        'currentSession' => $session,
+        'currentTerm'    => $term,
+        'sheetTemplate'  => $sheetTemplate,
+        'subjects'       => $subjects,
+        'ratings'        => $ratings,
+        'footerData'     => $footerData,
+    ]);
+}
 
     /**
      * Standard report — handles BOTH primary and secondary automatically.
      */
-    private function showStandardReport($student, $class, $session, $term, $termSettings)
+    private function showStandardReport($student, $class, $session, $term, $termSettings, $printMode = false)
     {
         // ── Detect primary class ──────────────────────────────────────────────
         $isPrimary = DB::table('primary_result_classes')
@@ -420,6 +498,10 @@ class StudentReportCardController extends Controller
             ? $this->computeCumulativeResult($student, $class, $session, $isPrimary)
             : null;
 
+        $view = $printMode
+            ? 'students.report_cards.report_card_print'
+            : 'students.report_cards.report_card_view';
+
         // ══════════════════════════════════════════════════════════════════════
         // PRIMARY PATH
         // ══════════════════════════════════════════════════════════════════════
@@ -464,7 +546,7 @@ class StudentReportCardController extends Controller
             $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
             $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-            return view('students.report_cards.report_card_view', [
+            return view($view, [
                 'student'              => $student,
                 'class'                => $class,
                 'results'              => $results,
@@ -546,7 +628,7 @@ class StudentReportCardController extends Controller
         $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-        return view('students.report_cards.report_card_view', [
+        return view($view, [
             'student'              => $student,
             'class'                => $class,
             'results'              => $results,

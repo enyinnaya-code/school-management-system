@@ -809,6 +809,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/students/report-cards/view', [StudentReportCardController::class, 'viewReport'])
         ->name('students.reportcards.view');
 
+        Route::get('/students/report-cards/print', [StudentReportCardController::class, 'printReport'])
+    ->name('students.reportcards.print');
+
     Route::get('/get-terms/{sessionId}', [PinController::class, 'getTerms'])
         ->name('get.terms');
 
