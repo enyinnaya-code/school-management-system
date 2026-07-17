@@ -1308,7 +1308,7 @@ class ResultsController extends Controller
             $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
             $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-            return view('student_report_card_page', [
+            return view('student_report_card', [
         'student'              => $student,
         'class'                => $class,
         'section'               => $section,
@@ -1403,7 +1403,7 @@ class ResultsController extends Controller
         $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-        return view('student_report_card_page', [
+        return view('student_report_card', [
         'student'              => $student,
         'class'                => $class,
         'section'               => $section,
