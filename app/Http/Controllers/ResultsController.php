@@ -1308,41 +1308,39 @@ class ResultsController extends Controller
             $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
             $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-            $pdf = Pdf::loadView('student_report_card', [
-                'student'              => $student,
-                'class'                => $class,
-                'section'              => $section,
-                'results'              => $results,
-                'overallTotal'         => $overallTotal,
-                'overallAverage'       => $overallAverage,
-                'overallGrade'         => $overallGrade,
-                'currentSession'       => $currentSession,
-                'currentTerm'          => $currentTerm,
-                'termSettings'         => $currentTerm,
-                'classTeacher'         => $classTeacher,
-                'affectiveRatings'     => $affectiveRatings,
-                'psychomotorRatings'   => $psychomotorRatings,
-                'teacherRemark'        => $teacherRemark,
-                'headmasterRemark'     => $headmasterRemark,
-                'principalRemark'      => '',
-                'formattedPosition'    => $formattedPosition,
-                'totalStudentsInClass' => $totalStudentsInClass,
-                'subjectCount'         => $subjectCount,
-                'showWatermark'        => $showWatermark,
-                'isPrimary'            => true,
-                'attendanceSummary'    => $attendanceSummary,
-                'droppedCourse'        => null,
-                'showCumulative'       => $showCumulative,
-                'cumulative'           => $cumulative,
-            ])->setPaper('a4', 'portrait');
+            return view('student_report_card_page', [
+        'student'              => $student,
+        'class'                => $class,
+        'section'               => $section,
+        'results'              => $results,
+        'overallTotal'         => $overallTotal,
+        'overallAverage'       => $overallAverage,
+        'overallGrade'         => $overallGrade,
+        'currentSession'       => $currentSession,
+        'currentTerm'          => $currentTerm,
+        'termSettings'         => $currentTerm,
+        'classTeacher'         => $classTeacher,
+        'affectiveRatings'     => $affectiveRatings,
+        'psychomotorRatings'   => $psychomotorRatings,
+        'teacherRemark'        => $teacherRemark,
+        'principalRemark'      => $principalRemark ?? '',
+        'headmasterRemark'     => $headmasterRemark ?? '',
+        'formattedPosition'    => $formattedPosition,
+        'totalStudentsInClass' => $totalStudentsInClass,
+        'subjectCount'         => $subjectCount,
+        'isPrimary'            => $isPrimary,
+        'attendanceSummary'    => $attendanceSummary,
+        'showCumulative'       => $showCumulative,
+        'cumulative'           => $cumulative,
+    ]);
 
-            $filename = strtoupper($student->name) . '_Primary_Report_Card_' . $currentTerm->name . '.pdf';
+            // $filename = strtoupper($student->name) . '_Primary_Report_Card_' . $currentTerm->name . '.pdf';
 
-            if ($action === 'download' && $isTeacherOrAdmin) {
-                abort(403, 'Download not allowed for preview mode.');
-            }
+            // if ($action === 'download' && $isTeacherOrAdmin) {
+            //     abort(403, 'Download not allowed for preview mode.');
+            // }
 
-            return $action === 'download' ? $pdf->download($filename) : $pdf->stream($filename);
+            // return $action === 'download' ? $pdf->download($filename) : $pdf->stream($filename);
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -1405,41 +1403,40 @@ class ResultsController extends Controller
         $studentPosition   = $studentPosition !== false ? $studentPosition + 1 : $totalStudentsInClass;
         $formattedPosition = $studentPosition . $this->getPositionSuffix($studentPosition);
 
-        $pdf = Pdf::loadView('student_report_card', [
-            'student'              => $student,
-            'class'                => $class,
-            'section'              => $section,
-            'results'              => $results,
-            'overallTotal'         => $overallTotal,
-            'overallAverage'       => $overallAverage,
-            'overallGrade'         => $overallGrade,
-            'currentSession'       => $currentSession,
-            'currentTerm'          => $currentTerm,
-              'termSettings'         => $currentTerm,
-            'classTeacher'         => $classTeacher,
-            'affectiveRatings'     => $affectiveRatings,
-            'psychomotorRatings'   => $psychomotorRatings,
-            'teacherRemark'        => $teacherRemark,
-            'principalRemark'      => $principalRemark,
-            'headmasterRemark'     => '',
-            'formattedPosition'    => $formattedPosition,
-            'totalStudentsInClass' => $totalStudentsInClass,
-            'subjectCount'         => $subjectCount,
-            'showWatermark'        => $showWatermark,
-            'isPrimary'            => false,
-            'attendanceSummary'    => $attendanceSummary,
-            'droppedCourse'        => $droppedCourse,
-            'showCumulative'       => $showCumulative,
-            'cumulative'           => $cumulative,
-        ])->setPaper('a4', 'portrait');
+        return view('student_report_card_page', [
+        'student'              => $student,
+        'class'                => $class,
+        'section'               => $section,
+        'results'              => $results,
+        'overallTotal'         => $overallTotal,
+        'overallAverage'       => $overallAverage,
+        'overallGrade'         => $overallGrade,
+        'currentSession'       => $currentSession,
+        'currentTerm'          => $currentTerm,
+        'termSettings'         => $currentTerm,
+        'classTeacher'         => $classTeacher,
+        'affectiveRatings'     => $affectiveRatings,
+        'psychomotorRatings'   => $psychomotorRatings,
+        'teacherRemark'        => $teacherRemark,
+        'principalRemark'      => $principalRemark ?? '',
+        'headmasterRemark'     => $headmasterRemark ?? '',
+        'formattedPosition'    => $formattedPosition,
+        'totalStudentsInClass' => $totalStudentsInClass,
+        'subjectCount'         => $subjectCount,
+        'isPrimary'            => $isPrimary,
+        'attendanceSummary'    => $attendanceSummary,
+        'showCumulative'       => $showCumulative,
+        'cumulative'           => $cumulative,
+    ]);
 
-        $filename = strtoupper($student->name) . '_Report_Card_' . $currentTerm->name . '.pdf';
 
-        if ($action === 'download' && $isTeacherOrAdmin) {
-            abort(403, 'Download not allowed for preview mode.');
-        }
+        // $filename = strtoupper($student->name) . '_Report_Card_' . $currentTerm->name . '.pdf';
 
-        return $action === 'download' ? $pdf->download($filename) : $pdf->stream($filename);
+        // if ($action === 'download' && $isTeacherOrAdmin) {
+        //     abort(403, 'Download not allowed for preview mode.');
+        // }
+
+        // return $action === 'download' ? $pdf->download($filename) : $pdf->stream($filename);
     }
 
 
