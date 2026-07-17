@@ -33,12 +33,22 @@ trait ComputesCumulativeResult
             ->where('class_id', $class->id)
             ->pluck('id');
 
+        // ── Determine which terms this student actually has records for ────────
+        $includedTerms = $terms->filter(function ($term) use ($student, $session, $allSubjects, $isPrimary) {
+            $query = $isPrimary ? PrimarySchoolResult::query() : Result::query();
+            return $query->where('student_id', $student->id)
+                ->where('session_id', $session->id)
+                ->where('term_id', $term->id)
+                ->whereIn('course_id', $allSubjects->pluck('id'))
+                ->exists();
+        })->values();
+
         // ── Overall total/average: drop-lowest applied PER TERM, then combined ──
         $studentTermTotals = $this->studentTermTotalsAcrossTerms(
             $student->id,
             $class,
             $session,
-            $terms,
+            $includedTerms,
             $allSubjects,
             $isPrimary
         );
@@ -49,10 +59,9 @@ trait ComputesCumulativeResult
         $cumulativeGrade   = $this->calculateGrade($cumulativeAverage);
 
         // ── Subject-by-subject: RAW score per term per subject, no drop-lowest ──
-        // (drop-lowest is a whole-total rule, not per-subject — the subject table
-        //  should show every subject's actual score across the three terms)
+        // Only averaged over the terms this student actually has records for.
         $rawByTerm = [];
-        foreach ($terms as $term) {
+        foreach ($includedTerms as $term) {
             $rawByTerm[$term->id] = $this->rawSubjectScores(
                 $student->id,
                 $term->id,
@@ -62,17 +71,23 @@ trait ComputesCumulativeResult
             );
         }
 
-        $subjectRows = $allSubjects->map(function ($subject) use ($terms, $rawByTerm) {
+        $subjectRows = $allSubjects->map(function ($subject) use ($terms, $includedTerms, $rawByTerm) {
             $termScores   = [];
             $subjectTotal = 0;
 
+            // Show every term's column (including blank for terms not included),
+            // but only count included terms toward total/average.
             foreach ($terms as $term) {
+                if (!$includedTerms->contains('id', $term->id)) {
+                    $termScores[$term->name] = null;
+                    continue;
+                }
                 $score = (float) ($rawByTerm[$term->id][$subject->id] ?? 0);
                 $termScores[$term->name] = $score > 0 ? $score : null;
                 $subjectTotal += $score;
             }
 
-            $termsCount     = max($terms->count(), 1);
+            $termsCount     = max($includedTerms->count(), 1);
             $subjectAverage = round($subjectTotal / $termsCount, 2);
 
             return [
@@ -85,8 +100,18 @@ trait ComputesCumulativeResult
         });
 
         // ── Position: same per-term adjusted-total calc, for every classmate ──
+        // Each classmate's own included terms are computed independently.
         $rankTotals = $classStudentIds->map(function ($sid) use ($class, $session, $terms, $allSubjects, $isPrimary) {
-            $totals = $this->studentTermTotalsAcrossTerms($sid, $class, $session, $terms, $allSubjects, $isPrimary);
+            $sidIncludedTerms = $terms->filter(function ($term) use ($sid, $session, $allSubjects, $isPrimary) {
+                $query = $isPrimary ? PrimarySchoolResult::query() : Result::query();
+                return $query->where('student_id', $sid)
+                    ->where('session_id', $session->id)
+                    ->where('term_id', $term->id)
+                    ->whereIn('course_id', $allSubjects->pluck('id'))
+                    ->exists();
+            })->values();
+
+            $totals = $this->studentTermTotalsAcrossTerms($sid, $class, $session, $sidIncludedTerms, $allSubjects, $isPrimary);
             return [
                 'student_id' => $sid,
                 'total'      => array_sum(array_column($totals, 'adjusted_total')),
@@ -99,6 +124,7 @@ trait ComputesCumulativeResult
 
         return [
             'term_names'         => $terms->pluck('name')->toArray(),
+            'terms_included'     => $includedTerms->pluck('name')->toArray(),
             'subjects'           => $subjectRows,
             'overall_total'      => $cumulativeTotal,
             'overall_average'    => $cumulativeAverage,
@@ -129,6 +155,11 @@ trait ComputesCumulativeResult
                     ->get()
                     ->keyBy('course_id');
 
+                // No records at all for this term → exclude it from the cumulative entirely
+                if ($results->isEmpty()) {
+                    continue;
+                }
+
                 $mapped = $allSubjects->map(fn($s) => [
                     'course_name'    => $s->course_name,
                     'final_obtained' => (float) ($results->get($s->id)->final_obtained ?? 0),
@@ -145,6 +176,11 @@ trait ComputesCumulativeResult
                     ->whereIn('course_id', $allSubjects->pluck('id'))
                     ->get()
                     ->keyBy('course_id');
+
+                // No records at all for this term → exclude it from the cumulative entirely
+                if ($results->isEmpty()) {
+                    continue;
+                }
 
                 $mapped = $allSubjects->map(fn($s) => [
                     'course_name'    => $s->course_name,

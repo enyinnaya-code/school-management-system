@@ -1318,6 +1318,7 @@ class ResultsController extends Controller
                 'overallGrade'         => $overallGrade,
                 'currentSession'       => $currentSession,
                 'currentTerm'          => $currentTerm,
+                'termSettings'         => $currentTerm,
                 'classTeacher'         => $classTeacher,
                 'affectiveRatings'     => $affectiveRatings,
                 'psychomotorRatings'   => $psychomotorRatings,
@@ -1414,6 +1415,7 @@ class ResultsController extends Controller
             'overallGrade'         => $overallGrade,
             'currentSession'       => $currentSession,
             'currentTerm'          => $currentTerm,
+              'termSettings'         => $currentTerm,
             'classTeacher'         => $classTeacher,
             'affectiveRatings'     => $affectiveRatings,
             'psychomotorRatings'   => $psychomotorRatings,
@@ -1932,43 +1934,61 @@ class ResultsController extends Controller
     }
 
     // ── Calculate cumulative data for each student ────────────────────────────
-    $cumulativeData = $students->map(function ($student) use ($allResults, $subjects, $terms, $isPrimary) {
-        $studentResults = $allResults->get($student->id, collect());
+   $cumulativeData = $students->map(function ($student) use ($allResults, $subjects, $terms, $isPrimary, $class) {
+    $studentResults = $allResults->get($student->id, collect());
 
-        $termTotals      = [];
-        $cumulativeTotal = 0;
+    $termTotals        = [];
+    $cumulativeTotal   = 0;
+    $cumulativeDivisor = 0;
 
-        foreach ($terms as $term) {
-            $termResults = $studentResults->get($term->id, collect());
-            $termTotal   = 0;
+    foreach ($terms as $term) {
+        $termResults = $studentResults->get($term->id, collect());
 
+        // No records at all for this term → exclude it from the cumulative entirely
+        if ($termResults->isEmpty()) {
+            continue;
+        }
+
+        if ($isPrimary) {
+            $termTotal = 0;
             foreach ($subjects as $subject) {
                 $result = $termResults->get($subject->id);
                 if ($result) {
-                    // PrimarySchoolResult has no 'total' column — use final_obtained for both.
-                    // Result has a 'total' column kept in sync with final_obtained.
-                    $termTotal += $isPrimary
-                        ? (float) ($result->first()->final_obtained ?? 0)
-                        : (float) ($result->first()->total ?? 0);
+                    $termTotal += (float) ($result->first()->final_obtained ?? 0);
                 }
             }
+            $divisor = $subjects->count() > 0 ? $subjects->count() : 1;
+        } else {
+            $mapped = $subjects->map(function ($subject) use ($termResults) {
+                $result = $termResults->get($subject->id);
+                $score  = $result ? (float) ($result->first()->final_obtained ?? 0) : 0;
+                return [
+                    'course_name'    => $subject->course_name,
+                    'final_obtained' => $score,
+                ];
+            });
 
-            $termTotals[$term->id] = $termTotal;
-            $cumulativeTotal      += $termTotal;
+            $limitData = $this->applySubjectLimit(collect($mapped), $class->id);
+            $termTotal = $limitData['adjusted_total'];
+            $divisor   = $limitData['average_divisor'];
         }
 
-        $totalPossible      = $subjects->count() * $terms->count() * 100;
-        $cumulativeAverage  = $totalPossible > 0 ? round(($cumulativeTotal / $totalPossible) * 100, 2) : 0;
-        $grade              = $this->calculateGrade($cumulativeAverage);
+        $termTotals[$term->id] = $termTotal;
+        $cumulativeTotal      += $termTotal;
+        $cumulativeDivisor    += $divisor;
+    }
 
-        return [
-            'student'             => $student,
-            'term_totals'         => $termTotals,
-            'cumulative_total'    => $cumulativeTotal,
-            'cumulative_average'  => $cumulativeAverage,
-            'grade'               => $grade,
-        ];
-    });
+    $cumulativeAverage = $cumulativeDivisor > 0 ? round($cumulativeTotal / $cumulativeDivisor, 2) : 0;
+    $grade             = $this->calculateGrade($cumulativeAverage);
+
+    return [
+        'student'            => $student,
+        'term_totals'        => $termTotals,
+        'cumulative_total'   => $cumulativeTotal,
+        'cumulative_average' => $cumulativeAverage,
+        'grade'              => $grade,
+    ];
+});
 
     // Sort by cumulative total descending
     $sortedStudents = $cumulativeData->sortByDesc('cumulative_total')->values();
