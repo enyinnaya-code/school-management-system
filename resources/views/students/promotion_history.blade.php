@@ -119,6 +119,8 @@
                                             <td>
                                                 @if($promotion->promotion_type === 'bulk')
                                                 <span class="badge badge-secondary"><i class="fas fa-users"></i> Bulk</span>
+                                                @elseif($promotion->promotion_type === 'direct')
+                                                <span class="badge badge-warning"><i class="fas fa-exchange-alt"></i> Next Class</span>
                                                 @else
                                                 <span class="badge badge-success"><i class="fas fa-chart-line"></i> Performance</span>
                                                 @endif

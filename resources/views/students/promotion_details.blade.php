@@ -32,7 +32,7 @@
                                     <table class="table table-borderless">
                                         <tr>
                                             <th width="200">Batch ID:</th>
-                                            <td><strong class="text-primary">{{ $promotion->promotion_batch_id }}</strong></td>
+                                            <td><span class="badge badge-primary">{{ $promotion->promotion_batch_id }}</span></td>
                                         </tr>
                                         <tr>
                                             <th>Session:</th>
@@ -55,6 +55,8 @@
                                             <td>
                                                 @if($promotion->promotion_type === 'bulk')
                                                 <span class="badge badge-secondary"><i class="fas fa-users"></i> Bulk Promotion</span>
+                                                @elseif($promotion->promotion_type === 'direct')
+                                                <span class="badge badge-warning"><i class="fas fa-exchange-alt"></i> Promote to Next Class</span>
                                                 @else
                                                 <span class="badge badge-success"><i class="fas fa-chart-line"></i> Performance-Based</span>
                                                 @endif
@@ -211,13 +213,22 @@
                                 <div class="tab-pane fade show active" id="promotedTab" role="tabpanel">
                                     @php
                                         $promotedStudents = $students->where('promotion_status', 'promoted');
-                                        $groupedByDestination = $promotedStudents->groupBy('new_class_name');
+                                        $groupedByTransition = $promotedStudents
+                                            ->groupBy(fn($s) => $s->original_class_name . '||' . $s->new_class_name)
+                                            ->sortBy(fn($group) => $group->first()->original_class_name);
                                     @endphp
 
-                                    @foreach($groupedByDestination as $className => $classStudents)
+                                    @foreach($groupedByTransition as $classStudents)
+                                    @php
+                                        $fromClass = $classStudents->first()->original_class_name;
+                                        $toClass = $classStudents->first()->new_class_name;
+                                    @endphp
                                     <div class="p-3 border-bottom bg-light">
                                         <h6 class="mb-0">
-                                            <i class="fas fa-graduation-cap"></i> Promoted to: <strong>{{ $className }}</strong>
+                                            <i class="fas fa-graduation-cap"></i>
+                                            From <strong>{{ $fromClass }}</strong>
+                                            <i class="fas fa-long-arrow-alt-right mx-1"></i>
+                                            to <strong>{{ $toClass }}</strong>
                                             <span class="badge badge-success ml-2">{{ $classStudents->count() }} students</span>
                                         </h6>
                                     </div>
@@ -229,8 +240,7 @@
                                                     <th>Admission No</th>
                                                     <th>Student Name</th>
                                                     <th>Gender</th>
-                                                    <th>Original Class</th>
-                                                    @if($promotion->promotion_type === 'performance')
+                                                    @if(in_array($promotion->promotion_type, ['performance', 'direct']))
                                                     <th width="120" class="text-center">Average</th>
                                                     @endif
                                                     <th>Reason</th>
@@ -250,8 +260,7 @@
                                                             {{ $student->gender }}
                                                         </span>
                                                     </td>
-                                                    <td>{{ $student->original_class_name }}</td>
-                                                    @if($promotion->promotion_type === 'performance')
+                                                    @if(in_array($promotion->promotion_type, ['performance', 'direct']))
                                                     <td class="text-center">
                                                         <strong class="text-success">{{ number_format($student->cumulative_average, 2) }}%</strong>
                                                     </td>
@@ -287,26 +296,36 @@
                                 <div class="tab-pane fade" id="repeatingTab" role="tabpanel">
                                     @php
                                         $repeatingStudents = $students->where('promotion_status', 'repeating');
+                                        $groupedByRepeatClass = $repeatingStudents
+                                            ->groupBy('original_class_name')
+                                            ->sortKeys();
                                     @endphp
 
                                     @if($repeatingStudents->count() > 0)
+                                    @foreach($groupedByRepeatClass as $className => $classStudents)
+                                    <div class="p-3 border-bottom bg-light">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-redo text-warning"></i>
+                                            Repeating <strong>{{ $className }}</strong>
+                                            <span class="badge badge-warning ml-2">{{ $classStudents->count() }} students</span>
+                                        </h6>
+                                    </div>
                                     <div class="table-responsive">
-                                        <table class="table table-hover table-striped">
+                                        <table class="table table-hover table-striped mb-0">
                                             <thead class="thead-light">
                                                 <tr>
                                                     <th width="50">#</th>
                                                     <th>Admission No</th>
                                                     <th>Student Name</th>
                                                     <th>Gender</th>
-                                                    <th>Current Class</th>
-                                                    @if($promotion->promotion_type === 'performance')
+                                                    @if(in_array($promotion->promotion_type, ['performance', 'direct']))
                                                     <th width="120" class="text-center">Average</th>
                                                     @endif
                                                     <th>Reason</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach($repeatingStudents as $index => $student)
+                                                @foreach($classStudents as $index => $student)
                                                 <tr>
                                                     <td>{{ $index + 1 }}</td>
                                                     <td>{{ $student->admission_no }}</td>
@@ -316,8 +335,7 @@
                                                             {{ $student->gender }}
                                                         </span>
                                                     </td>
-                                                    <td>{{ $student->original_class_name }}</td>
-                                                    @if($promotion->promotion_type === 'performance')
+                                                    @if(in_array($promotion->promotion_type, ['performance', 'direct']))
                                                     <td class="text-center">
                                                         <strong class="text-warning">{{ number_format($student->cumulative_average, 2) }}%</strong>
                                                     </td>
@@ -328,6 +346,7 @@
                                             </tbody>
                                         </table>
                                     </div>
+                                    @endforeach
                                     @else
                                     <div class="p-5 text-center text-muted">
                                         <i class="fas fa-inbox fa-3x mb-3"></i>
@@ -348,7 +367,7 @@
                                                     <th>Gender</th>
                                                     <th>Original Class</th>
                                                     <th>New Class</th>
-                                                    @if($promotion->promotion_type === 'performance')
+                                                    @if(in_array($promotion->promotion_type, ['performance', 'direct']))
                                                     <th width="120" class="text-center">Average</th>
                                                     @endif
                                                     <th width="100" class="text-center">Status</th>
@@ -374,7 +393,7 @@
                                                         <span class="text-muted">-</span>
                                                         @endif
                                                     </td>
-                                                    @if($promotion->promotion_type === 'performance')
+                                                    @if(in_array($promotion->promotion_type, ['performance', 'direct']))
                                                     <td class="text-center">
                                                         <strong>{{ number_format($student->cumulative_average, 2) }}%</strong>
                                                     </td>
@@ -382,6 +401,8 @@
                                                     <td class="text-center">
                                                         @if($student->promotion_status === 'promoted')
                                                         <span class="badge badge-success">Promoted</span>
+                                                        @elseif($student->promotion_status === 'graduated')
+                                                        <span class="badge badge-info"><i class="fas fa-user-graduate"></i> Graduated</span>
                                                         @else
                                                         <span class="badge badge-warning">Repeating</span>
                                                         @endif

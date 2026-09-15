@@ -163,7 +163,7 @@
 
                                                         @elseif($selectedSession && $selectedTerm)
                                                             {{-- STANDARD RESULT CLASS --}}
-                                                            <a href="{{ route('results.printStudent', [$student->id, 'stream']) }}?session_id={{ $selectedSession->id }}&term_id={{ $selectedTerm->id }}"
+                                                            <a href="{{ route('results.printStudent', $student->id) }}?session_id={{ $selectedSession->id }}&term_id={{ $selectedTerm->id }}"
                                                                class="btn btn-sm btn-info" target="_blank"
                                                                title="Preview Report Card">
                                                                 <i class="fas fa-eye"></i> Preview Only

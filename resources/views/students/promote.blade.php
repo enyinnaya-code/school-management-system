@@ -168,7 +168,7 @@
                         </div>
                         <div class="card-body">
                             <div class="row justify-content-center">
-                                <div class="col-md-5 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <div class="promotion-type-card" data-type="bulk">
                                         <div class="promotion-icon">
                                             <i class="fas fa-users fa-3x text-primary"></i>
@@ -186,7 +186,7 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-5 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <div class="promotion-type-card" data-type="performance">
                                         <div class="promotion-icon">
                                             <i class="fas fa-chart-line fa-3x text-success"></i>
@@ -198,6 +198,25 @@
                                             <input type="radio" class="custom-control-input"
                                                 id="promotionTypePerformance" name="promotion_type" value="performance">
                                             <label class="custom-control-label" for="promotionTypePerformance">
+                                                Select this option
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <div class="promotion-type-card" data-type="direct">
+                                        <div class="promotion-icon">
+                                            <i class="fas fa-exchange-alt fa-3x text-warning"></i>
+                                        </div>
+                                        <h5 class="mt-3">Promote to Next Class</h5>
+                                        <p class="text-muted">Each class is auto-mapped to its next class (e.g. JSS1A
+                                            &rarr; JSS2A). All students meeting a minimum cumulative average are
+                                            promoted; the rest repeat.</p>
+                                        <div class="custom-control custom-radio">
+                                            <input type="radio" class="custom-control-input" id="promotionTypeDirect"
+                                                name="promotion_type" value="direct">
+                                            <label class="custom-control-label" for="promotionTypeDirect">
                                                 Select this option
                                             </label>
                                         </div>
@@ -223,43 +242,85 @@
                         </div>
                         <div class="card-body">
 
-                            <!-- Destination Classes Selection -->
-                            <div class="card bg-light mb-4">
-                                <div class="card-body">
-                                    <h6 class="mb-3"><i class="fas fa-graduation-cap"></i> Select Destination Classes
-                                    </h6>
-                                    <div class="alert alert-info mb-3">
-                                        <i class="fas fa-info-circle"></i> Choose the classes where students will be
-                                        promoted to and set the maximum capacity for each class.
-                                    </div>
+                            <!-- Pooled destination settings (Bulk / Performance types) -->
+                            <div id="pooledDestinationSettings">
+                                <!-- Destination Classes Selection -->
+                                <div class="card bg-light mb-4">
+                                    <div class="card-body">
+                                        <h6 class="mb-3"><i class="fas fa-graduation-cap"></i> Select Destination Classes
+                                        </h6>
+                                        <div class="alert alert-info mb-3">
+                                            <i class="fas fa-info-circle"></i> Choose the classes where students will be
+                                            promoted to and set the maximum capacity for each class.
+                                        </div>
 
-                                    <div id="destinationClassesArea">
-                                        <div class="row" id="destinationClassCheckboxes">
-                                            <!-- Destination classes will be loaded here -->
+                                        <div id="destinationClassesArea">
+                                            <div class="row" id="destinationClassCheckboxes">
+                                                <!-- Destination classes will be loaded here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Selected Destination Classes with Capacity -->
+                                <div id="destinationCapacitySettings" style="display: none;">
+                                    <div class="card mb-4">
+                                        <div class="card-header bg-primary text-white">
+                                            <h6 class="mb-0"><i class="fas fa-users-cog"></i> Set Class Capacity Limits</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table class="table table-bordered">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th>Destination Class</th>
+                                                            <th width="200">Maximum Capacity</th>
+                                                            <th width="200">Current Students</th>
+                                                            <th width="200">Available Slots</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="capacityTableBody">
+                                                        <!-- Capacity settings will be populated here -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Selected Destination Classes with Capacity -->
-                            <div id="destinationCapacitySettings" style="display: none;">
-                                <div class="card mb-4">
-                                    <div class="card-header bg-primary text-white">
-                                        <h6 class="mb-0"><i class="fas fa-users-cog"></i> Set Class Capacity Limits</h6>
-                                    </div>
+                            <!-- Direct (auto-mapped) promotion settings -->
+                            <div id="directMappingSettings" style="display: none;">
+                                <div class="card bg-light mb-4">
                                     <div class="card-body">
+                                        <h6 class="mb-3"><i class="fas fa-random"></i> Class Mapping & Minimum Average
+                                        </h6>
+                                        <div class="alert alert-info mb-3">
+                                            <i class="fas fa-info-circle"></i> Each class has been auto-mapped to its
+                                            next class based on its name (e.g. JSS1A &rarr; JSS2A). Review/adjust the
+                                            destination for each class below. Only students with a cumulative average
+                                            at or above the minimum will be promoted &mdash; the rest will repeat their
+                                            current class.
+                                        </div>
+
+                                        <div class="form-group col-md-4 px-0">
+                                            <label>Minimum Cumulative Average Required (%) <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="number" class="form-control" id="direct_min_average"
+                                                min="0" max="100" step="0.01" value="45" required>
+                                        </div>
+
                                         <div class="table-responsive">
                                             <table class="table table-bordered">
                                                 <thead class="thead-light">
                                                     <tr>
-                                                        <th>Destination Class</th>
-                                                        <th width="200">Maximum Capacity</th>
-                                                        <th width="200">Current Students</th>
-                                                        <th width="200">Available Slots</th>
+                                                        <th>Current Class</th>
+                                                        <th></th>
+                                                        <th>Promotes To</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody id="capacityTableBody">
-                                                    <!-- Capacity settings will be populated here -->
+                                                <tbody id="directMappingTableBody">
+                                                    <!-- Mapping rows populated here -->
                                                 </tbody>
                                             </table>
                                         </div>
@@ -386,6 +447,14 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="col-md-3" id="graduatingSummaryCard" style="display: none;">
+                                        <div class="card" style="background-color:#6f42c1;color:#fff;">
+                                            <div class="card-body">
+                                                <h3 class="mb-0" id="graduatingStudentsCount">0</h3>
+                                                <small>Graduating</small>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="col-md-3">
                                         <div class="card bg-info text-white">
                                             <div class="card-body">
@@ -429,6 +498,36 @@
 
                                     <div id="promotedStudentsTables">
                                         <!-- Tables will be generated here grouped by destination class -->
+                                    </div>
+                                </div>
+
+                                <!-- GRADUATING STUDENTS -->
+                                <div id="graduatingStudentsSection" style="display: none;">
+                                    <h5 class="mb-3 mt-4">
+                                        <i class="fas fa-user-graduate text-info"></i> Students Graduating
+                                        <span class="badge badge-info" id="graduatingBadgeCount">0</span>
+                                    </h5>
+
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table class="table table-striped table-hover">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th width="50">#</th>
+                                                            <th>Admission No</th>
+                                                            <th>Student Name</th>
+                                                            <th>Current Class</th>
+                                                            <th class="average-column">Average (%)</th>
+                                                            <th>Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="graduatingStudentsBody">
+                                                        <!-- Will be populated by JavaScript -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -673,6 +772,92 @@ let selectedDestinationClasses = [];
 let classCapacities = {};
 let promotionConfig = {};
 let thirdTermId = null;
+let allClassesFull = []; // every class, across every section - used for direct class mapping
+let directClassMapping = {}; // sourceClassId -> destClassId
+
+const SERVER_HAS_ERROR = @json((bool) session('error'));
+const SERVER_HAS_SUCCESS = @json((bool) session('success'));
+
+// ── Resume-after-error: the final submit is a real form POST, so a server
+// error means a full page reload wiping all JS state above. We snapshot
+// that state to sessionStorage right before submitting and restore it if
+// the page comes back with an error, instead of forcing the user back to
+// step 1. ─────────────────────────────────────────────────────────────
+const WIZARD_STORAGE_KEY = 'promotionWizardState_v1';
+
+function saveWizardState() {
+    try {
+        sessionStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify({
+            sessionId: $('#session_id').val(),
+            sectionId: $('#section_id').val(),
+            thirdTermId,
+            studentsData,
+            selectedCurrentClasses,
+            destinationClasses,
+            selectedDestinationClasses,
+            classCapacities,
+            promotionConfig,
+            directClassMapping,
+            allClassesFull,
+        }));
+    } catch (e) {
+        console.warn('Could not save promotion wizard state', e);
+    }
+}
+
+function clearWizardState() {
+    try {
+        sessionStorage.removeItem(WIZARD_STORAGE_KEY);
+    } catch (e) {
+        // ignore
+    }
+}
+
+function loadWizardState() {
+    try {
+        const raw = sessionStorage.getItem(WIZARD_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Restore every global that generatePreview()/the submit handler depend on,
+// re-check the promotion-type radio, and jump straight back to the
+// confirmation screen the user was on when the submission failed.
+function restoreWizardStateAndShowStep4(saved) {
+    $('#session_id').val(saved.sessionId);
+    $('#section_id').val(saved.sectionId);
+
+    thirdTermId = saved.thirdTermId;
+    studentsData = saved.studentsData || [];
+    selectedCurrentClasses = saved.selectedCurrentClasses || [];
+    destinationClasses = saved.destinationClasses || [];
+    selectedDestinationClasses = saved.selectedDestinationClasses || [];
+    classCapacities = saved.classCapacities || {};
+    promotionConfig = saved.promotionConfig || {};
+    directClassMapping = saved.directClassMapping || {};
+    allClassesFull = saved.allClassesFull || [];
+
+    updateSelectedClassesSummary();
+
+    if (promotionConfig.type) {
+        $(`input[name="promotion_type"][value="${promotionConfig.type}"]`)
+            .prop('checked', true)
+            .trigger('change');
+    }
+
+    generatePreview();
+    goToStep(4);
+
+    $('#step4Card').prepend(`
+        <div class="alert alert-warning m-3 mb-0">
+            <i class="fas fa-history"></i>
+            Your previous submission didn't go through, so we restored your settings here -
+            review everything below and try again.
+        </div>
+    `);
+}
 
 // Get third term ID for the selected session
 function getThirdTermForSession(sessionId) {
@@ -697,14 +882,17 @@ $('#section_id').on('change', function() {
                     renderClassCheckboxes(allClasses);
                     $('#classSelectionArea').show();
                     $('#noClassesMessage').hide();
+
+                    // Every third term, promotion generally applies to all classes
+                    // in the section, so select them all by default.
+                    $('.class-checkbox').prop('checked', true).trigger('change');
                 } else {
                     $('#classSelectionArea').hide();
                     $('#noClassesMessage').show();
+                    selectedCurrentClasses = [];
+                    updateSelectedClassesSummary();
+                    $('#step1NextBtn').prop('disabled', true);
                 }
-                
-                selectedCurrentClasses = [];
-                updateSelectedClassesSummary();
-                $('#step1NextBtn').prop('disabled', true);
             },
             error: function(xhr) {
                 console.error('Error loading classes:', xhr.responseText);
@@ -878,26 +1066,174 @@ $('.promotion-type-card').on('click', function() {
 // Step 2 next button
 $('#step2NextBtn').on('click', function() {
     const promotionType = $('input[name="promotion_type"]:checked').val();
-    
+
     if (!promotionType) {
         alert('Please select a promotion type');
         return;
     }
-    
-    // Load destination classes for selection
-    renderDestinationClasses();
-    
-    $('#bulkSettings, #performanceSettings').hide();
-    
+
+    $('#pooledDestinationSettings, #directMappingSettings, #bulkSettings, #performanceSettings').hide();
+
     if (promotionType === 'bulk') {
+        // Load destination classes for selection
+        renderDestinationClasses();
+        $('#pooledDestinationSettings').show();
         $('#bulkSettings').show();
+        goToStep(3);
     } else if (promotionType === 'performance') {
+        // Load destination classes for selection
+        renderDestinationClasses();
+        $('#pooledDestinationSettings').show();
         $('#performanceSettings').show();
         initializeCriteriaRules();
+        goToStep(3);
+    } else if (promotionType === 'direct') {
+        $('#directMappingSettings').show();
+        loadDirectMappingSettings();
+        goToStep(3);
     }
-    
-    goToStep(3);
 });
+
+// ── Direct (auto-mapped) promotion: class mapping helpers ─────────────────
+
+// Known cross-tier transitions that a same-prefix number+1 guess can't
+// find on its own (e.g. JSS3 doesn't become "JSS4" - it moves into SSS1).
+const CLASS_TIER_TRANSITIONS = {
+    'JSS3': 'SSS1',
+};
+
+// Terminal classes: there is nowhere further to promote to - these
+// students graduate (leave the school) instead of moving class.
+const TERMINAL_CLASS_PREFIXES = ['SSS3'];
+
+function isTerminalClassName(name) {
+    const upper = String(name || '').toUpperCase();
+    return TERMINAL_CLASS_PREFIXES.some(prefix => upper.startsWith(prefix));
+}
+
+// HTML label for a direct-mapping destination id: a real class name,
+// the graduating sentinel, or "no destination" when left unmapped.
+function directDestinationLabel(destId) {
+    if (destId === 'GRADUATE') {
+        return '<span class="text-info"><i class="fas fa-user-graduate"></i> Graduating</span>';
+    }
+    if (destId) {
+        const destCls = allClassesFull.find(c => String(c.id) === String(destId));
+        if (destCls) {
+            return destCls.name;
+        }
+    }
+    return '<span class="text-muted">No destination (repeats)</span>';
+}
+
+// Guess the "next" class name from a class name, e.g. "JSS1A" -> "JSS2A",
+// "JSS3A" -> "SSS1A" (see CLASS_TIER_TRANSITIONS), "Primary 2" -> "Primary 3".
+// Terminal classes (SSS3) return null - they're handled as graduating.
+function guessNextClassName(name) {
+    if (isTerminalClassName(name)) {
+        return null;
+    }
+
+    const match = String(name || '').match(/^(.*?)(\d+)(\D*)$/);
+    if (!match) {
+        return null;
+    }
+    const prefix = match[1];
+    const number = match[2];
+    const suffix = match[3];
+
+    const tierMatch = CLASS_TIER_TRANSITIONS[`${prefix}${number}`];
+    if (tierMatch) {
+        return `${tierMatch}${suffix}`;
+    }
+
+    return `${prefix}${parseInt(number, 10) + 1}${suffix}`;
+}
+
+// Fetch every class across every section (used to populate destination
+// dropdowns for direct mapping, since promotion can cross sections).
+function fetchAllClassesFull() {
+    const allSectionIds = $('#section_id option')
+        .map(function() { return $(this).val(); })
+        .get()
+        .filter(v => v !== '');
+
+    return $.ajax({
+        url: '{{ route("users.classes_by_sections") }}',
+        method: 'GET',
+        data: { section_ids: allSectionIds }
+    });
+}
+
+// Load (if needed) the full class list, then render the mapping table
+function loadDirectMappingSettings() {
+    if (allClassesFull.length > 0) {
+        renderDirectMappingTable();
+        return;
+    }
+
+    showLoading('Loading classes...');
+    fetchAllClassesFull()
+        .done(function(response) {
+            allClassesFull = response || [];
+            hideLoading();
+            renderDirectMappingTable();
+        })
+        .fail(function(xhr) {
+            hideLoading();
+            console.error('Error loading classes:', xhr);
+            alert('Error loading the full class list for mapping.');
+        });
+}
+
+// Render the source-class -> destination-class mapping table
+function renderDirectMappingTable() {
+    let html = '';
+
+    selectedCurrentClasses.forEach(cls => {
+        const terminal = isTerminalClassName(cls.name);
+        const guessedName = guessNextClassName(cls.name);
+        const guessedMatch = guessedName
+            ? allClassesFull.find(c => c.name.trim().toLowerCase() === guessedName.trim().toLowerCase())
+            : null;
+
+        // Terminal classes (e.g. SSS3) have nowhere to promote to by default -
+        // those students graduate instead of repeating.
+        if (guessedMatch) {
+            directClassMapping[cls.id] = String(guessedMatch.id);
+        } else if (terminal) {
+            directClassMapping[cls.id] = 'GRADUATE';
+        } else {
+            directClassMapping[cls.id] = '';
+        }
+
+        let options = '<option value="">-- No destination (student repeats) --</option>';
+        options += `<option value="GRADUATE" ${directClassMapping[cls.id] === 'GRADUATE' ? 'selected' : ''}>&#127891; Graduating (leaving school)</option>`;
+        allClassesFull.forEach(c => {
+            const selected = guessedMatch && String(c.id) === String(guessedMatch.id) ? 'selected' : '';
+            options += `<option value="${c.id}" ${selected}>${c.name}</option>`;
+        });
+
+        html += `
+            <tr>
+                <td><strong>${cls.name}</strong></td>
+                <td class="text-center"><i class="fas fa-long-arrow-alt-right text-muted"></i></td>
+                <td>
+                    <select class="form-control direct-dest-select" data-source-class-id="${cls.id}">
+                        ${options}
+                    </select>
+                </td>
+            </tr>
+        `;
+    });
+
+    $('#directMappingTableBody').html(html);
+
+    $('.direct-dest-select').on('change', function() {
+        const sourceId = $(this).data('source-class-id');
+        directClassMapping[sourceId] = $(this).val();
+    });
+}
 
 // Render destination classes with checkboxes
 function renderDestinationClasses() {
@@ -1146,13 +1482,13 @@ function getCriteriaRules() {
 
 // Step 3 next button
 $('#step3NextBtn').on('click', function() {
-    if (selectedDestinationClasses.length === 0) {
+    const promotionType = $('input[name="promotion_type"]:checked').val();
+
+    if (promotionType !== 'direct' && selectedDestinationClasses.length === 0) {
         alert('Please select at least one destination class');
         return;
     }
-    
-    const promotionType = $('input[name="promotion_type"]:checked').val();
-    
+
     if (promotionType === 'bulk') {
         const distributionMethod = $('#bulk_distribution_method').val();
         promotionConfig = {
@@ -1165,10 +1501,10 @@ $('#step3NextBtn').on('click', function() {
         if (!validateCriteriaRules()) {
             return;
         }
-        
+
         const distributionMethod = $('#performance_distribution_method').val();
         const defaultAction = $('#default_action').val();
-        
+
         promotionConfig = {
             type: 'performance',
             metric: 'cumulative_average',
@@ -1178,8 +1514,34 @@ $('#step3NextBtn').on('click', function() {
             destination_classes: selectedDestinationClasses,
             capacities: classCapacities
         };
+    } else if (promotionType === 'direct') {
+        const minAverage = parseFloat($('#direct_min_average').val());
+
+        if (isNaN(minAverage)) {
+            alert('Please enter the minimum cumulative average required for promotion.');
+            return;
+        }
+
+        // Pull the latest mapping straight from the selects (in case of manual edits)
+        $('.direct-dest-select').each(function() {
+            const sourceId = $(this).data('source-class-id');
+            directClassMapping[sourceId] = $(this).val();
+        });
+
+        const mappedDestIds = [...new Set(Object.values(directClassMapping).filter(v => v && v !== 'GRADUATE'))];
+        selectedDestinationClasses = mappedDestIds.map(id => {
+            const found = allClassesFull.find(c => String(c.id) === String(id));
+            return { id: id, name: found ? found.name : id };
+        });
+
+        promotionConfig = {
+            type: 'direct',
+            min_average: minAverage,
+            class_mapping: { ...directClassMapping },
+            destination_classes: selectedDestinationClasses
+        };
     }
-    
+
     console.log('Promotion config:', promotionConfig);
     generatePreview();
     goToStep(4);
@@ -1198,7 +1560,7 @@ function generatePreview() {
     
     updateSummaryCounts(processedStudents);
     displayPromotionCriteria(promotionConfig);
-    displayCapacityOverview();
+    displayCapacityOverview(processedStudents);
     generateSeparatePreviewTables(processedStudents);
     
     hideLoading();
@@ -1219,9 +1581,32 @@ function applyPromotionLogicWithCapacity(students, config) {
         processedStudents = applyBulkPromotion(processedStudents, config);
     } else if (config.type === 'performance') {
         processedStudents = applyPerformancePromotion(processedStudents, config);
+    } else if (config.type === 'direct') {
+        processedStudents = applyDirectMappingPromotion(processedStudents, config);
     }
-    
+
     return processedStudents;
+}
+
+// Apply direct (auto-mapped) promotion: each student's current class maps to
+// exactly one destination class, gated by a single minimum cumulative average
+function applyDirectMappingPromotion(students, config) {
+    const mapping = config.class_mapping || {};
+    const minAverage = parseFloat(config.min_average) || 0;
+
+    students.forEach(student => {
+        const sourceClassId = student.school_class ? String(student.school_class.id) : null;
+        const destClassId = sourceClassId ? mapping[sourceClassId] : null;
+
+        if (destClassId && student.cumulative_average >= minAverage) {
+            student.next_class_id = destClassId;
+            student.status = destClassId === 'GRADUATE' ? 'graduated' : 'promoted';
+        } else {
+            student.status = 'repeating';
+        }
+    });
+
+    return students;
 }
 
 // Apply bulk promotion with distribution
@@ -1362,9 +1747,41 @@ function shuffleArray(array) {
 }
 
 // Display capacity overview
-function displayCapacityOverview() {
+function displayCapacityOverview(processedStudents) {
+    processedStudents = processedStudents || [];
+
+    if (promotionConfig.type === 'direct') {
+        let mappingHtml = '<div class="row">';
+
+        selectedCurrentClasses.forEach(sourceCls => {
+            const destId = directClassMapping[sourceCls.id];
+            const destLabel = directDestinationLabel(destId);
+            const advancedCount = processedStudents.filter(s =>
+                s.school_class && String(s.school_class.id) === String(sourceCls.id) &&
+                (s.status === 'promoted' || s.status === 'graduated')
+            ).length;
+            const advancedWord = destId === 'GRADUATE' ? 'graduated' : 'promoted';
+
+            mappingHtml += `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>${sourceCls.name} <i class="fas fa-long-arrow-alt-right mx-1"></i> ${destLabel}</h6>
+                            <small class="text-muted d-block">Minimum average required: ${promotionConfig.min_average}%</small>
+                            ${destId ? `<small class="text-success">${advancedCount} student(s) ${advancedWord}</small>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        mappingHtml += '</div>';
+        $('#capacityOverview').html(mappingHtml);
+        return;
+    }
+
     let html = '<div class="row">';
-    
+
     selectedDestinationClasses.forEach(cls => {
         const capacity = classCapacities[cls.id];
         const percentage = (capacity.current / capacity.max) * 100;
@@ -1411,6 +1828,26 @@ function displayPromotionCriteria(config) {
                 <strong>Promotion Type:</strong> Bulk Promotion<br>
                 <strong>Distribution Method:</strong> ${config.distribution_method}<br>
                 <strong>Destination Classes:</strong> ${config.destination_classes.map(c => c.name).join(', ')}
+            </div>
+        `;
+    } else if (config.type === 'direct') {
+        const rows = selectedCurrentClasses.map(sourceCls => {
+            const destId = directClassMapping[sourceCls.id];
+            return `<tr><td>${sourceCls.name}</td><td>${directDestinationLabel(destId)}</td></tr>`;
+        }).join('');
+
+        html = `
+            <div class="mb-3">
+                <strong>Promotion Type:</strong> Promote to Next Class (auto-mapped)<br>
+                <strong>Minimum Cumulative Average Required:</strong> ${config.min_average}%
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="thead-light">
+                        <tr><th>Current Class</th><th>Promotes To</th></tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
             </div>
         `;
     } else if (config.type === 'performance') {
@@ -1471,29 +1908,37 @@ function displayPromotionCriteria(config) {
 // Generate separate preview tables
 function generateSeparatePreviewTables(students) {
     const promotionType = $('input[name="promotion_type"]:checked').val();
-    const showAverage = promotionType === 'performance';
-    
+    const showAverage = promotionType === 'performance' || promotionType === 'direct';
+
     $('.average-column').toggle(showAverage);
-    
+
     const promotedStudents = students.filter(s => s.status === 'promoted');
+    const graduatedStudents = students.filter(s => s.status === 'graduated');
     const repeatingStudents = students.filter(s => s.status === 'repeating');
-    
+
     $('#promotedBadgeCount').text(promotedStudents.length);
+    $('#graduatingBadgeCount').text(graduatedStudents.length);
     $('#repeatingBadgeCount').text(repeatingStudents.length);
-    
-    generatePromotedStudentsTables(promotedStudents, showAverage);
-    generateRepeatingStudentsTable(repeatingStudents, showAverage);
+
+    // Hidden form inputs are indexed across all three tables, so each table
+    // must continue numbering where the previous one left off - otherwise
+    // colliding students[N] indices silently overwrite each other on submit.
+    let nextIndex = 0;
+    nextIndex = generatePromotedStudentsTables(promotedStudents, showAverage, nextIndex);
+    nextIndex = generateGraduatingStudentsTable(graduatedStudents, showAverage, nextIndex);
+    generateRepeatingStudentsTable(repeatingStudents, showAverage, nextIndex);
 }
 
-// Generate promoted students tables grouped by destination class
-function generatePromotedStudentsTables(promotedStudents, showAverage) {
+// Generate promoted students tables grouped by destination class.
+// Returns the next free hidden-input index for subsequent tables.
+function generatePromotedStudentsTables(promotedStudents, showAverage, startIndex) {
     if (promotedStudents.length === 0) {
         $('#promotedStudentsSection').hide();
-        return;
+        return startIndex;
     }
-    
+
     $('#promotedStudentsSection').show();
-    
+
     // Group by destination class
     const groupedByClass = {};
     promotedStudents.forEach(student => {
@@ -1503,16 +1948,17 @@ function generatePromotedStudentsTables(promotedStudents, showAverage) {
         }
         groupedByClass[classId].push(student);
     });
-    
+
     let tablesHtml = '';
-    let globalIndex = 0;
-    
+    let globalIndex = startIndex;
+
     Object.keys(groupedByClass).forEach(classId => {
         const studentsInClass = groupedByClass[classId];
         const destClass = selectedDestinationClasses.find(c => c.id == classId);
         const className = destClass ? destClass.name : 'Unknown Class';
         const capacity = classCapacities[classId];
-        
+        const capacityText = capacity ? `Capacity: ${studentsInClass.length} / ${capacity.max}` : '';
+
         tablesHtml += `
             <div class="card class-group-card mb-3">
                 <div class="class-group-header">
@@ -1521,7 +1967,7 @@ function generatePromotedStudentsTables(promotedStudents, showAverage) {
                             <i class="fas fa-graduation-cap"></i> Promoting to: ${className}
                             <span class="badge badge-success ml-2">${studentsInClass.length} student(s)</span>
                         </h6>
-                        <span class="text-muted">Capacity: ${studentsInClass.length} / ${capacity.max}</span>
+                        <span class="text-muted">${capacityText}</span>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -1539,31 +1985,32 @@ function generatePromotedStudentsTables(promotedStudents, showAverage) {
                             </thead>
                             <tbody>
         `;
-        
-        studentsInClass.forEach(student => {
-            globalIndex++;
+
+        studentsInClass.forEach((student, i) => {
+            const rowIndex = globalIndex + i;
             const admissionNo = student.admission_number || student.admission_no || 'N/A';
             const studentName = student.name || `${student.first_name || ''} ${student.last_name || ''}`.trim();
             const currentClass = student.school_class?.name || student.class?.name || 'N/A';
-            
-            const averageHtml = showAverage 
-                ? `<td><strong>${student.cumulative_average ? student.cumulative_average.toFixed(2) + '%' : '0.00%'}</strong></td>` 
+
+            const averageHtml = showAverage
+                ? `<td><strong>${student.cumulative_average ? student.cumulative_average.toFixed(2) + '%' : '0.00%'}</strong></td>`
                 : '';
-            
+
             tablesHtml += `
                 <tr>
-                    <td>${globalIndex}</td>
+                    <td>${rowIndex - startIndex + 1}</td>
                     <td>${admissionNo}</td>
                     <td>${studentName}</td>
                     <td>${currentClass}</td>
                     ${averageHtml}
                     <td><span class="badge badge-success">Promoted</span></td>
-                    <input type="hidden" name="students[${globalIndex-1}][student_id]" value="${student.id}">
-                    <input type="hidden" name="students[${globalIndex-1}][next_class_id]" value="${student.next_class_id}">
+                    <input type="hidden" name="students[${rowIndex}][student_id]" value="${student.id}">
+                    <input type="hidden" name="students[${rowIndex}][next_class_id]" value="${student.next_class_id}">
                 </tr>
             `;
         });
-        
+        globalIndex += studentsInClass.length;
+
         tablesHtml += `
                             </tbody>
                         </table>
@@ -1572,33 +2019,74 @@ function generatePromotedStudentsTables(promotedStudents, showAverage) {
             </div>
         `;
     });
-    
+
     $('#promotedStudentsTables').html(tablesHtml);
+    return globalIndex;
 }
 
-// Generate repeating students table
-function generateRepeatingStudentsTable(repeatingStudents, showAverage) {
-    if (repeatingStudents.length === 0) {
-        $('#repeatingStudentsSection').hide();
-        return;
+// Generate graduating students table (direct-mapping type only).
+// Returns the next free hidden-input index for subsequent tables.
+function generateGraduatingStudentsTable(graduatedStudents, showAverage, startIndex) {
+    if (graduatedStudents.length === 0) {
+        $('#graduatingStudentsSection').hide();
+        return startIndex;
     }
-    
-    $('#repeatingStudentsSection').show();
-    
+
+    $('#graduatingStudentsSection').show();
+
     let tableHtml = '';
-    const startIndex = studentsData.filter(s => s.status === 'promoted').length;
-    
-    repeatingStudents.forEach((student, index) => {
+
+    graduatedStudents.forEach((student, index) => {
+        const rowIndex = startIndex + index;
         const admissionNo = student.admission_number || student.admission_no || 'N/A';
         const studentName = student.name || `${student.first_name || ''} ${student.last_name || ''}`.trim();
         const currentClass = student.school_class?.name || student.class?.name || 'N/A';
-        
-        const averageHtml = showAverage 
-            ? `<td><strong>${student.cumulative_average ? student.cumulative_average.toFixed(2) + '%' : '0.00%'}</strong></td>` 
+
+        const averageHtml = showAverage
+            ? `<td><strong>${student.cumulative_average ? student.cumulative_average.toFixed(2) + '%' : '0.00%'}</strong></td>`
             : '';
-        
+
+        tableHtml += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${admissionNo}</td>
+                <td>${studentName}</td>
+                <td>${currentClass}</td>
+                ${averageHtml}
+                <td><span class="badge badge-info"><i class="fas fa-user-graduate"></i> Graduating</span></td>
+                <input type="hidden" name="students[${rowIndex}][student_id]" value="${student.id}">
+                <input type="hidden" name="students[${rowIndex}][next_class_id]" value="GRADUATE">
+            </tr>
+        `;
+    });
+
+    $('#graduatingStudentsBody').html(tableHtml);
+    return startIndex + graduatedStudents.length;
+}
+
+// Generate repeating students table
+function generateRepeatingStudentsTable(repeatingStudents, showAverage, startIndex) {
+    if (repeatingStudents.length === 0) {
+        $('#repeatingStudentsSection').hide();
+        return startIndex;
+    }
+
+    $('#repeatingStudentsSection').show();
+
+    let tableHtml = '';
+
+    repeatingStudents.forEach((student, index) => {
+        const rowIndex = startIndex + index;
+        const admissionNo = student.admission_number || student.admission_no || 'N/A';
+        const studentName = student.name || `${student.first_name || ''} ${student.last_name || ''}`.trim();
+        const currentClass = student.school_class?.name || student.class?.name || 'N/A';
+
+        const averageHtml = showAverage
+            ? `<td><strong>${student.cumulative_average ? student.cumulative_average.toFixed(2) + '%' : '0.00%'}</strong></td>`
+            : '';
+
         const reason = showAverage ? 'Did not meet criteria or no available slots' : 'No available slots';
-        
+
         tableHtml += `
             <tr>
                 <td>${index + 1}</td>
@@ -1607,26 +2095,37 @@ function generateRepeatingStudentsTable(repeatingStudents, showAverage) {
                 <td>${currentClass}</td>
                 ${averageHtml}
                 <td><span class="text-muted">${reason}</span></td>
-                <input type="hidden" name="students[${startIndex + index}][student_id]" value="${student.id}">
-                <input type="hidden" name="students[${startIndex + index}][next_class_id]" value="">
+                <input type="hidden" name="students[${rowIndex}][student_id]" value="${student.id}">
+                <input type="hidden" name="students[${rowIndex}][next_class_id]" value="">
             </tr>
         `;
     });
-    
+
     $('#repeatingStudentsBody').html(tableHtml);
+    return startIndex + repeatingStudents.length;
 }
 
 // Update summary counts
 function updateSummaryCounts(students) {
     const total = students.length;
     const promoted = students.filter(s => s.status === 'promoted').length;
-    const repeating = total - promoted;
-    const uniqueClasses = new Set(students.filter(s => s.next_class_id).map(s => s.next_class_id)).size;
-    
+    const graduated = students.filter(s => s.status === 'graduated').length;
+    const repeating = students.filter(s => s.status === 'repeating').length;
+    const uniqueClasses = new Set(
+        students.filter(s => s.next_class_id && s.next_class_id !== 'GRADUATE').map(s => s.next_class_id)
+    ).size;
+
     $('#totalStudentsCount').text(total);
     $('#promotedStudentsCount').text(promoted);
     $('#repeatingStudentsCount').text(repeating);
     $('#classesAffectedCount').text(uniqueClasses);
+
+    if (graduated > 0) {
+        $('#graduatingStudentsCount').text(graduated);
+        $('#graduatingSummaryCard').show();
+    } else {
+        $('#graduatingSummaryCard').hide();
+    }
 }
 
 // Form submission
@@ -1635,7 +2134,11 @@ $('#promotionForm').on('submit', function(e) {
         e.preventDefault();
         return false;
     }
-    
+
+    // Snapshot everything needed to rebuild this exact screen, in case the
+    // server rejects the submission - see restoreWizardStateAndShowStep4().
+    saveWizardState();
+
     $('#form_session_id').val($('#session_id').val());
     $('#form_term_id').val(thirdTermId);
     $('#form_section_id').val($('#section_id').val());
@@ -1694,5 +2197,26 @@ $('<style>')
         }
     `)
     .appendTo('head');
+
+// ── Resume-after-error init (must run after every handler/function above
+// is defined and bound) ─────────────────────────────────────────────────
+$(function() {
+    if (SERVER_HAS_SUCCESS) {
+        clearWizardState();
+        return;
+    }
+
+    const saved = loadWizardState();
+    if (!saved) {
+        return;
+    }
+
+    if (SERVER_HAS_ERROR) {
+        restoreWizardStateAndShowStep4(saved);
+    }
+    // Otherwise (a plain revisit with no error) leave any saved state alone -
+    // it's only ever acted on after a failed submission or cleared after a
+    // successful one.
+});
     </script>
 </body>

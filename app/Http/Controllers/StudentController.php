@@ -1014,11 +1014,14 @@ class StudentController extends Controller
             'term_id' => 'required|integer',
             'section_id' => 'required|exists:sections,id',
             'current_class_ids' => 'required|json',
-            'promotion_type' => 'required|in:bulk,performance',
+            'promotion_type' => 'required|in:bulk,performance,direct',
             'promotion_config' => 'required|json',
             'students' => 'required|array',
             'students.*.student_id' => 'required|exists:users,id',
-            'students.*.next_class_id' => 'nullable|exists:school_classes,id',
+            // 'GRADUATE' is a sentinel (not a real class id) used by the "direct"
+            // promotion type to mark students as graduating rather than moving
+            // to another class - validated against school_classes below instead.
+            'students.*.next_class_id' => 'nullable|string',
         ]);
 
         DB::beginTransaction();
@@ -1086,6 +1089,7 @@ class StudentController extends Controller
 
             $promotedCount = 0;
             $repeatingCount = 0;
+            $graduatedCount = 0;
             $promotionRecords = [];
 
             foreach ($request->students as $studentData) {
@@ -1110,7 +1114,20 @@ class StudentController extends Controller
                 $newClassName = null;
                 $promotionReason = 'No available slots or did not meet criteria';
 
-                if (!empty($studentData['next_class_id'])) {
+                if (($studentData['next_class_id'] ?? null) === 'GRADUATE') {
+                    // Terminal class (e.g. SSS3): the student leaves the active
+                    // roster rather than moving to another class.
+                    $student->is_active = 0;
+                    $student->save();
+
+                    $promotionStatus = 'graduated';
+                    $newClassId = null;
+                    $newClassName = 'Graduated';
+                    $promotionReason = "Graduated - met minimum average requirement (Avg: {$cumulativeAverage}%)";
+                    $graduatedCount++;
+
+                    Log::info("Student {$student->id} ({$student->name}) graduated from {$originalClass->name}");
+                } elseif (!empty($studentData['next_class_id'])) {
                     $nextClassId = $studentData['next_class_id'];
 
                     $canPromote = true;
@@ -1136,9 +1153,11 @@ class StudentController extends Controller
                         $newClassId = $nextClassId;
                         $newClassName = $newClass->name ?? 'Unknown';
                         $promotionStatus = 'promoted';
-                        $promotionReason = $request->promotion_type === 'performance'
-                            ? "Met performance criteria (Avg: {$cumulativeAverage}%)"
-                            : 'Bulk promotion';
+                        $promotionReason = match ($request->promotion_type) {
+                            'performance' => "Met performance criteria (Avg: {$cumulativeAverage}%)",
+                            'direct' => "Met minimum average requirement (Avg: {$cumulativeAverage}%)",
+                            default => 'Bulk promotion',
+                        };
 
                         if (isset($capacityUsed[$nextClassId])) {
                             $capacityUsed[$nextClassId]++;
@@ -1182,7 +1201,11 @@ class StudentController extends Controller
             }
 
             DB::table('promotions')->where('id', $promotionId)->update([
-                'promoted_count' => $promotedCount,
+                // No dedicated column for graduates - they count as "promoted"
+                // (they successfully advanced off the roster); the per-student
+                // promotion_records row still distinguishes 'graduated' from
+                // 'promoted' for the detail/rollback views.
+                'promoted_count' => $promotedCount + $graduatedCount,
                 'repeating_count' => $repeatingCount,
                 'status' => 'completed',
                 'updated_at' => now(),
@@ -1192,6 +1215,7 @@ class StudentController extends Controller
 
             $message = "Successfully completed promotion batch {$promotionBatchId}: " .
                 "{$promotedCount} student(s) promoted, " .
+                ($graduatedCount > 0 ? "{$graduatedCount} student(s) graduated, " : '') .
                 "{$repeatingCount} student(s) repeating current class";
 
             Log::info("Promotion completed: {$message}");
@@ -1452,6 +1476,21 @@ class StudentController extends Controller
                 if ($record->promotion_status === 'promoted' && $record->new_class_id) {
                     User::where('id', $record->student_id)
                         ->update(['class_id' => $record->original_class_id]);
+
+                    DB::table('promotion_records')
+                        ->where('id', $record->id)
+                        ->update([
+                            'is_rolled_back' => true,
+                            'rolled_back_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                    $rolledBackCount++;
+                } elseif ($record->promotion_status === 'graduated') {
+                    // Graduated students keep their original class_id (it was
+                    // never changed) - just bring them back onto the active roster.
+                    User::where('id', $record->student_id)
+                        ->update(['is_active' => 1]);
 
                     DB::table('promotion_records')
                         ->where('id', $record->id)
