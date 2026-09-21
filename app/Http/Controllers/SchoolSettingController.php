@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SchoolSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class SchoolSettingController extends Controller
@@ -48,6 +49,10 @@ class SchoolSettingController extends Controller
         // Update or fill and save
         $settings->fill($data);
         $settings->save();
+
+        // school_settings() caches the row for an hour; without this the old
+        // name/logo keep showing after a save.
+        Cache::forget('school_settings');
 
         return redirect()->back()->with('success', 'School settings updated successfully!');
     }

@@ -7,6 +7,7 @@ use App\Models\PrimarySchoolResult;
 use App\Models\Result;
 use App\Models\Term;
 use App\Models\User;
+use App\Services\StudentClassHistory;
 
 /**
  * Computes a full-session cumulative result (First + Second + Third Term combined)
@@ -29,9 +30,7 @@ trait ComputesCumulativeResult
             $q->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
 
-        $classStudentIds = User::where('user_type', 4)
-            ->where('class_id', $class->id)
-            ->pluck('id');
+        $classStudentIds = app(StudentClassHistory::class)->studentIdsInClass($class->id, $session->id);
 
         // ── Determine which terms this student actually has records for ────────
         $includedTerms = $terms->filter(function ($term) use ($student, $session, $allSubjects, $isPrimary) {

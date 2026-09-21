@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Course;
 use App\Models\Result;
 use App\Models\SchoolClass;
+use App\Services\StudentClassHistory;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -35,9 +36,7 @@ class MasterListExport implements FromCollection, WithHeadings, WithMapping, Wit
         })->orderBy('course_name')->get();
 
         // Get all results for this class, session, and term
-        $students = User::where('user_type', 4)
-            ->where('class_id', $classId)
-            ->pluck('id');
+        $students = app(StudentClassHistory::class)->studentIdsInClass((int) $classId, (int) $sessionId);
 
         $this->results = Result::where('session_id', $sessionId)
             ->where('term_id', $termId)
@@ -50,7 +49,7 @@ class MasterListExport implements FromCollection, WithHeadings, WithMapping, Wit
     public function collection()
     {
         $students = User::where('user_type', 4)
-            ->where('class_id', $this->classId)
+            ->whereIn('id', app(StudentClassHistory::class)->studentIdsInClass((int) $this->classId, (int) $this->sessionId))
             ->orderBy('name')
             ->get();
 

@@ -293,7 +293,7 @@
           'results.upload', 'results.uploadResult', 'results.saveResult',
           'results.print', 'results.selectClass', 'results.selectClass.get', 'results.selectClassForPrint',
           'results.printStudent', 'results.printStudentSheet', 'results.masterList', 'results.exportMasterList',
-          'results.class.view', 'results.class.export', 'results.cumulative', 'results.transcript',
+          'results.class.view', 'results.class.export', 'results.cumulative', 'results.levelCumulative', 'results.transcript',
           'results.remarks.edit', 'results.remarks.update', 'results.savePrimaryStudent', 'results.getTermsBySession', 'results.index',
           'students.promote', 'students.promote.preview', 'students.promote.preview.multiple',
           'students.promote.process', 'students.promote.process.enhanced',

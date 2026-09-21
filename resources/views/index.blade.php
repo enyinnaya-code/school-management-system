@@ -60,7 +60,7 @@
 
                                     <div class="form-group mb-1">
                                         <label for="email">Email</label>
-                                        <input id="email" type="email" class="form-control" name="email" value="{{ old('email') }}" tabindex="1" autofocus>
+                                        <input id="email" type="email" class="form-control" name="email" value="{{ old('email') }}" tabindex="1" autocomplete="username" autofocus>
                                         <div class="invalid-feedback">
                                             Please fill in your email
                                         </div>
@@ -70,14 +70,21 @@
                                         <div class="d-block">
                                             <label for="password" class="control-label">Password</label>
                                         </div>
-                                        <input id="password" type="password" class="form-control" name="password" tabindex="2">
+                                        <input id="password" type="password" class="form-control" name="password" tabindex="2" autocomplete="current-password">
                                         <div class="invalid-feedback">
                                             Please fill in your password
                                         </div>
                                     </div>
 
                                     <div class="form-group">
-                                        <button type="submit" class="btn btn-primary btn-lg btn-block" tabindex="4">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="remember-me" tabindex="4">
+                                            <label class="custom-control-label" for="remember-me">Remember me on this device</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <button type="submit" class="btn btn-primary btn-lg btn-block" tabindex="5">
                                             Login
                                         </button>
                                     </div>
@@ -99,6 +106,49 @@
 
     <!-- Toastr JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+
+    <!-- "Remember me": keep user type + email on this device. The password is
+         deliberately never stored by the page - the browser's password manager
+         handles that (see the autocomplete attributes on the fields). -->
+    <script>
+        (function () {
+            var STORAGE_KEY = 'loginRemembered';
+            var form     = document.querySelector('form[action="{{ route('login.submit') }}"]');
+            var email    = document.getElementById('email');
+            var userType = document.getElementById('user_type');
+            var remember = document.getElementById('remember-me');
+            var password = document.getElementById('password');
+
+            function readSaved() {
+                try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { return null; }
+            }
+
+            var saved = readSaved();
+            var typeIsValid = saved && Array.prototype.some.call(userType.options, function (option) {
+                return option.value === saved.user_type;
+            });
+
+            if (saved && saved.email && typeIsValid) {
+                if (!email.value) { email.value = saved.email; }
+                userType.value = saved.user_type;
+                remember.checked = true;
+                password.focus();
+            }
+
+            form.addEventListener('submit', function () {
+                try {
+                    if (remember.checked) {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                            email: email.value.trim(),
+                            user_type: userType.value
+                        }));
+                    } else {
+                        localStorage.removeItem(STORAGE_KEY);
+                    }
+                } catch (e) { /* storage unavailable (private mode) - just skip remembering */ }
+            });
+        })();
+    </script>
 
     <!-- Display Toastr Notifications -->
     @if(session('error'))

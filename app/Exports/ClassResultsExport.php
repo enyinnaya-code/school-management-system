@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\Result;
 use App\Models\Session;
 use App\Models\Term;
+use App\Services\StudentClassHistory;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -32,7 +33,7 @@ class ClassResultsExport implements FromCollection, WithHeadings, WithMapping
     public function collection()
     {
         $students = User::where('user_type', 4)
-            ->where('class_id', $this->classId)
+            ->whereIn('id', app(StudentClassHistory::class)->studentIdsInClass((int) $this->classId, (int) $this->sessionId))
             ->orderBy('name')
             ->get();
 

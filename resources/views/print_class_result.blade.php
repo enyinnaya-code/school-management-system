@@ -95,10 +95,16 @@
                                                        class="btn btn-success mb-0">
                                                         <i class="fas fa-table"></i> Master List
                                                     </a>
-                                                    <a href="{{ route('results.cumulative', $class->id) }}"
+                                                    <a href="{{ route('results.cumulative', $class->id) }}?session_id={{ $selectedSession->id }}"
                                                        class="btn btn-info mb-0">
                                                         <i class="fas fa-chart-line"></i> Cumulative Results
                                                     </a>
+                                                    @if(in_array(auth()->user()->user_type, [1, 2]))
+                                                    <a href="{{ route('results.levelCumulative', ['class_id' => $class->id, 'session_id' => $selectedSession->id]) }}"
+                                                       class="btn btn-outline-info mb-0">
+                                                        <i class="fas fa-layer-group"></i> Level Cumulative
+                                                    </a>
+                                                    @endif
                                                 @endif
                                             @endif
                                         </form>

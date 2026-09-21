@@ -18,6 +18,8 @@ use App\Exports\ClassResultsExport;
 use App\Models\StudentRemark;
 use App\Exports\MasterListExport;
 use App\Services\ResultSheetService;
+use App\Services\ClassLevels;
+use App\Services\StudentClassHistory;
 use Illuminate\Support\Facades\Log;
 use App\Traits\ComputesCumulativeResult;
 
@@ -826,7 +828,7 @@ class ResultsController extends Controller
             $query->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
 
-        $students   = User::where('user_type', 4)->where('class_id', $classId)->orderBy('name')->get();
+        $students   = $this->rosterFor((int) $classId, $selectedSession->id);
         $studentIds = $students->pluck('id');
         $subjectIds = $subjects->pluck('id');
 
@@ -1045,9 +1047,19 @@ class ResultsController extends Controller
         }
         $selectedTerm = Term::find($selectedTermId);
 
-        // Fetch students
-        $students = User::where('user_type', 4)
-            ->where('class_id', $request->class_id)
+        // Fetch students - those who were in this class during the selected
+        // session, which can differ from who is in it now after promotions.
+        $studentsQuery = User::where('user_type', 4);
+        if ($selectedSession) {
+            $studentsQuery->whereIn(
+                'id',
+                app(StudentClassHistory::class)->studentIdsInClass((int) $request->class_id, $selectedSession->id)
+            );
+        } else {
+            $studentsQuery->where('class_id', $request->class_id);
+        }
+
+        $students = $studentsQuery
             ->select(
                 'id',
                 'name',
@@ -1082,8 +1094,6 @@ class ResultsController extends Controller
     public function printStudentSheet(Request $request, $studentId)
     {
         $student = User::where('user_type', 4)->findOrFail($studentId);
-        $class   = SchoolClass::findOrFail($student->class_id);
-        $section = Section::find($class->section_id);
 
         // Respect session/term passed from the filter
         $currentSession = $request->input('session_id')
@@ -1096,6 +1106,10 @@ class ResultsController extends Controller
             ?? $currentSession->terms()->orderBy('name')->first();
 
         abort_if(!$selectedTerm, 404, 'No term found.');
+
+        // The class the student was in during that session, not necessarily the current one.
+        $class   = SchoolClass::findOrFail(app(StudentClassHistory::class)->classIdFor($student->id, $currentSession->id));
+        $section = Section::find($class->section_id);
 
         // Find active template for this class
         // Find active template for this class, scoped to the selected term
@@ -1168,8 +1182,6 @@ class ResultsController extends Controller
     public function printStudent($studentId, Request $request, $action = 'stream')
     {
         $student = User::where('user_type', 4)->findOrFail($studentId);
-        $class   = SchoolClass::findOrFail($student->class_id);
-        $section = Section::find($class->section_id);
 
         $sessionId = $request->query('session_id');
         $termId    = $request->query('term_id');
@@ -1185,6 +1197,10 @@ class ResultsController extends Controller
         if (!$currentSession || !$currentTerm) {
             abort(404, 'No current session or term is set.');
         }
+
+        // The class the student was in during that session, not necessarily the current one.
+        $class   = SchoolClass::findOrFail(app(StudentClassHistory::class)->classIdFor($student->id, $currentSession->id));
+        $section = Section::find($class->section_id);
 
         // ── Determine class type ──────────────────────────────────────────────
         $isPrimary = DB::table('primary_result_classes')
@@ -1240,7 +1256,7 @@ class ResultsController extends Controller
         $showWatermark    = $isTeacherOrAdmin;
 
         // ── Total students in class ───────────────────────────────────────────
-        $classStudentIds      = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
+        $classStudentIds      = app(StudentClassHistory::class)->studentIdsInClass($class->id, $currentSession->id);
         $totalStudentsInClass = $classStudentIds->count();
 
         // ── Attendance ────────────────────────────────────────────────────────
@@ -1495,10 +1511,7 @@ class ResultsController extends Controller
             return redirect()->back()->with('error', 'Selected term not found.');
         }
 
-        $students = User::where('user_type', 4)
-            ->where('class_id', $classId)
-            ->orderBy('name')
-            ->get();
+        $students = $this->rosterFor((int) $classId, $selectedSession->id);
 
         // ── Detect class type ────────────────────────────────────────────────────
 
@@ -1875,11 +1888,6 @@ class ResultsController extends Controller
         }
     }
 
-    // ── Determine class type ────────────────────────────────────────────────
-    $isPrimary = DB::table('primary_result_classes')
-        ->where('school_class_id', $classId)
-        ->exists();
-
     // Fetch all sessions
     $sessions = Session::orderByDesc('name')->get();
 
@@ -1902,114 +1910,184 @@ class ResultsController extends Controller
         return redirect()->back()->with('error', 'No terms found for this session.');
     }
 
-    // Get all subjects offered by this class
-    $subjects = Course::whereHas('schoolClasses', function ($query) use ($class) {
-        $query->where('school_classes.id', $class->id);
-    })->orderBy('course_name')->get();
+    // Students who were in this class during the selected session - which can
+    // differ from who is in it now once promotions have happened.
+    $students = $this->rosterFor($classId, $selectedSession->id);
 
-    // Fetch all students in the class
-    $students = User::where('user_type', 4)
-        ->where('class_id', $classId)
-        ->orderBy('name')
-        ->get();
-
-    // ── Fetch results for all terms in the session — branch by class type ───
-    if ($isPrimary) {
-        $allResults = \App\Models\PrimarySchoolResult::where('session_id', $selectedSession->id)
-            ->whereIn('term_id', $terms->pluck('id'))
-            ->whereIn('student_id', $students->pluck('id'))
-            ->whereIn('course_id', $subjects->pluck('id'))
-            ->get()
-            ->groupBy(['student_id', 'term_id', 'course_id']);
-    } else {
-        $allResults = Result::where('session_id', $selectedSession->id)
-            ->whereIn('term_id', $terms->pluck('id'))
-            ->whereIn('student_id', $students->pluck('id'))
-            ->whereIn('course_id', $subjects->pluck('id'))
-            ->get()
-            ->groupBy(['student_id', 'term_id', 'course_id']);
-    }
-
-    // ── Calculate cumulative data for each student ────────────────────────────
-   $cumulativeData = $students->map(function ($student) use ($allResults, $subjects, $terms, $isPrimary, $class) {
-    $studentResults = $allResults->get($student->id, collect());
-
-    $termTotals        = [];
-    $cumulativeTotal   = 0;
-    $cumulativeDivisor = 0;
-
-    foreach ($terms as $term) {
-        $termResults = $studentResults->get($term->id, collect());
-
-        // No records at all for this term → exclude it from the cumulative entirely
-        if ($termResults->isEmpty()) {
-            continue;
-        }
-
-        if ($isPrimary) {
-            $termTotal = 0;
-            foreach ($subjects as $subject) {
-                $result = $termResults->get($subject->id);
-                if ($result) {
-                    $termTotal += (float) ($result->first()->final_obtained ?? 0);
-                }
-            }
-            $divisor = $subjects->count() > 0 ? $subjects->count() : 1;
-        } else {
-            $mapped = $subjects->map(function ($subject) use ($termResults) {
-                $result = $termResults->get($subject->id);
-                $score  = $result ? (float) ($result->first()->final_obtained ?? 0) : 0;
-                return [
-                    'course_name'    => $subject->course_name,
-                    'final_obtained' => $score,
-                ];
-            });
-
-            $limitData = $this->applySubjectLimit(collect($mapped), $class->id);
-            $termTotal = $limitData['adjusted_total'];
-            $divisor   = $limitData['average_divisor'];
-        }
-
-        $termTotals[$term->id] = $termTotal;
-        $cumulativeTotal      += $termTotal;
-        $cumulativeDivisor    += $divisor;
-    }
-
-    $cumulativeAverage = $cumulativeDivisor > 0 ? round($cumulativeTotal / $cumulativeDivisor, 2) : 0;
-    $grade             = $this->calculateGrade($cumulativeAverage);
-
-    return [
-        'student'            => $student,
-        'term_totals'        => $termTotals,
-        'cumulative_total'   => $cumulativeTotal,
-        'cumulative_average' => $cumulativeAverage,
-        'grade'              => $grade,
-    ];
-});
-
-    // Sort by cumulative total descending
-    $sortedStudents = $cumulativeData->sortByDesc('cumulative_total')->values();
-
-    // Assign positions
-    $sortedStudents = $sortedStudents->map(function ($item, $index) {
-        $item['position']           = $index + 1;
-        $item['formatted_position'] = ($index + 1) . $this->getPositionSuffix($index + 1);
-        return $item;
-    });
+    $sortedStudents = $this->rankCumulative(
+        $this->cumulativeRowsForClass($class, $selectedSession, $terms, $students)
+    );
 
     return view('results.cumulative_results', compact(
         'class',
         'section',
         'students',
-        'subjects',
         'sortedStudents',
         'sessions',
         'selectedSession',
-        'terms',
-        'allResults',
-        'isPrimary'
+        'terms'
     ));
 }
+
+    /**
+     * Cumulative results for a whole level (JSS1A + JSS1B + JSS1C => JSS1),
+     * ranked across every arm. Admins only.
+     */
+    public function levelCumulativeResults(Request $request)
+    {
+        if (!in_array(Auth::user()->user_type, [1, 2])) {
+            abort(403, 'Only administrators can view level cumulative results.');
+        }
+
+        $levels = app(ClassLevels::class)->groups();
+
+        // Which level: explicit ?level=, else the level of ?class_id=, else the first one.
+        $levelKey = $request->input('level');
+        if (!$levelKey && $request->filled('class_id')) {
+            $levelKey = ClassLevels::keyFor(SchoolClass::findOrFail($request->input('class_id'))->name);
+        }
+        if (!$levelKey || !$levels->has($levelKey)) {
+            $levelKey = $levels->keys()->first();
+        }
+        abort_if($levelKey === null, 404, 'No classes found.');
+        $classes = $levels->get($levelKey);
+
+        $sessions        = Session::orderByDesc('name')->get();
+        $selectedSession = Session::find($request->input('session_id'))
+            ?? Session::where('is_current', true)->first();
+
+        if (!$selectedSession) {
+            return redirect()->back()->with('error', 'Selected session not found.');
+        }
+
+        $terms = $selectedSession->terms()->orderBy('name')->get();
+        if ($terms->isEmpty()) {
+            return redirect()->back()->with('error', 'No terms found for this session.');
+        }
+
+        $rows = collect();
+        foreach ($classes as $class) {
+            $students = $this->rosterFor($class->id, $selectedSession->id);
+            if ($students->isNotEmpty()) {
+                $rows = $rows->concat($this->cumulativeRowsForClass($class, $selectedSession, $terms, $students));
+            }
+        }
+
+        $sortedStudents = $this->rankCumulative($rows);
+        $armCounts      = $sortedStudents->countBy(fn($row) => $row['class']->name);
+        $levelNames     = $levels->keys();
+
+        return view('results.level_cumulative_results', compact(
+            'levelKey',
+            'levelNames',
+            'classes',
+            'sortedStudents',
+            'armCounts',
+            'sessions',
+            'selectedSession',
+            'terms'
+        ));
+    }
+
+    // Students who were in the class during a session, by name.
+    private function rosterFor(int $classId, int $sessionId)
+    {
+        return User::where('user_type', 4)
+            ->whereIn('id', app(StudentClassHistory::class)->studentIdsInClass($classId, $sessionId))
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * One cumulative row per student for a single class. Subjects, primary vs
+     * secondary handling and the subject limit are all that class's own, so
+     * this can be called per arm and the rows combined for a whole level.
+     */
+    private function cumulativeRowsForClass(SchoolClass $class, $selectedSession, $terms, $students)
+    {
+        $isPrimary = DB::table('primary_result_classes')
+            ->where('school_class_id', $class->id)
+            ->exists();
+
+        $subjects = Course::whereHas('schoolClasses', function ($query) use ($class) {
+            $query->where('school_classes.id', $class->id);
+        })->orderBy('course_name')->get();
+
+        $resultModel = $isPrimary ? \App\Models\PrimarySchoolResult::class : Result::class;
+
+        $allResults = $resultModel::where('session_id', $selectedSession->id)
+            ->whereIn('term_id', $terms->pluck('id'))
+            ->whereIn('student_id', $students->pluck('id'))
+            ->whereIn('course_id', $subjects->pluck('id'))
+            ->get()
+            ->groupBy(['student_id', 'term_id', 'course_id']);
+
+        return $students->map(function ($student) use ($allResults, $subjects, $terms, $isPrimary, $class) {
+            $studentResults = $allResults->get($student->id, collect());
+
+            $termTotals        = [];
+            $cumulativeTotal   = 0;
+            $cumulativeDivisor = 0;
+
+            foreach ($terms as $term) {
+                $termResults = $studentResults->get($term->id, collect());
+
+                // No records at all for this term -> exclude it from the cumulative entirely
+                if ($termResults->isEmpty()) {
+                    continue;
+                }
+
+                if ($isPrimary) {
+                    $termTotal = 0;
+                    foreach ($subjects as $subject) {
+                        $result = $termResults->get($subject->id);
+                        if ($result) {
+                            $termTotal += (float) ($result->first()->final_obtained ?? 0);
+                        }
+                    }
+                    $divisor = $subjects->count() > 0 ? $subjects->count() : 1;
+                } else {
+                    $mapped = $subjects->map(function ($subject) use ($termResults) {
+                        $result = $termResults->get($subject->id);
+                        $score  = $result ? (float) ($result->first()->final_obtained ?? 0) : 0;
+                        return [
+                            'course_name'    => $subject->course_name,
+                            'final_obtained' => $score,
+                        ];
+                    });
+
+                    $limitData = $this->applySubjectLimit(collect($mapped), $class->id);
+                    $termTotal = $limitData['adjusted_total'];
+                    $divisor   = $limitData['average_divisor'];
+                }
+
+                $termTotals[$term->id] = $termTotal;
+                $cumulativeTotal      += $termTotal;
+                $cumulativeDivisor    += $divisor;
+            }
+
+            $cumulativeAverage = $cumulativeDivisor > 0 ? round($cumulativeTotal / $cumulativeDivisor, 2) : 0;
+
+            return [
+                'student'            => $student,
+                'class'              => $class,
+                'term_totals'        => $termTotals,
+                'cumulative_total'   => $cumulativeTotal,
+                'cumulative_average' => $cumulativeAverage,
+                'grade'              => $this->calculateGrade($cumulativeAverage),
+            ];
+        });
+    }
+
+    // Highest cumulative total first, with 1st/2nd/3rd... positions assigned.
+    private function rankCumulative($cumulativeData)
+    {
+        return $cumulativeData->sortByDesc('cumulative_total')->values()->map(function ($item, $index) {
+            $item['position']           = $index + 1;
+            $item['formatted_position'] = ($index + 1) . $this->getPositionSuffix($index + 1);
+            return $item;
+        });
+    }
 
 
     public function printTranscript($studentId, $action = 'stream')

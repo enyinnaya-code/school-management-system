@@ -20,6 +20,7 @@ use App\Models\TermSetting;
 use App\Models\ClassSubjectLimit;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\ResultSheetService;
+use App\Services\StudentClassHistory;
 
 class ParentReportCardController extends Controller
 {
@@ -191,7 +192,10 @@ class ParentReportCardController extends Controller
 
         $currentSession = Session::findOrFail($access['session_id']);
         $currentTerm    = Term::findOrFail($access['term_id']);
-        $class          = SchoolClass::findOrFail($student->class_id);
+        // The class the ward was in during that session, not necessarily the current one.
+        $class          = SchoolClass::findOrFail(
+            app(StudentClassHistory::class)->classIdFor($student->id, $currentSession->id)
+        );
         $section        = Section::find($class->section_id);
 
         $termSettings = TermSetting::where('session_id', $currentSession->id)
@@ -273,7 +277,10 @@ class ParentReportCardController extends Controller
 
         $currentSession = Session::findOrFail($access['session_id']);
         $currentTerm    = Term::findOrFail($access['term_id']);
-        $class          = SchoolClass::findOrFail($student->class_id);
+        // The class the ward was in during that session, not necessarily the current one.
+        $class          = SchoolClass::findOrFail(
+            app(StudentClassHistory::class)->classIdFor($student->id, $currentSession->id)
+        );
         $section        = Section::find($class->section_id);
 
         $termSettings = TermSetting::where('session_id', $currentSession->id)
@@ -435,7 +442,7 @@ class ParentReportCardController extends Controller
         $overallAverage = $subjectCount > 0 ? round($overallTotal / $subjectCount, 2) : 0;
         $overallGrade   = $this->calculateGrade($overallAverage);
 
-        $classStudents        = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
+        $classStudents        = app(StudentClassHistory::class)->studentIdsInClass($class->id, $session->id);
         $totalStudentsInClass = $classStudents->count();
 
         $allStudentTotals = \App\Models\PrimarySchoolResult::where('session_id', $session->id)
@@ -534,7 +541,7 @@ class ParentReportCardController extends Controller
         $overallGrade   = $this->calculateGrade($overallAverage);
         $subjectCount   = $averageDivisor;
 
-        $classStudents        = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
+        $classStudents        = app(StudentClassHistory::class)->studentIdsInClass($class->id, $session->id);
         $totalStudentsInClass = $classStudents->count();
 
         // ── Position ranking: apply same drop-lowest logic per classmate ──────

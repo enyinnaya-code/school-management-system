@@ -19,11 +19,21 @@ use App\Models\ClassSubjectLimit;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Services\ResultSheetService;
+use App\Services\StudentClassHistory;
 use App\Traits\ComputesCumulativeResult;
 
 class StudentReportCardController extends Controller
 {
     use ComputesCumulativeResult;
+
+    // The class the student was in during that session - not necessarily the
+    // one they're in now, if they've been promoted since.
+    private function classDuring($student, $session): SchoolClass
+    {
+        return SchoolClass::findOrFail(
+            app(StudentClassHistory::class)->classIdFor($student->id, $session->id)
+        );
+    }
 
     // ──────────────────────────────────────────────────────────────────────────
     // Helper: check if the current student is blocked for a session+term.
@@ -150,7 +160,9 @@ class StudentReportCardController extends Controller
             ]
         ]);
 
-        $class = SchoolClass::find($student->class_id);
+        $class = SchoolClass::find(
+            app(StudentClassHistory::class)->classIdFor($student->id, (int) $request->session_id)
+        );
 
         $usesResultSheet = false;
         if ($class) {
@@ -212,7 +224,7 @@ class StudentReportCardController extends Controller
 
         $session = Session::findOrFail($sessionId);
         $term    = Term::findOrFail($termId);
-        $class   = SchoolClass::findOrFail($student->class_id);
+        $class   = $this->classDuring($student, $session);
 
         $termSettings = TermSetting::where('session_id', $session->id)
             ->where('term_id', $term->id)
@@ -288,7 +300,7 @@ class StudentReportCardController extends Controller
 
         $session = Session::findOrFail($sessionId);
         $term    = Term::findOrFail($termId);
-        $class   = SchoolClass::findOrFail($student->class_id);
+        $class   = $this->classDuring($student, $session);
 
         // ── Check template (term-name match first, then fallback) ────────────────
         $sheetTemplate = DB::table('result_sheet_templates')
@@ -362,7 +374,7 @@ class StudentReportCardController extends Controller
 
     $session = Session::findOrFail($sessionId);
     $term    = Term::findOrFail($termId);
-    $class   = SchoolClass::findOrFail($student->class_id);
+    $class   = $this->classDuring($student, $session);
 
     $termSettings = TermSetting::where('session_id', $session->id)
         ->where('term_id', $term->id)
@@ -460,7 +472,7 @@ class StudentReportCardController extends Controller
             $q->where('school_classes.id', $class->id);
         })->orderBy('course_name')->get();
 
-        $classStudents        = User::where('user_type', 4)->where('class_id', $class->id)->pluck('id');
+        $classStudents        = app(StudentClassHistory::class)->studentIdsInClass($class->id, $session->id);
         $totalStudentsInClass = $classStudents->count();
 
         $classTeacher = User::where('is_form_teacher', true)

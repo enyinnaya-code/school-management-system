@@ -481,6 +481,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Add these routes to your existing routes
     Route::get('/results/cumulative/{classId}', [ResultsController::class, 'cumulativeResults'])->name('results.cumulative');
+    Route::get('/results/level-cumulative', [ResultsController::class, 'levelCumulativeResults'])->name('results.levelCumulative');
     Route::get('/results/transcript/{studentId}', [ResultsController::class, 'printTranscript'])->name('results.transcript');
 
     // Edit Remarks for a student
