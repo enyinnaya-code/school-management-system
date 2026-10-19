@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\CumulativeAverageCalculator;
 use Illuminate\Http\Request;
 use App\Models\SchoolClass;
 use App\Models\Section;
@@ -728,57 +729,12 @@ class StudentController extends Controller
             ->with(['class.section'])
             ->get()
             ->map(function ($student) use ($sessionId) {
-                $sessionTerms = Term::where('session_id', $sessionId)
-                    ->orderBy('id')
-                    ->get();
+                // Same maths as the Cumulative Results report, so the numbers match.
+                $calc = app(CumulativeAverageCalculator::class)
+                    ->forStudent($student->id, (int) $student->class_id, (int) $sessionId);
+                $termAverages = array_values($calc['term_averages']);
+                $cumulativeAverage = $calc['average'];
 
-                $termAverages = [];
-
-                foreach ($sessionTerms as $term) {
-                    $studentClass = DB::table('class_user')
-                        ->where('user_id', $student->id)
-                        ->first();
-
-                    if (!$studentClass) {
-                        $classId = $student->class_id;
-                    } else {
-                        $classId = $studentClass->school_class_id;
-                    }
-
-                    $subjectCount = DB::table('class_course')
-                        ->where('school_class_id', $classId)
-                        ->count();
-
-                    if ($subjectCount == 0) {
-                        Log::warning("No subjects found for student {$student->id} in class {$classId} for term {$term->id}");
-                        continue;
-                    }
-
-                    $totalScores = Result::where('student_id', $student->id)
-                        ->where('session_id', $sessionId)
-                        ->where('term_id', $term->id)
-                        ->sum('total');
-
-                    $resultsCount = Result::where('student_id', $student->id)
-                        ->where('session_id', $sessionId)
-                        ->where('term_id', $term->id)
-                        ->count();
-
-                    if ($resultsCount > 0) {
-                        $termAverage = ($totalScores / $subjectCount);
-                        $termAverages[] = round($termAverage, 2);
-
-                        Log::info("Student {$student->id} ({$student->name}) - Term {$term->name}: Total={$totalScores}, Subjects={$subjectCount}, Average={$termAverage}%");
-                    }
-                }
-
-                $cumulativeAverage = 0;
-                if (count($termAverages) > 0) {
-                    $cumulativeAverage = round(array_sum($termAverages) / count($termAverages), 2);
-                }
-
-                Log::info("Student {$student->id} ({$student->name}) - Final Cumulative Average: {$cumulativeAverage}%");
-                Log::info("Term Averages: " . json_encode($termAverages));
 
                 return [
                     'id' => $student->id,
@@ -912,52 +868,12 @@ class StudentController extends Controller
             ->with(['class.section'])
             ->get()
             ->map(function ($student) use ($sessionId) {
-                $sessionTerms = Term::where('session_id', $sessionId)
-                    ->orderBy('id')
-                    ->get();
+                // Same maths as the Cumulative Results report, so the numbers match.
+                $calc = app(CumulativeAverageCalculator::class)
+                    ->forStudent($student->id, (int) $student->class_id, (int) $sessionId);
+                $termAverages = array_values($calc['term_averages']);
+                $cumulativeAverage = $calc['average'];
 
-                $termAverages = [];
-
-                foreach ($sessionTerms as $term) {
-                    $studentClass = DB::table('class_user')
-                        ->where('user_id', $student->id)
-                        ->first();
-
-                    $classId = $studentClass ? $studentClass->school_class_id : $student->class_id;
-
-                    $subjectCount = DB::table('class_course')
-                        ->where('school_class_id', $classId)
-                        ->count();
-
-                    if ($subjectCount == 0) {
-                        Log::warning("No subjects found for student {$student->id} in class {$classId} for term {$term->id}");
-                        continue;
-                    }
-
-                    $totalScores = Result::where('student_id', $student->id)
-                        ->where('session_id', $sessionId)
-                        ->where('term_id', $term->id)
-                        ->sum('total');
-
-                    $resultsCount = Result::where('student_id', $student->id)
-                        ->where('session_id', $sessionId)
-                        ->where('term_id', $term->id)
-                        ->count();
-
-                    if ($resultsCount > 0) {
-                        $termAverage = ($totalScores / $subjectCount);
-                        $termAverages[] = round($termAverage, 2);
-
-                        Log::info("Student {$student->id} ({$student->name}) - Term {$term->name}: Total={$totalScores}, Subjects={$subjectCount}, Average={$termAverage}%");
-                    }
-                }
-
-                $cumulativeAverage = 0;
-                if (count($termAverages) > 0) {
-                    $cumulativeAverage = round(array_sum($termAverages) / count($termAverages), 2);
-                }
-
-                Log::info("Student {$student->id} ({$student->name}) - Cumulative Average: {$cumulativeAverage}%");
 
                 return [
                     'id' => $student->id,
@@ -1258,42 +1174,10 @@ class StudentController extends Controller
      */
     private function calculateCumulativeAverage($studentId, $sessionId)
     {
-        $sessionTerms = Term::where('session_id', $sessionId)->orderBy('id')->get();
-        $termAverages = [];
+        $classId = (int) User::where('id', $studentId)->value('class_id');
 
-        foreach ($sessionTerms as $term) {
-            $studentClass = DB::table('class_user')
-                ->where('user_id', $studentId)
-                ->first();
-
-            $classId = $studentClass ? $studentClass->school_class_id : User::find($studentId)->class_id;
-
-            $subjectCount = DB::table('class_course')
-                ->where('school_class_id', $classId)
-                ->count();
-
-            if ($subjectCount == 0) {
-                continue;
-            }
-
-            $totalScores = Result::where('student_id', $studentId)
-                ->where('session_id', $sessionId)
-                ->where('term_id', $term->id)
-                ->sum('total');
-
-            $resultsCount = Result::where('student_id', $studentId)
-                ->where('session_id', $sessionId)
-                ->where('term_id', $term->id)
-                ->count();
-
-            if ($resultsCount > 0) {
-                $termAverages[] = round($totalScores / $subjectCount, 2);
-            }
-        }
-
-        return count($termAverages) > 0
-            ? round(array_sum($termAverages) / count($termAverages), 2)
-            : 0;
+        return app(CumulativeAverageCalculator::class)
+            ->forStudent((int) $studentId, $classId, (int) $sessionId)['average'];
     }
 
     /**
@@ -1301,40 +1185,10 @@ class StudentController extends Controller
      */
     private function getTermAverages($studentId, $sessionId)
     {
-        $sessionTerms = Term::where('session_id', $sessionId)->orderBy('id')->get();
-        $termAverages = [];
+        $classId = (int) User::where('id', $studentId)->value('class_id');
 
-        foreach ($sessionTerms as $term) {
-            $studentClass = DB::table('class_user')
-                ->where('user_id', $studentId)
-                ->first();
-
-            $classId = $studentClass ? $studentClass->school_class_id : User::find($studentId)->class_id;
-
-            $subjectCount = DB::table('class_course')
-                ->where('school_class_id', $classId)
-                ->count();
-
-            if ($subjectCount == 0) {
-                continue;
-            }
-
-            $totalScores = Result::where('student_id', $studentId)
-                ->where('session_id', $sessionId)
-                ->where('term_id', $term->id)
-                ->sum('total');
-
-            $resultsCount = Result::where('student_id', $studentId)
-                ->where('session_id', $sessionId)
-                ->where('term_id', $term->id)
-                ->count();
-
-            if ($resultsCount > 0) {
-                $termAverages[$term->name] = round($totalScores / $subjectCount, 2);
-            }
-        }
-
-        return $termAverages;
+        return app(CumulativeAverageCalculator::class)
+            ->forStudent((int) $studentId, $classId, (int) $sessionId)['term_averages'];
     }
 
     /**
