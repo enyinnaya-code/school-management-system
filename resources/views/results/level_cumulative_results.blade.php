@@ -65,8 +65,9 @@
                                 </p>
 
                                 <!-- Cumulative Results Table -->
+                                @include('results._rank_toggle')
                                 <div class="table-responsive">
-                                    <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
+                                    <table id="cumulativeTable" class="table table-bordered table-striped table-hover" style="font-size: 11px;">
                                         <thead>
                                             <tr>
                                                 <th rowspan="2" style="vertical-align: middle;">Pos</th>
@@ -91,8 +92,8 @@
                                             @php
                                                 $student = $studentData['student'];
                                             @endphp
-                                            <tr>
-                                                <td class="text-center font-weight-bold">{{ $studentData['position'] }}</td>
+                                            <tr data-total="{{ $studentData['cumulative_total'] }}" data-avg="{{ $studentData['cumulative_average'] }}">
+                                                <td class="text-center font-weight-bold pos-cell">{{ $studentData['position'] }}</td>
                                                 <td>{{ $student->admission_no }}</td>
                                                 <td>{{ strtoupper($student->name) }}</td>
                                                 <td>{{ $studentData['class']->name }}</td>
