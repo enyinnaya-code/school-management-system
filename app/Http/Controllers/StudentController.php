@@ -1022,6 +1022,8 @@ class StudentController extends Controller
             // promotion type to mark students as graduating rather than moving
             // to another class - validated against school_classes below instead.
             'students.*.next_class_id' => 'nullable|string',
+            // Set when the user manually promoted a student past a full class.
+            'students.*.override' => 'nullable|boolean',
         ]);
 
         DB::beginTransaction();
@@ -1131,7 +1133,9 @@ class StudentController extends Controller
                     $nextClassId = $studentData['next_class_id'];
 
                     $canPromote = true;
-                    if (isset($config['capacities'][$nextClassId])) {
+                    $isOverride = !empty($studentData['override']);
+                    // Manual overrides deliberately bypass the capacity limit.
+                    if (!$isOverride && isset($config['capacities'][$nextClassId])) {
                         $maxCapacity = $config['capacities'][$nextClassId]['max'];
 
                         if (!isset($capacityUsed[$nextClassId])) {
@@ -1160,9 +1164,17 @@ class StudentController extends Controller
                         };
 
                         if (isset($capacityUsed[$nextClassId])) {
-                            $capacityUsed[$nextClassId]++;
+                            // Overrides don't consume the capacity counter, so they
+                            // can't push later in-capacity students into "repeating".
+                            if (!$isOverride) {
+                                $capacityUsed[$nextClassId]++;
+                                $capacityRecords[$nextClassId]['available_slots']--;
+                            }
                             $capacityRecords[$nextClassId]['students_assigned']++;
-                            $capacityRecords[$nextClassId]['available_slots']--;
+                        }
+
+                        if ($isOverride) {
+                            $promotionReason = "Promoted by manual override of class capacity (Avg: {$cumulativeAverage}%)";
                         }
 
                         $promotedCount++;

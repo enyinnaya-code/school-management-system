@@ -550,6 +550,7 @@
                                                             <th>Current Class</th>
                                                             <th class="average-column">Average (%)</th>
                                                             <th>Reason</th>
+                                                            <th width="220">Override</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="repeatingStudentsBody">
@@ -565,7 +566,9 @@
                                     <strong><i class="fas fa-exclamation-triangle"></i> Important Notice:</strong>
                                     <ul class="mb-0 mt-2">
                                         <li>Only active students will be promoted</li>
-                                        <li>Class capacity limits will be strictly enforced</li>
+                                        <li>Class capacity limits are applied automatically, but you can override them: use
+                                            the "Override" dropdown on a repeating student to promote them anyway
+                                            (the class will go over capacity)</li>
                                         <li>Students are distributed based on your selected strategy</li>
                                         <li>This action will update student records permanently</li>
                                         <li>Please review all assignments carefully before confirming</li>
@@ -765,6 +768,7 @@
         // Global variables
 let currentStep = 1;
 let studentsData = [];
+let previewStudents = [];
 let allClasses = [];
 let destinationClasses = [];
 let selectedCurrentClasses = [];
@@ -1556,15 +1560,53 @@ function generatePreview() {
         classCapacities[classId].current = 0;
     });
     
-    const processedStudents = applyPromotionLogicWithCapacity(studentsData, promotionConfig);
-    
-    updateSummaryCounts(processedStudents);
+    previewStudents = applyPromotionLogicWithCapacity(studentsData, promotionConfig);
+
     displayPromotionCriteria(promotionConfig);
-    displayCapacityOverview(processedStudents);
-    generateSeparatePreviewTables(processedStudents);
-    
+    renderPreview();
+
     hideLoading();
 }
+
+// Re-render everything that depends on the (possibly manually overridden) student list
+function renderPreview() {
+    // Recount destination usage from the current state so manual overrides are reflected
+    Object.keys(classCapacities).forEach(classId => {
+        classCapacities[classId].current = previewStudents.filter(s =>
+            s.status === 'promoted' && String(s.next_class_id) === String(classId)
+        ).length;
+    });
+
+    updateSummaryCounts(previewStudents);
+    displayCapacityOverview(previewStudents);
+    generateSeparatePreviewTables(previewStudents);
+}
+
+// Manually promote a repeating student into a chosen class, ignoring capacity
+function overrideStudent(studentId, destClassId) {
+    const student = previewStudents.find(s => String(s.id) === String(studentId));
+    if (!student) return;
+
+    if (destClassId) {
+        student.next_class_id = destClassId;
+        student.status = 'promoted';
+        student.manual_override = true;
+    } else {
+        student.next_class_id = null;
+        student.status = 'repeating';
+        student.manual_override = false;
+    }
+    renderPreview();
+}
+
+$(document).on('click', '.undo-override', function(e) {
+    e.preventDefault();
+    overrideStudent($(this).data('student-id'), '');
+});
+
+$(document).on('change', '.override-select', function() {
+    overrideStudent($(this).data('student-id'), $(this).val());
+});
 
 // Apply promotion logic with capacity management
 function applyPromotionLogicWithCapacity(students, config) {
@@ -1784,9 +1826,10 @@ function displayCapacityOverview(processedStudents) {
 
     selectedDestinationClasses.forEach(cls => {
         const capacity = classCapacities[cls.id];
-        const percentage = (capacity.current / capacity.max) * 100;
+        const percentage = Math.min((capacity.current / capacity.max) * 100, 100);
+        const overBy = capacity.current - capacity.max;
         let fillClass = '';
-        
+
         if (percentage >= 90) {
             fillClass = 'danger';
         } else if (percentage >= 75) {
@@ -1804,7 +1847,9 @@ function displayCapacityOverview(processedStudents) {
                             </div>
                         </div>
                         <small class="text-muted mt-1 d-block">
-                            ${capacity.max - capacity.current} slots available
+                            ${overBy > 0
+                                ? `<span class="text-danger font-weight-bold">${overBy} over capacity (manual override)</span>`
+                                : `${capacity.max - capacity.current} slots available`}
                         </small>
                     </div>
                 </div>
@@ -1957,7 +2002,11 @@ function generatePromotedStudentsTables(promotedStudents, showAverage, startInde
         const destClass = selectedDestinationClasses.find(c => c.id == classId);
         const className = destClass ? destClass.name : 'Unknown Class';
         const capacity = classCapacities[classId];
-        const capacityText = capacity ? `Capacity: ${studentsInClass.length} / ${capacity.max}` : '';
+        const overBy = capacity ? studentsInClass.length - capacity.max : 0;
+        const capacityText = capacity
+            ? `Capacity: ${studentsInClass.length} / ${capacity.max}` +
+              (overBy > 0 ? ` <span class="badge badge-danger">${overBy} over capacity</span>` : '')
+            : '';
 
         tablesHtml += `
             <div class="card class-group-card mb-3">
@@ -2003,9 +2052,14 @@ function generatePromotedStudentsTables(promotedStudents, showAverage, startInde
                     <td>${studentName}</td>
                     <td>${currentClass}</td>
                     ${averageHtml}
-                    <td><span class="badge badge-success">Promoted</span></td>
+                    <td>
+                        <span class="badge badge-success">Promoted</span>
+                        ${student.manual_override ? `<span class="badge badge-warning" title="Promoted by manual override">Override</span>
+                            <a href="#" class="small undo-override" data-student-id="${student.id}">undo</a>` : ''}
+                    </td>
                     <input type="hidden" name="students[${rowIndex}][student_id]" value="${student.id}">
                     <input type="hidden" name="students[${rowIndex}][next_class_id]" value="${student.next_class_id}">
+                    ${student.manual_override ? `<input type="hidden" name="students[${rowIndex}][override]" value="1">` : ''}
                 </tr>
             `;
         });
@@ -2095,6 +2149,12 @@ function generateRepeatingStudentsTable(repeatingStudents, showAverage, startInd
                 <td>${currentClass}</td>
                 ${averageHtml}
                 <td><span class="text-muted">${reason}</span></td>
+                <td>
+                    <select class="form-control form-control-sm override-select" data-student-id="${student.id}">
+                        <option value="">Keep repeating</option>
+                        ${selectedDestinationClasses.map(c => `<option value="${c.id}">Promote to ${c.name}</option>`).join('')}
+                    </select>
+                </td>
                 <input type="hidden" name="students[${rowIndex}][student_id]" value="${student.id}">
                 <input type="hidden" name="students[${rowIndex}][next_class_id]" value="">
             </tr>
