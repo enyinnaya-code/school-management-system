@@ -110,7 +110,7 @@
                                         @forelse($promotions as $promotion)
                                         <tr>
                                             <td>
-                                                <strong class="text-primary">{{ $promotion->promotion_batch_id ?? 'N/A' }}</strong>
+                                                <strong style="color: #000;">{{ $promotion->promotion_batch_id ?? 'N/A' }}</strong>
                                             </td>
                                             <td>{{ $promotion->session_name ?? 'N/A' }}</td>
                                             <td>{{ $promotion->term_name ?? 'N/A' }}</td>
